@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>SHAP and DeepLIFT: A Technical Summary</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="shap_and_deeplift_a_technical_summary"><a href="#shap_and_deeplift_a_technical_summary" class="header-anchor">SHAP and DeepLIFT: A Technical Summary</a></h1>
+<h2 id="the_big_picture"><a href="#the_big_picture" class="header-anchor">The Big Picture</a></h2>
+<p>SHAP &#40;SHapley Additive exPlanations&#41; gives you a principled way to explain any model&#39;s predictions by assigning each feature an importance value—its Shapley value. For deep learning, vanilla SHAP becomes computationally nightmarish because you&#39;d need to evaluate the model on exponentially many feature coalitions. That&#39;s where <strong>DeepSHAP</strong> comes in, using <strong>DeepLIFT</strong> as its computational engine.</p>
+<h2 id="what_are_shapley_values_again"><a href="#what_are_shapley_values_again" class="header-anchor">What Are Shapley Values Again?</a></h2>
+<p>The Shapley value for feature \(i\) is:</p>
+\[\phi_i = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(|F|-|S|-1)!}{|F|!} [f(S \cup \{i\}) - f(S)]\]
+<p>where \(F\) is the set of all features, and \(S\) is a subset not containing \(i\). This measures feature \(i\)&#39;s marginal contribution across all possible coalitions.</p>
+<p>The problem? For \(n\) features, you have \(2^n\) subsets. Even for modest networks, this is absurd.</p>
+<h2 id="enter_deeplift"><a href="#enter_deeplift" class="header-anchor">Enter DeepLIFT</a></h2>
+<p>DeepLIFT &#40;Deep Learning Important FeaTures&#41; is a backpropagation-based method that computes feature attributions by comparing each neuron&#39;s activation to a &quot;reference activation.&quot; Think of the reference as a baseline input—often all zeros or the dataset mean.</p>
+<p><strong>The central goal</strong>: DeepLIFT ultimately just linearizes your neural network output as a function of the input. It expresses:</p>
+\(f(x) - f(r) = \sum_i C_{\Delta x_i \Delta f} = \sum_i \phi_i \cdot (x_i - r_i)\)
+<p>where \(\phi_i\) are the contribution coefficients. So despite all the complexity, you&#39;re just decomposing the output change as a weighted sum of input changes. All the machinery below is just computing these weights efficiently through the network structure.</p>
+<h3 id="the_core_idea_multipliers"><a href="#the_core_idea_multipliers" class="header-anchor">The Core Idea: Multipliers</a></h3>
+<p>DeepLIFT defines <strong>contribution scores</strong> \(C_{\Delta x_i \Delta t}\) that measure how much an input feature \(x_i\)&#39;s difference from reference contributes to an output neuron \(t\)&#39;s difference from reference.</p>
+<p>The key insight is the <strong>multiplier</strong>:</p>
+\[m_{\Delta x_i \Delta t} = \frac{C_{\Delta x_i \Delta t}}{\Delta x_i}\]
+<p>where \(\Delta x_i = x_i - x_i^{\text{ref}}\) is the difference from reference.</p>
+<h3 id="the_chain_rule_for_contributions"><a href="#the_chain_rule_for_contributions" class="header-anchor">The Chain Rule for Contributions</a></h3>
+<p>For a deep network, DeepLIFT uses a modified chain rule. If neuron \(t\) depends on neurons \(\{s_1, s_2, \ldots\}\), then:</p>
+\(C_{\Delta x_i \Delta t} = \sum_{j} C_{\Delta x_i \Delta s_j} \cdot m_{\Delta s_j \Delta t}\)
+<p>This lets you backpropagate contributions through the network.</p>
+<p><strong>What&#39;s really happening</strong>: You&#39;re finding coefficients \(\phi_i\) such that \(\Delta t = \sum_i \phi_i \cdot \Delta x_i\). The multipliers are just the tool to compute these coefficients layer by layer, respecting the network&#39;s structure.</p>
+<h3 id="computing_multipliers_for_common_layers"><a href="#computing_multipliers_for_common_layers" class="header-anchor">Computing Multipliers for Common Layers</a></h3>
+<p><strong>Linear layers</strong>: If \(t = \sum_j w_j s_j + b\), then:</p>
+\[m_{\Delta s_j \Delta t} = w_j\]
+<p>Simple&#33; The weight is the multiplier.</p>
+<p><strong>ReLU &#40;and other activations&#41;</strong>: This is where it gets interesting. For ReLU, if both \(s\) and \(s^{\text{ref}}\) are positive &#40;or both negative&#41;, you get:</p>
+\[m_{\Delta s \Delta t} = \frac{\Delta t}{\Delta s}\]
+<p>But if they have different signs, DeepLIFT uses the &quot;rescale rule&quot; to handle the discontinuity at zero gracefully.</p>
+<p><strong>MaxPool and other operations</strong>: DeepLIFT distributes contributions based on which neurons were actually responsible for the max operation.</p>
+<h2 id="deepshap_marrying_deeplift_with_shapley"><a href="#deepshap_marrying_deeplift_with_shapley" class="header-anchor">DeepSHAP: Marrying DeepLIFT with Shapley</a></h2>
+<p>DeepSHAP uses DeepLIFT&#39;s computational framework but interprets it through the lens of Shapley values. Here&#39;s the clever bit:</p>
+<ol>
+<li><p><strong>Multiple references</strong>: Instead of a single reference input, DeepSHAP samples a distribution of reference inputs &#40;often from your training data&#41;.</p>
+</li>
+<li><p><strong>Expected contribution</strong>: For each feature, DeepSHAP computes:</p>
+</li>
+</ol>
+\[\phi_i = \frac{1}{|R|} \sum_{r \in R} C_{\Delta x_i \Delta t}(x, r)\]
+<p>where \(R\) is your set of reference samples.</p>
+<ol start="3">
+<li><p><strong>Why this works</strong>: Lundberg showed that if you average DeepLIFT contributions over a reference distribution, you approximate the Shapley value under certain assumptions &#40;specifically, when features are independent given the reference&#41;.</p>
+</li>
+</ol>
+<h2 id="the_math_that_trips_people_up"><a href="#the_math_that_trips_people_up" class="header-anchor">The Math That Trips People Up</a></h2>
+<h3 id="linearization_assumption"><a href="#linearization_assumption" class="header-anchor">Linearization Assumption</a></h3>
+<p>DeepLIFT essentially linearizes the model locally around the reference. The multipliers \(m_{\Delta s_j \Delta t}\) act like local &quot;effective gradients&quot; but aren&#39;t quite the same as actual gradients.</p>
+<p>For a function \(f\), the contribution satisfies:</p>
+\(\Delta f = \sum_i C_{\Delta x_i \Delta f}\)
+<p>This is the <strong>summation-to-delta</strong> property. The contributions sum to exactly the difference in output.</p>
+<p><strong>The key insight</strong>: Even though your neural network \(f(x)\) is highly nonlinear, DeepLIFT finds a linear approximation that&#39;s exact for the pair \((x, r)\):</p>
+\(f(x) - f(r) = \sum_i \phi_i(x, r) \cdot (x_i - r_i)\)
+<p>The coefficients \(\phi_i\) depend on both \(x\) and \(r\), but the relationship is linear. This is different from a Taylor expansion &#40;which uses gradients and is only locally accurate&#41;—DeepLIFT&#39;s linearization is exact for that specific input-reference pair by construction.</p>
+<h3 id="the_reference_distribution_trick"><a href="#the_reference_distribution_trick" class="header-anchor">The Reference Distribution Trick</a></h3>
+<p>When you average over references, you&#39;re computing:</p>
+\[\phi_i(f, x) = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
+<p>This expectation connects to the Shapley value through the formula:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}[f(S \cup \{i\}) - f(S)]\]
+<p>where \(\pi\) is a specific distribution over coalitions. The reference distribution approximates this coalition sampling.</p>
+<h3 id="why_not_just_use_gradients"><a href="#why_not_just_use_gradients" class="header-anchor">Why Not Just Use Gradients?</a></h3>
+<p>Gradients \(\frac{\partial f}{\partial x_i}\) tell you the local rate of change, but:</p>
+<ul>
+<li><p>They don&#39;t satisfy the summation-to-delta property</p>
+</li>
+<li><p>They can be zero even when a feature is important &#40;e.g., in saturated regions&#41;</p>
+</li>
+<li><p>They don&#39;t naturally handle interactions between features</p>
+</li>
+</ul>
+<p>DeepLIFT&#39;s contributions respect the actual function behavior between reference and input.</p>
+<h2 id="practical_computation"><a href="#practical_computation" class="header-anchor">Practical Computation</a></h2>
+<p>Here&#39;s the algorithm flow:</p>
+<ol>
+<li><p><strong>Forward pass</strong>: Compute activations for your input \(x\)</p>
+</li>
+<li><p><strong>Reference forward pass</strong>: Compute activations for reference \(r\)</p>
+</li>
+<li><p><strong>Compute differences</strong>: \(\Delta s_j = s_j - s_j^{\text{ref}}\) for each neuron</p>
+</li>
+<li><p><strong>Backward pass with multipliers</strong>: Starting from the output, backpropagate using \(C_{\Delta x_i \Delta s_j} = \sum_k C_{\Delta x_i \Delta s_k} \cdot m_{\Delta s_k \Delta s_j}\)</p>
+</li>
+<li><p><strong>Average over references</strong>: Repeat for multiple \(r\) and average</p>
+</li>
+</ol>
+<p>The beauty is that this is a single backward pass per reference—vastly cheaper than \(2^n\) model evaluations.</p>
+<h2 id="caveats_and_nuances"><a href="#caveats_and_nuances" class="header-anchor">Caveats and Nuances</a></h2>
+<ul>
+<li><p><strong>Reference choice matters</strong>: Your baseline significantly affects the attributions. Common choices: zero input, dataset mean, or adversarial samples.</p>
+</li>
+<li><p><strong>Approximation quality</strong>: DeepSHAP is exact for linear models but approximate for nonlinear ones. The approximation introduces bias relative to true interventional Shapley values, trading accuracy for computational speed. <strong>Crucially, the approximation quality scales with the number of reference samples</strong>—more references give you a better estimate of the true Shapley value, but each reference requires a full forward&#43;backward pass. This is the fundamental tradeoff: accuracy vs. computational cost.</p>
+</li>
+<li><p><strong>Independence assumption</strong>: The theoretical connection to Shapley values holds exactly when features are independent conditioned on the reference distribution. In practice, this assumption is often violated, but the approximation tends to remain reasonable for smooth networks.</p>
+</li>
+<li><p><strong>No formal convergence guarantees</strong>: Unlike some Monte Carlo methods, there aren&#39;t tight convergence bounds on how many references you need for a given approximation error. The quality depends on the reference distribution, network architecture, and local smoothness.</p>
+</li>
+<li><p><strong>Interactions</strong>: Deep networks have feature interactions. DeepLIFT/DeepSHAP naturally handles these through the network&#39;s structure.</p>
+</li>
+</ul>
+<h2 id="the_takeaway"><a href="#the_takeaway" class="header-anchor">The Takeaway</a></h2>
+<p>SHAP gives you theoretically grounded feature importance via Shapley values. DeepSHAP makes this tractable for neural networks by using DeepLIFT&#39;s backpropagation-style contribution computation, averaged over reference inputs. The multipliers are the secret sauce—they let you efficiently trace how input differences flow through the network to produce output differences, all while maintaining mathematical guarantees about how contributions sum up.</p>
+<p>The Lundberg paper&#39;s equations become clearer when you see DeepLIFT as defining a new type of &quot;gradient&quot; &#40;the multipliers&#41; that respects the network&#39;s discrete structure and nonlinearities better than vanilla gradients do.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 06, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
