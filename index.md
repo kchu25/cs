@@ -5,4 +5,5 @@
 ~~~
 
 - [interpretation](tag/interpretation)
+- [hashing](tag/hashing)
 

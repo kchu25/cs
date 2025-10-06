@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why Hashing is Great: An Intuitive Guide</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_hashing_is_great_an_intuitive_guide"><a href="#why_hashing_is_great_an_intuitive_guide" class="header-anchor">Why Hashing is Great: An Intuitive Guide</a></h1>
+<h2 id="the_big_picture_why_we_love_hashing"><a href="#the_big_picture_why_we_love_hashing" class="header-anchor">The Big Picture: Why We Love Hashing</a></h2>
+<p>Imagine you&#39;re organizing a massive library with millions of books, but you only need quick access to a few thousand of them. You <em>could</em> sort them all and use binary search, but hashing offers something magical: <strong>essentially constant-time lookups</strong> with remarkably simple code.</p>
+<h3 id="what_makes_hashing_so_good"><a href="#what_makes_hashing_so_good" class="header-anchor">What Makes Hashing So Good?</a></h3>
+<p><strong>1. Blazingly Fast Operations</strong></p>
+<ul>
+<li><p><strong>Lookup</strong>: \(O(1)\) expected time - just compute where the item should be and check that spot</p>
+</li>
+<li><p><strong>Insert</strong>: \(O(1)\) - even simpler&#33; Just plop it in the right bucket</p>
+</li>
+<li><p><strong>Delete</strong>: \(O(1)\) expected time - find it and remove it from its list</p>
+</li>
+</ul>
+<p><strong>2. Ridiculously Simple to Implement</strong> Unlike balanced trees with their rotations and rebalancing rituals, hashing is straightforward:</p>
+<ul>
+<li><p>Have an array \(A\) of size \(M\)</p>
+</li>
+<li><p>Pick a hash function \(h: U \to \Set{0, 1, \ldots, M-1}\)</p>
+</li>
+<li><p>To store key \(x\): put it in bucket \(A[h(x)]\)</p>
+</li>
+<li><p>Handle collisions with linked lists &#40;or other methods&#41;</p>
+</li>
+</ul>
+<p>That&#39;s it&#33; No complex tree invariants to maintain.</p>
+<p><strong>3. Space Efficient with the Right Approach</strong> Using <strong>universal hashing</strong>, you can achieve great performance with table size \(M = O(N)\) where \(N\) is the number of elements you&#39;re actually storing.</p>
+<hr />
+<h2 id="the_universal_hashing_magic_trick"><a href="#the_universal_hashing_magic_trick" class="header-anchor">The Universal Hashing Magic Trick</a></h2>
+<p>Here&#39;s the catch with hashing: for <em>any</em> fixed hash function, an adversary could craft a terrible set of keys that all collide. It&#39;s like the pigeonhole principle coming back to haunt you.</p>
+<p><strong>The Solution: Randomize Your Hash Function&#33;</strong></p>
+<p>This is the key insight of <strong>universal hashing</strong>:</p>
+\[\text{For any } x \neq y \text{ in the universe } U: \quad \Pr_{h \sim \mathcal{H}}[h(x) = h(y)] \leq \frac{1}{M}\]
+<p>Think of it like using randomization in algorithms: even if the data is adversarial, your algorithm&#39;s random choices prevent the adversary from consistently forcing bad outcomes&#33;</p>
+<h3 id="what_this_guarantees"><a href="#what_this_guarantees" class="header-anchor">What This Guarantees</a></h3>
+<p>If you pick your hash function at random from a universal family, then for any element \(x\), the expected number of other elements in your set \(S\) that collide with \(x\) is at most \(\frac{N}{M}\).</p>
+<p><em>Here, \(N\) is the number of elements you’re storing &#40;as above&#41;, and \(M\) is the number of buckets in your table. This comes from the universal property: for each of the \(N-1\) other elements, the chance it collides with \(x\) is at most \(1/M\), so the expected number of collisions is at most \((N-1)/M \approx N/M\).</em></p>
+<p>In practical terms: if you set \(M = N\), then on average, each bucket will only have a constant number of elements. This is what makes hash tables fast and efficient. In other words: if you make the number of buckets \(M\) about equal to the number of items \(N\), then most buckets will have just one or two elements, and operations like lookup or insert will be fast—on average, you only need to check a couple of items per operation.</p>
+<p>Mathematically, if you have \(N\) items and \(M\) buckets, the expected number of items in any bucket is \(N/M\). If you set \(M = N\), then \(N/M = 1\), so on average, each bucket has just one item. This is why we say the average bucket size is “constant” &#40;doesn’t grow with \(N\)&#41;.</p>
+<hr />
+<h2 id="where_prime_numbers_enter_the_scene"><a href="#where_prime_numbers_enter_the_scene" class="header-anchor">Where Prime Numbers Enter the Scene</a></h2>
+<p>Now for the punchline about primes&#33; The lecture describes a clever construction method that relies on prime numbers:</p>
+<h3 id="the_prime-based_construction"><a href="#the_prime-based_construction" class="header-anchor">The Prime-Based Construction</a></h3>
+<p>View your key \(x\) as a vector of integers: \(x = [x_1, x_2, \ldots, x_k]\) where each \(x_i \in \{0, 1, \ldots, M-1\}\).</p>
+<p><strong>Require: \(M\) is prime&#33;</strong></p>
+<p>To create a hash function:</p>
+<ol>
+<li><p>Pick random numbers \(r_1, r_2, \ldots, r_k\) from \(\Set{0, 1, \ldots, M-1}\)</p>
+</li>
+<li><p>Define: </p>
+</li>
+</ol>
+\[h(x) = (r_1 x_1 + r_2 x_2 + \cdots + r_k x_k) \bmod M\]
+<h3 id="why_do_we_need_m_to_be_prime"><a href="#why_do_we_need_m_to_be_prime" class="header-anchor">Why Do We Need \(M\) to be Prime?</a></h3>
+<p>Here&#39;s the beautiful part&#33; To prove this is universal, consider two different keys \(x \neq y\). They must differ in some position \(i\) where \(x_i \neq y_i\).</p>
+<p>After choosing all the other random coefficients \(r_j\) &#40;for \(j \neq i\)&#41;, we have a collision exactly when:</p>
+\[r_i(x_i - y_i) = h'(y) - h'(x) \pmod{M}\]
+<p>where \(h'\) represents the partial sum without the \(i\)-th term.</p>
+<p><strong>Here&#39;s where primality is crucial:</strong> Since \(M\) is prime and \(x_i \neq y_i\), the quantity \((x_i - y_i)\) is non-zero mod \(M\). In modular arithmetic with a prime modulus, <strong>every non-zero element has a multiplicative inverse&#33;</strong></p>
+<p>This means we can &quot;divide&quot; both sides by \((x_i - y_i)\) to get:</p>
+\[r_i = \frac{h'(y) - h'(x)}{x_i - y_i} \pmod{M}\]
+<p><strong>The payoff</strong>: There is <em>exactly one</em> value of \(r_i\) &#40;out of \(M\) possibilities&#41; that causes a collision. Since we chose \(r_i\) uniformly at random, the collision probability is exactly \(\frac{1}{M}\) - which is precisely what we need for universality&#33;</p>
+<h3 id="what_if_m_wasnt_prime"><a href="#what_if_m_wasnt_prime" class="header-anchor">What If \(M\) Wasn&#39;t Prime?</a></h3>
+<p>If \(M\) were composite, division might not be well-defined. For example, if \(M = 6\) and we needed to divide by 2, we&#39;d have a problem because \(2 \times 3 \equiv 0 \pmod{6}\). Multiple values might cause collisions, breaking our careful \(\frac{1}{M}\) probability bound.</p>
+<hr />
+<p><strong>🤔 SIDE NOTE: &quot;But wait... if \(M\) is huge and my numbers are small, does the prime thing even matter?&quot;</strong></p>
+<p>You know what, I had the exact same thought&#33; Like, if \(M = 10007\) and all my data is under 1000, then \((x_i - y_i)\) is way smaller than \(M\). Why would I care if \(M\) is prime?</p>
+<p>So here&#39;s the thing - it&#39;s not really about size, it&#39;s about factors. Check this out: say \(M = 1000\) &#40;nice and big, not prime&#41;. All my data is under 100. I&#39;m thinking &quot;perfect, plenty of room&#33;&quot; Then I get \(x_i = 60\) and \(y_i = 10\), so the difference is 50. That&#39;s tiny compared to 1000, right?</p>
+<p>Except 50 and 1000 share a factor &#40;actually \(\gcd(50, 1000) = 50\)&#41;, which means 50 has no multiplicative inverse mod 1000. The proof we just did? Completely breaks. Not because the numbers were too big, but because they happened to share factors with \(M\).</p>
+<p>And here&#39;s the kicker - you&#39;d need to guarantee this never happens for <em>any</em> pair of inputs you might see. Unless you know your data really well, that&#39;s a nightmare to verify. Prime \(M\) just... handles it. Every non-zero difference works, period. No surprises three months into production when some weird input combination breaks everything.</p>
+<p>So yeah, &quot;big enough \(M\)&quot; isn&#39;t quite the same as &quot;prime \(M\)&quot; - primality is what gives you the ironclad guarantee regardless of what data shows up.</p>
+<hr />
+<h2 id="connection_to_count-min_sketch"><a href="#connection_to_count-min_sketch" class="header-anchor">Connection to Count-Min Sketch</a></h2>
+<p>Speaking of universal hashing in the wild - <strong>Count-Min Sketch</strong> is a perfect example of why this theory matters in practice&#33;</p>
+<p>Quick refresher: Count-Min Sketch is a probabilistic data structure for frequency estimation in streams. You have a \(d \times w\) table &#40;depth \(d\), width \(w\)&#41; and \(d\) independent hash functions \(h_1, \ldots, h_d\), each mapping items to \(\{0, 1, \ldots, w-1\}\).</p>
+<h3 id="why_universal_hashing_is_perfect_here"><a href="#why_universal_hashing_is_perfect_here" class="header-anchor">Why Universal Hashing is Perfect Here</a></h3>
+<p>When you use the prime-based universal hash construction for Count-Min Sketch:</p>
+<p><strong>1. Independent Hash Functions</strong> You pick \(d\) different random coefficient vectors \((r_1^{(j)}, r_2^{(j)}, \ldots, r_k^{(j)})\) for \(j = 1, \ldots, d\). Each gives you an independent hash function from the universal family. This independence is <em>crucial</em> for Count-Min&#39;s error guarantees&#33;</p>
+<p><strong>2. The Error Bound Relies on Universality</strong> The beautiful error guarantee of Count-Min Sketch is: \(\text{Estimated frequency} \leq \text{True frequency} + \frac{2}{w} \times \text{Total count}\)</p>
+<p>with probability at least \(1 - e^{-d}\).</p>
+<p>This bound <strong>directly depends</strong> on the collision probability being \(\leq 1/w\)&#33; If your hash function isn&#39;t universal, all bets are off. You could have way more collisions than expected, and your estimates would be garbage.</p>
+<p><strong>3. Prime Width is Standard</strong> In practice, many Count-Min Sketch implementations choose \(w\) to be prime &#40;or close to prime&#41; precisely because they&#39;re using this universal hash construction&#33; It&#39;s not just theoretical pedantry - it&#39;s ensuring your frequency estimates are actually reliable.</p>
+<p><strong>The Practical Upshot</strong>: When you see Count-Min Sketch in a paper or library using \(h_i(x) = (a_i \cdot x + b_i) \bmod p\) where \(p\) is prime, now you know <em>exactly</em> why - it&#39;s leveraging this universal hashing result to get provable guarantees on estimation error&#33;</p>
+<p>Without universality, Count-Min Sketch would just be &quot;some heuristic that sometimes works&quot; instead of a principled data structure with solid probabilistic guarantees. That&#39;s the power of this theory&#33; 🎯</p>
+<hr />
+<p>Q: can CMS work well even without taking prime as a consideration, as we can use arbitrarily large prime number?</p>
+<p>Great question&#33; You&#39;ve hit on something important - the difference between theory and practice. Short answer: Yes, Count-Min Sketch works well in practice even without worrying about primes&#33; Here&#39;s the thing - you could absolutely pick a prime close to whatever ww w you want &#40;like 1009 instead of 1000&#41;, and that would work perfectly. But honestly, most people just use powers of 2 &#40;like 1024&#41; with hash families designed for powers of 2, and it works great.</p>
+<p>The prime requirement is really about <strong>proving</strong> the theoretical guarantee, not about making Count-Min actually function. If you use \(w=1000\)  with polynomial hashing, it&#39;ll probably work fine in practice - you just can&#39;t <em>prove</em> the collision probability is exactly \(\leq 1/w\)  for all possible inputs.</p>
+<p>The practical reality: Count-Min is pretty forgiving. Engineers typically optimize for speed &#40;powers of 2&#41; rather than theoretical purity &#40;primes&#41;, and it works well. The universal hashing theory tells you how to get ironclad guarantees, but &quot;pretty good&quot; hashing is often good enough for real applications. So yeah, you&#39;re right - since you can pick arbitrarily large primes, the prime thing isn&#39;t really a limitation. It&#39;s more about whether you care about having a mathematical proof versus just knowing &quot;this works well in practice.&quot;</p>
+<hr />
+<h2 id="the_perfect_hashing_bonus_round"><a href="#the_perfect_hashing_bonus_round" class="header-anchor">The Perfect Hashing Bonus Round</a></h2>
+<p>The lecture culminates in <strong>perfect hashing</strong>: achieving \(O(1)\) worst-case lookups &#40;not just expected&#41; with only \(O(N)\) space&#33;</p>
+<p>The two-level scheme is clever:</p>
+<ol>
+<li><p><strong>First level</strong>: Hash \(N\) items into table of size \(N\) using universal hashing</p>
+</li>
+<li><p><strong>Second level</strong>: For each bucket with \(n_i\) collisions, create a secondary table of size \(n_i^2\) &#40;ensuring no collisions&#41;</p>
+</li>
+</ol>
+<p>The magic: with proper choice of hash function, \(\sum_i n_i^2 = O(N)\) in expectation&#33;</p>
+<hr />
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>Hashing is great because it&#39;s:</p>
+<ul>
+<li><p><strong>Fast</strong>: constant expected time for all operations</p>
+</li>
+<li><p><strong>Simple</strong>: minimal code complexity</p>
+</li>
+<li><p><strong>Flexible</strong>: works for any crazy universe of keys</p>
+</li>
+<li><p><strong>Theoretically sound</strong>: universal hashing gives strong guarantees</p>
+</li>
+</ul>
+<p>And primes? They&#39;re the secret sauce that makes the multiplication method work, giving us a clean, efficient way to construct universal hash families through the magic of modular arithmetic&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 06, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
