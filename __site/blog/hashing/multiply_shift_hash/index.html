@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Multiply-Shift Hashing: Fast and Elegant</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="multiply-shift_hashing_fast_and_elegant"><a href="#multiply-shift_hashing_fast_and_elegant" class="header-anchor">Multiply-Shift Hashing: Fast and Elegant</a></h1>
+<h2 id="what_is_multiply-shift_hashing"><a href="#what_is_multiply-shift_hashing" class="header-anchor">What is Multiply-Shift Hashing?</a></h2>
+<p>Multiply-shift hashing is a beautifully simple and <em>blazingly fast</em> hash function construction that&#39;s widely used in practice. Unlike the prime-based polynomial method, it works with <strong>powers of 2</strong>, making it perfect for modern computers that love bit operations.</p>
+<p><strong>Historical Note:</strong> This method was rigorously analyzed and popularized by <strong>Martin Dietzfelbinger and colleagues</strong> in their seminal work on universal hashing in the 1990s. Dietzfelbinger et al. proved the theoretical properties and showed how multiply-shift could achieve near-universal performance with remarkable efficiency.</p>
+<h3 id="the_basic_idea"><a href="#the_basic_idea" class="header-anchor">The Basic Idea</a></h3>
+<p>Say you want to hash \(w\)-bit keys into a table of size \(M = 2^b\) &#40;so you need \(b\)-bit hash values&#41;.</p>
+<p><strong>The construction:</strong></p>
+<ol>
+<li><p>Pick a random <strong>odd</strong> \(w\)-bit integer \(a\)</p>
+</li>
+<li><p>For any key \(x\), compute:</p>
+</li>
+</ol>
+\[h_a(x) = (a \cdot x) \gg (w - b)\]
+<p>That&#39;s it&#33; Multiply \(x\) by \(a\), then take the top \(b\) bits by right-shifting.</p>
+<h3 id="a_concrete_example"><a href="#a_concrete_example" class="header-anchor">A Concrete Example</a></h3>
+<p>Let&#39;s say we&#39;re hashing 32-bit keys into a table of size \(M = 256 = 2^8\).</p>
+<ul>
+<li><p>We need \(b = 8\) bits for our hash output</p>
+</li>
+<li><p>Pick a random odd 32-bit number, say \(a = 2654435769\) &#40;this is actually a famous constant&#33;&#41;</p>
+</li>
+<li><p>To hash \(x = 12345\):</p>
+<ul>
+<li><p>Compute \(a \cdot x = 2654435769 \times 12345 = 32768347242905\) &#40;in 64-bit arithmetic, we&#39;d take this mod \(2^{32}\)&#41;</p>
+</li>
+<li><p>Shift right by \(32 - 8 = 24\) bits</p>
+</li>
+<li><p>Get the top 8 bits as your hash value</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="why_does_this_work"><a href="#why_does_this_work" class="header-anchor">Why Does This Work?</a></h2>
+<h3 id="the_intuition"><a href="#the_intuition" class="header-anchor">The Intuition</a></h3>
+<p>When you multiply by a random odd number \(a\), you&#39;re essentially &quot;scrambling&quot; the bits of \(x\) in a pseudorandom way. The multiplication mixes the bits together, and by taking the <strong>top bits</strong> &#40;not bottom&#33;&#41;, you&#39;re getting the most &quot;mixed&quot; portion of the result.</p>
+<p><strong>Why odd?</strong> Because odd numbers are coprime to \(2^w\), which ensures the multiplication permutes the space nicely. If \(a\) were even, you&#39;d lose information in the lower bits.</p>
+<p><strong>Why top bits?</strong> The lower bits of \(a \cdot x\) depend mainly on the lower bits of \(x\) and \(a\). The upper bits get contributions from all positions due to carry propagation - they&#39;re the most &quot;mixed&quot; and randomized.</p>
+<h2 id="is_it_universal"><a href="#is_it_universal" class="header-anchor">Is It Universal?</a></h2>
+<p>Here&#39;s where it gets interesting - multiply-shift hashing is <strong>not quite universal</strong> in the strict sense we defined earlier&#33; </p>
+<p>For strict universality, you&#39;d need: \(\Pr[h(x) = h(y)] \leq 1/M\) for all \(x \neq y\).</p>
+<p>Multiply-shift gives you something slightly weaker: it&#39;s <strong>almost universal</strong> or <strong>approximately universal</strong>. The collision probability is close to \(1/M\) but not guaranteed to be exactly at most \(1/M\) for all pairs.</p>
+<p><strong>BUT</strong> - and this is crucial - <strong>it works amazingly well in practice&#33;</strong> The theoretical gap between &quot;universal&quot; and &quot;almost universal&quot; rarely matters for real-world applications.</p>
+<h2 id="why_people_love_multiply-shift"><a href="#why_people_love_multiply-shift" class="header-anchor">Why People Love Multiply-Shift</a></h2>
+<p><strong>1. Speed</strong></p>
+<ul>
+<li><p>Just one multiplication and one shift</p>
+</li>
+<li><p>No expensive modulo operations</p>
+</li>
+<li><p>Works perfectly with power-of-2 table sizes</p>
+</li>
+<li><p>CPUs are optimized for these operations</p>
+</li>
+</ul>
+<p><strong>2. Simplicity</strong></p>
+<ul>
+<li><p>Minimal code: literally <code>&#40;a * x&#41; &gt;&gt; shift</code></p>
+</li>
+<li><p>Easy to implement correctly</p>
+</li>
+<li><p>No need to find prime numbers</p>
+</li>
+</ul>
+<p><strong>3. Hardware-Friendly</strong></p>
+<ul>
+<li><p>Modern CPUs have fast integer multiplication</p>
+</li>
+<li><p>Bit shifts are essentially free</p>
+</li>
+<li><p>Cache-friendly &#40;no division, no branching&#41;</p>
+</li>
+</ul>
+<p><strong>4. Good Enough Guarantees</strong></p>
+<ul>
+<li><p>Collision probability is very close to \(1/M\) in practice</p>
+</li>
+<li><p>Works great for hash tables, bloom filters, etc.</p>
+</li>
+<li><p>The theoretical distinction from &quot;true&quot; universality rarely matters</p>
+</li>
+</ul>
+<h2 id="the_famous_constant_knuths_magic_number"><a href="#the_famous_constant_knuths_magic_number" class="header-anchor">The Famous Constant: Knuth&#39;s Magic Number</a></h2>
+<p>You&#39;ll often see multiply-shift hashing with \(a = 2654435769\) for 32-bit keys. This isn&#39;t random - it&#39;s:</p>
+\[a = \lfloor 2^{32} / \phi \rfloor\]
+<p>where \(\phi = \frac{1 + \sqrt{5}}{2}\) is the golden ratio&#33;</p>
+<p><strong>Why the golden ratio?</strong> Donald Knuth suggested this because \(\phi\) has nice properties related to distributing points uniformly. When you multiply by a number related to \(\phi\), you get good distribution properties &#40;related to Fibonacci hashing and the low-discrepancy sequences&#41;.</p>
+<p>For 64-bit keys, the analogous constant is \(a = 11400714819323198485\).</p>
+<h2 id="comparison_with_prime-based_hashing"><a href="#comparison_with_prime-based_hashing" class="header-anchor">Comparison with Prime-Based Hashing</a></h2>
+<table><tr><th align="right">Feature</th><th align="right">Prime-Based Polynomial</th><th align="right">Multiply-Shift</th></tr><tr><td align="right"><strong>Theoretical Guarantee</strong></td><td align="right">Strictly universal</td><td align="right">Almost universal</td></tr><tr><td align="right"><strong>Table Size</strong></td><td align="right">Any prime \(M\)</td><td align="right">Power of 2: \(M = 2^b\)</td></tr><tr><td align="right"><strong>Speed</strong></td><td align="right">Slower &#40;modulo by prime&#41;</td><td align="right">Faster &#40;shift operation&#41;</td></tr><tr><td align="right"><strong>Implementation</strong></td><td align="right">Need to find primes</td><td align="right">Just pick odd \(a\)</td></tr><tr><td align="right"><strong>Practical Performance</strong></td><td align="right">Excellent</td><td align="right">Excellent</td></tr></table>
+<h2 id="when_to_use_what"><a href="#when_to_use_what" class="header-anchor">When to Use What?</a></h2>
+<p><strong>Use Multiply-Shift when:</strong></p>
+<ul>
+<li><p>You care about speed &#40;most of the time&#33;&#41;</p>
+</li>
+<li><p>You&#39;re okay with power-of-2 table sizes</p>
+</li>
+<li><p>You&#39;re building practical systems &#40;hash tables, caches, etc.&#41;</p>
+</li>
+<li><p>&quot;Almost universal&quot; is good enough for your use case</p>
+</li>
+</ul>
+<p><strong>Use Prime-Based when:</strong></p>
+<ul>
+<li><p>You need strict theoretical guarantees</p>
+</li>
+<li><p>You&#39;re writing a paper and need to prove universality</p>
+</li>
+<li><p>Table size flexibility matters &#40;can use any prime&#41;</p>
+</li>
+<li><p>You&#39;re implementing something that critically depends on exact universality</p>
+</li>
+</ul>
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>Multiply-shift hashing is the &quot;engineer&#39;s choice&quot; - fast, simple, and effective. It sacrifices a tiny bit of theoretical purity for a huge gain in practical performance. </p>
+<p>The prime-based polynomial method is the &quot;theorist&#39;s choice&quot; - perfect for proofs and guarantees.</p>
+<p>In practice? Most high-performance systems use multiply-shift or similar methods. The theoretical distinction rarely matters outside academia, and the speed difference definitely matters in production&#33;</p>
+<p><strong>The takeaway:</strong> Universal hashing theory teaches you <em>what properties to aim for</em>, but there are many ways to get &quot;close enough&quot; that work brilliantly in practice. Multiply-shift is one of the best examples of this pragmatic approach. 🚀</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 06, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
