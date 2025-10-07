@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Self-gating activation functions</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="self-gating_activation_functions"><a href="#self-gating_activation_functions" class="header-anchor">Self-gating activation functions</a></h1>
+<h2 id="overview"><a href="#overview" class="header-anchor">Overview</a></h2>
+<p>This table presents common activation functions used in neural networks, expressed in a unified form: \(f(x) = g(x) \odot x\), where \(g(x)\) is applied elementwise and \(\odot\) represents elementwise multiplication.</p>
+<p><strong>Terminology note</strong>: While &quot;gating&quot; is standard in recurrent architectures &#40;LSTMs, GRUs&#41; where separate signals control information flow, this specific formulation for activation functions is sometimes called <strong>&quot;self-gating&quot;</strong> &#40;as coined in the Swish paper&#41; because the input gates itself: \(x \cdot g(x)\). However, this isn&#39;t universally standard terminology—the key insight is simply that these functions can be viewed as <strong>multiplicative modulation</strong> of the input.</p>
+<h2 id="activation_functions"><a href="#activation_functions" class="header-anchor">Activation Functions</a></h2>
+<table><tr><th align="right"><strong>Activation</strong></th><th align="right"><strong>Gating Function \(g(x_i)\)</strong></th></tr><tr><td align="right"><strong>ReLU</strong></td><td align="right">\(\mathbb{1}(x_i > 0)\)</td></tr><tr><td align="right"><strong>Leaky ReLU</strong></td><td align="right">\(\mathbb{1}(x_i > 0) + \alpha \cdot \mathbb{1}(x_i \leq 0)\)</td></tr><tr><td align="right"><strong>PReLU</strong></td><td align="right">\(\mathbb{1}(x_i > 0) + \alpha_i \cdot \mathbb{1}(x_i \leq 0)\)</td></tr><tr><td align="right"><strong>ELU</strong></td><td align="right">\(\mathbb{1}(x_i > 0) + \alpha(e^{x_i} - 1)/x_i \cdot \mathbb{1}(x_i \leq 0)\)</td></tr><tr><td align="right"><strong>Swish/SiLU</strong></td><td align="right">\(\sigma(x_i) = \frac{1}{1 + e^{-x_i}}\)</td></tr><tr><td align="right"><strong>GELU</strong></td><td align="right">\(\Phi(x_i)\)</td></tr><tr><td align="right"><strong>Mish</strong></td><td align="right">\(\tanh(\text{softplus}(x_i)) = \tanh(\ln(1 + e^{x_i}))\)</td></tr><tr><td align="right"><strong>Hard Sigmoid</strong></td><td align="right">\(\max(0, \min(1, \frac{x_i + 1}{2}))\)</td></tr><tr><td align="right"><strong>Hard Swish</strong></td><td align="right">\(\max(0, \min(1, \frac{x_i + 3}{6}))\)</td></tr></table>
+<h2 id="key_concepts"><a href="#key_concepts" class="header-anchor">Key Concepts</a></h2>
+<p><strong>Indicator Function</strong>: \(\mathbb{1}(condition)\) equals 1 when the condition is true, 0 otherwise.</p>
+<p><strong>Sigmoid Function</strong>: \(\sigma(x) = \frac{1}{1 + e^{-x}}\) produces values between 0 and 1.</p>
+<p><strong>Gaussian CDF</strong>: \(\Phi(x)\) is the cumulative distribution function of the standard normal distribution.</p>
+<p><strong>Softplus</strong>: \(\text{softplus}(x) = \ln(1 + e^x)\) is a smooth approximation of ReLU.</p>
+<h2 id="historical_context_why_the_gating_form_matters"><a href="#historical_context_why_the_gating_form_matters" class="header-anchor">Historical Context: Why the Gating Form Matters</a></h2>
+<h3 id="classical_smooth_activations_pre-2010s"><a href="#classical_smooth_activations_pre-2010s" class="header-anchor">Classical Smooth Activations &#40;Pre-2010s&#41;</a></h3>
+<p>Traditional activations like <strong>sigmoid</strong> &#40;\(\sigma(x) = \frac{1}{1+e^{-x}}\)&#41; and <strong>tanh</strong> are <strong>transformation functions</strong> that replace the input:</p>
+<ul>
+<li><p>Sigmoid: \(f(x) = \sigma(x)\) outputs &#91;0,1&#93;</p>
+</li>
+<li><p>Tanh: \(f(x) = \tanh(x)\) outputs &#91;-1,1&#93;</p>
+</li>
+</ul>
+<p><strong>These do NOT fit the gating form \(f(x) = g(x) \odot x\)</strong> - they transform rather than modulate.</p>
+<p><strong>Problems with classical activations:</strong></p>
+<ul>
+<li><p><strong>Vanishing gradients</strong>: For large \(|x|\), sigmoid/tanh saturate &#40;gradient → 0&#41;</p>
+</li>
+<li><p><strong>Bounded outputs</strong>: Cause gradient scaling issues in deep networks</p>
+</li>
+<li><p><strong>Information loss</strong>: Input magnitude information is compressed</p>
+</li>
+</ul>
+<h3 id="the_relu_revolution_2010s"><a href="#the_relu_revolution_2010s" class="header-anchor">The ReLU Revolution &#40;2010s&#41;</a></h3>
+<p>ReLU &#40;\(f(x) = \max(0, x) = \mathbb{1}(x>0) \cdot x\)&#41; can be viewed in this multiplicative form:</p>
+<ul>
+<li><p><strong>Hard multiplicative gating</strong>: Binary gate that&#39;s either 0 or 1</p>
+</li>
+<li><p><strong>No saturation</strong> for positive values &#40;gradient &#61; 1&#41;</p>
+</li>
+<li><p><strong>Sparse activations</strong> &#40;exactly 0 for negative inputs&#41;</p>
+</li>
+<li><p><strong>Computationally cheap</strong> &#40;simple thresholding&#41;</p>
+</li>
+<li><p>But introduced &quot;dying ReLU&quot; problem &#40;neurons stuck at 0&#41;</p>
+</li>
+</ul>
+<h3 id="modern_self-gated_activations_2017"><a href="#modern_self-gated_activations_2017" class="header-anchor">Modern Self-Gated Activations &#40;2017&#43;&#41;</a></h3>
+<p>The term <strong>&quot;self-gated&quot;</strong> comes from the Swish paper, describing activations where the input modulates itself through a smooth function:</p>
+<ul>
+<li><p><strong>Swish/SiLU</strong>: \(f(x) = x \cdot \sigma(x)\) - called &quot;self-gated&quot; because \(x\) gates itself via sigmoid</p>
+</li>
+<li><p><strong>GELU</strong>: \(f(x) = x \cdot \Phi(x)\) - probabilistic gating, used in BERT/GPT</p>
+</li>
+<li><p><strong>Mish</strong>: \(f(x) = x \cdot \tanh(\ln(1+e^x))\) - smoother than Swish</p>
+</li>
+</ul>
+<p><strong>Key insight:</strong> The multiplicative form \(f(x) = g(x) \cdot x\) preserves input magnitude information while smoothly controlling signal flow. Unlike sigmoid which replaces the input with a bounded value, these functions modulate the input, allowing unbounded growth for large positive values &#40;no vanishing gradients&#41; while smoothly suppressing negative values.</p>
+<h2 id="how_multiplication_creates_the_characteristic_shapes"><a href="#how_multiplication_creates_the_characteristic_shapes" class="header-anchor">How Multiplication Creates the Characteristic Shapes</a></h2>
+<p>Understanding why \(f(x) = x \cdot g(x)\) produces functions like GELU requires seeing how the gate \(g(x)\) modulates the linear term \(x\).</p>
+<h3 id="example_gelu_decomposition"><a href="#example_gelu_decomposition" class="header-anchor">Example: GELU Decomposition</a></h3>
+<p><strong>GELU</strong>: \(f(x) = x \cdot \Phi(x)\) where \(\Phi(x)\) is the standard normal CDF</p>
+<p><strong>How the multiplication works:</strong></p>
+<ol>
+<li><p><strong>Linear component</strong> \(x\): Just a straight line through the origin</p>
+</li>
+<li><p><strong>Gate component</strong> \(\Phi(x)\): S-shaped curve from 0 to 1</p>
+<ul>
+<li><p>\(\Phi(-\infty) = 0\) &#40;gate fully closed&#41;</p>
+</li>
+<li><p>\(\Phi(0) \approx 0.5\) &#40;gate half-open&#41;</p>
+</li>
+<li><p>\(\Phi(+\infty) = 1\) &#40;gate fully open&#41;</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Product</strong> \(x \cdot \Phi(x)\):</p>
+<ul>
+<li><p>When \(x \ll 0\): \(\Phi(x) \approx 0\), so \(f(x) \approx x \cdot 0 = 0\) &#40;negative inputs suppressed&#41;</p>
+</li>
+<li><p>When \(x \approx 0\): \(\Phi(x) \approx 0.5\), so \(f(x) \approx 0.5x\) &#40;transition region&#41;</p>
+</li>
+<li><p>When \(x \gg 0\): \(\Phi(x) \approx 1\), so \(f(x) \approx x \cdot 1 = x\) &#40;positive inputs pass through&#41;</p>
+</li>
+</ul>
+</li>
+</ol>
+<p><strong>The resulting shape:</strong></p>
+<ul>
+<li><p>Smooth curve near origin &#40;not sharp like ReLU&#41;</p>
+</li>
+<li><p>Small negative bump for slightly negative \(x\) &#40;gate opens gradually, not abruptly&#41;</p>
+</li>
+<li><p>Asymptotically linear for large positive \(x\) &#40;gate fully open → acts like identity&#41;</p>
+</li>
+<li><p>Bounded below at approximately \(-0.17\) &#40;the gate never fully closes for finite \(x\)&#41;</p>
+</li>
+</ul>
+<h3 id="why_this_works_better_than_classical_activations"><a href="#why_this_works_better_than_classical_activations" class="header-anchor">Why This Works Better Than Classical Activations</a></h3>
+<p><strong>Sigmoid alone</strong>: \(\sigma(x)\) squashes everything to &#91;0,1&#93; → loses magnitude information</p>
+<p><strong>GELU/Swish</strong>: \(x \cdot \sigma(x)\) or \(x \cdot \Phi(x)\) → magnitude grows linearly when \(x\) is large and positive &#40;gate ≈ 1&#41;, but smoothly suppresses when \(x\) is negative &#40;gate ≈ 0&#41;. This preserves gradient flow while adding smooth nonlinearity.</p>
+<h2 id="whats_happening"><a href="#whats_happening" class="header-anchor">What&#39;s Happening?</a></h2>
+<p>This formulation reveals that many activation functions can be viewed as <strong>multiplicative modulation mechanisms</strong> that control how much of the input signal should pass through at each position. The term <strong>&quot;self-gating&quot;</strong> &#40;from the Swish paper&#41; specifically refers to activations where the input gates itself via a smooth function: \(f(x) = x \cdot g(x)\).</p>
+<p>Rather than seeing activations as arbitrary nonlinearities, this perspective shows they determine &quot;how much&quot; of the input should pass through. Modern smooth activations &#40;Swish, GELU, Mish&#41; use data-dependent, continuous modulation that allows for richer gradient flow compared to hard binary gates like ReLU.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 07, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

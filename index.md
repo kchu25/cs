@@ -6,4 +6,5 @@
 
 - [interpretation](tag/interpretation)
 - [hashing](tag/hashing)
+- [machine-learning](tag/machine-learning)
 
