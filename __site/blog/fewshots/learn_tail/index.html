@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Learning to model the tail</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><p><a href="https://www.ri.cmu.edu/app/uploads/2018/01/nips_2017_cameraready.pdf">https://www.ri.cmu.edu/app/uploads/2018/01/nips<em>2017</em>cameraready.pdf</a></p>
+<h1 id="learning_to_model_the_tail"><a href="#learning_to_model_the_tail" class="header-anchor">Learning to Model the Tail</a></h1>
+<p><strong>Authors:</strong> Yu-Xiong Wang, Deva Ramanan, Martial Hebert &#40;CMU Robotics Institute&#41;   <strong>Conference:</strong> NIPS 2017</p>
+<h2 id="the_gist"><a href="#the_gist" class="header-anchor">The Gist</a></h2>
+<p>This paper tackles <strong>long-tailed recognition</strong> - learning accurate classifiers when classes have vastly imbalanced training data &#40;some classes have thousands of examples, others have just a few&#41;. The key insight is to treat this as a meta-learning problem: learn how model parameters <em>evolve</em> as more training data becomes available, then use that knowledge to improve few-shot models for rare classes.</p>
+<h2 id="core_problem"><a href="#core_problem" class="header-anchor">Core Problem</a></h2>
+<p>Real-world datasets follow long-tailed distributions where:</p>
+<ul>
+<li><p><strong>Head classes</strong>: abundant training data &#40;hundreds/thousands of examples&#41;</p>
+</li>
+<li><p><strong>Tail classes</strong>: scarce training data &#40;as few as 1-10 examples&#41;</p>
+</li>
+</ul>
+<p>Traditional approaches fail:</p>
+<ul>
+<li><p><strong>Over-sampling</strong>: creates redundancy, leads to overfitting</p>
+</li>
+<li><p><strong>Under-sampling</strong>: loses critical information</p>
+</li>
+<li><p><strong>Cost-sensitive weighting</strong>: makes optimization difficult</p>
+</li>
+</ul>
+<h2 id="the_strategy_metamodelnet"><a href="#the_strategy_metamodelnet" class="header-anchor">The Strategy: MetaModelNet</a></h2>
+<h3 id="what_networks_are_involved"><a href="#what_networks_are_involved" class="header-anchor">What Networks Are Involved?</a></h3>
+<p>There are <strong>THREE types of networks/models</strong>:</p>
+<h4 id="network_1_base_classifier_gx_theta"><a href="#network_1_base_classifier_gx_theta" class="header-anchor"><strong>Network 1: Base Classifier \(g(x; \theta)\)</strong></a></h4>
+<ul>
+<li><p><strong>What it is:</strong> The actual task network &#40;e.g., ResNet, AlexNet&#41; that classifies images</p>
+</li>
+<li><p><strong>Parameters:</strong> \(\theta\) &#40;e.g., all CNN weights, or just final fully-connected layer&#41;</p>
+</li>
+<li><p><strong>Multiple instances:</strong> You train MANY versions of this network with different amounts of data</p>
+</li>
+<li><p><strong>Purpose:</strong> Perform actual classification on images</p>
+</li>
+</ul>
+<h4 id="network_2_few-shot_models_theta_k"><a href="#network_2_few-shot_models_theta_k" class="header-anchor"><strong>Network 2: Few-Shot Models \(\theta_k\)</strong></a></h4>
+<ul>
+<li><p><strong>What it is:</strong> Base classifier trained on only \(k\) examples per class</p>
+</li>
+<li><p><strong>Parameters:</strong> Same architecture as Network 1, but trained with limited data</p>
+</li>
+<li><p><strong>Examples:</strong> </p>
+<ul>
+<li><p>\(\theta_1\): classifier trained on 1 example per class</p>
+</li>
+<li><p>\(\theta_2\): classifier trained on 2 examples per class</p>
+</li>
+<li><p>\(\theta_4\): classifier trained on 4 examples per class</p>
+</li>
+<li><p>etc.</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Purpose:</strong> These are the &quot;bad&quot; models we want to improve</p>
+</li>
+</ul>
+<h4 id="network_3_many-shot_model_theta"><a href="#network_3_many-shot_model_theta" class="header-anchor"><strong>Network 3: Many-Shot Model \(\theta^*\)</strong></a></h4>
+<ul>
+<li><p><strong>What it is:</strong> Base classifier trained on ALL available examples per class</p>
+</li>
+<li><p><strong>Parameters:</strong> Same architecture as Network 1, but trained with full dataset</p>
+</li>
+<li><p><strong>Purpose:</strong> This is the &quot;gold standard&quot; target - what we wish we had for tail classes</p>
+</li>
+</ul>
+<h4 id="network_4_metamodelnet_mathcalf_w"><a href="#network_4_metamodelnet_mathcalf_w" class="header-anchor"><strong>Network 4: MetaModelNet \(\mathcal{F}(·; w)\)</strong></a></h4>
+<ul>
+<li><p><strong>What it is:</strong> A separate neural network that operates on model parameters &#40;not images&#33;&#41;</p>
+</li>
+<li><p><strong>Parameters:</strong> \(w\) &#40;weights of the meta-network - completely separate from \(\theta\)&#41;</p>
+</li>
+<li><p><strong>Input:</strong> Few-shot model parameters \(\theta_k\) &#40;e.g., a 4096-dim weight vector&#41;</p>
+</li>
+<li><p><strong>Output:</strong> Predicted many-shot parameters \(\hat{\theta}^*\) </p>
+</li>
+<li><p><strong>Purpose:</strong> Learn to transform bad models → good models</p>
+</li>
+</ul>
+<h3 id="key_distinction_parameters_vs_meta-parameters"><a href="#key_distinction_parameters_vs_meta-parameters" class="header-anchor">Key Distinction: Parameters vs Meta-Parameters</a></h3>
+<pre><code class="language-julia">┌─────────────────────────────────────────────────┐
+│ Base Classifier Network g&#40;·; θ&#41;                 │
+│                                                  │
+│ Input: Image x &#40;e.g., 224×224×3&#41;               │
+│ Output: Class prediction &#40;e.g., &quot;living room&quot;&#41; │
+│ Parameters: θ ∈ ℝ^d &#40;e.g., d&#61;4096 for FC layer&#41;│
+└─────────────────────────────────────────────────┘
+                      ↓
+         These θ become the DATA for...
+                      ↓
+┌─────────────────────────────────────────────────┐
+│ MetaModelNet F&#40;·; w&#41;                            │
+│                                                  │
+│ Input: Model parameters θ_k ∈ ℝ^d              │
+│ Output: Transformed parameters θ̂* ∈ ℝ^d        │
+│ Meta-Parameters: w &#40;weights of F&#41;               │
+└─────────────────────────────────────────────────┘</code></pre>
+<h3 id="main_idea"><a href="#main_idea" class="header-anchor">Main Idea</a></h3>
+<p>Instead of resampling data, transfer <strong>meta-knowledge</strong> about how models learn from head to tail classes. Specifically, learn the <em>trajectory</em> of model parameters as sample size increases.</p>
+<h3 id="three_key_components"><a href="#three_key_components" class="header-anchor">Three Key Components</a></h3>
+<h4 id="model_dynamics_learning"><a href="#model_dynamics_learning" class="header-anchor"><ol>
+<li><p><strong>Model Dynamics Learning</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>Learn a meta-network \(\mathcal{F}\) that predicts how few-shot model parameters \(\theta_k\) &#40;trained on \(k\) examples&#41; transform into many-shot parameters \(\theta^*\) &#40;trained on large datasets&#41;.</p>
+<p><strong>Loss function:</strong> \(\sum_{\theta \in k\text{-Shot}(\mathcal{H}_t)} \left[ \|\mathcal{F}(\theta; w) - \theta^*\|^2 + \lambda \sum_{(x,y) \in \mathcal{H}_t} \text{loss}_g(x; \mathcal{F}(\theta; w), y) \right]\)</p>
+<p>where:</p>
+<ul>
+<li><p>First term: regression loss &#40;predict many-shot from few-shot&#41;</p>
+</li>
+<li><p>Second term: task performance loss &#40;maintain accuracy&#41;</p>
+</li>
+<li><p>\(\mathcal{H}_t\): head classes with \(>t\) training examples</p>
+</li>
+<li><p><strong>Important:</strong> \(\mathcal{F}(\theta; w)\) takes few-shot weights \(\theta\) and outputs predicted many-shot weights</p>
+</li>
+</ul>
+<h2 id="complete_training_pipeline_step-by-step"><a href="#complete_training_pipeline_step-by-step" class="header-anchor">Complete Training Pipeline: Step-by-Step</a></h2>
+<h3 id="phase_1_train_base_classifiers_no_meta-learning_yet"><a href="#phase_1_train_base_classifiers_no_meta-learning_yet" class="header-anchor">Phase 1: Train Base Classifiers &#40;No Meta-Learning Yet&#41;</a></h3>
+<p>For <strong>head classes only</strong> &#40;classes with lots of data&#41;:</p>
+<p><strong>Step 1a: Train Many-Shot Models \(\theta^*\)</strong></p>
+<p>For each head class \(c \in \{1, 2, ..., C_{\text{head}}\}\):</p>
+<ul>
+<li><p>Use training set \(\mathcal{D}_c = \{(x_i, y_i)\}_{i=1}^{N_c}\) where \(N_c\) is large &#40;100-1000&#43; examples&#41;</p>
+</li>
+<li><p>Optimize: \(\theta^*_c = \arg\min_{\theta} \sum_{(x,y) \in \mathcal{D}_c} \ell(g(x; \theta), y)\)</p>
+</li>
+<li><p>Result: \(\theta^*_c \in \mathbb{R}^d\) &#40;the &quot;gold standard&quot; weights&#41;</p>
+</li>
+</ul>
+<p><strong>Step 1b: Train Few-Shot Models \(\theta_k\) for multiple k values</strong></p>
+<p>For each head class \(c\) and each \(k \in \{1, 2, 4, 8, 16, 32, 64\}\):</p>
+<ul>
+<li><p>Randomly sample subset \(\mathcal{D}_c^k \subset \mathcal{D}_c\) with exactly \(k\) examples</p>
+</li>
+<li><p>Optimize: \(\theta^k_c = \arg\min_{\theta} \sum_{(x,y) \in \mathcal{D}_c^k} \ell(g(x; \theta), y)\)</p>
+</li>
+<li><p>Generate \(S\) random samples &#40;e.g., \(S=1000\) for \(k=1\), \(S=200\) for \(k=64\)&#41;</p>
+</li>
+<li><p>Result: Multiple \(\theta^k_{c,s}\) for \(s \in \{1, ..., S\}\)</p>
+</li>
+</ul>
+<p><strong>After Phase 1, you have:</strong> \(\{\theta^*_1, \theta^*_2, ..., \theta^*_{C_{\text{head}}}\} \quad \text{(many-shot weights)}\) \(\{\theta^k_{c,s} : c \in [C_{\text{head}}], k \in \{1,2,4,...,64\}, s \in [S]\} \quad \text{(few-shot weights)}\)</p>
+<h3 id="phase_2_train_metamodelnet_recursive_training"><a href="#phase_2_train_metamodelnet_recursive_training" class="header-anchor">Phase 2: Train MetaModelNet &#40;Recursive Training&#41;</a></h3>
+<p><strong>MetaModelNet structure:</strong> Chain of residual blocks \(\theta_1 \xrightarrow{f(\cdot; w_0)} \hat{\theta}_2 \xrightarrow{f(\cdot; w_1)} \hat{\theta}_4 \xrightarrow{f(\cdot; w_2)} \hat{\theta}_8 \xrightarrow{\cdots} \hat{\theta}^*\)</p>
+<p>Each block \(i\) implements: \(\mathcal{F}_i(\theta) = \mathcal{F}_{i+1}(\theta + f(\theta; w_i))\)</p>
+<p><strong>Training Order: BACK TO FRONT &#40;largest k first&#41;</strong></p>
+<p>This means training the <strong>residual blocks of MetaModelNet</strong> from last to first, NOT the layers of ResNet&#33;</p>
+<p><strong>Iteration \(N\) &#40;Last Block&#41;: Handle \(2^N\)-shot \(\rightarrow\) many-shot</strong></p>
+<p>Threshold: \(t = 2^{N+1}\), Training samples: \(k = 2^N = t/2\)</p>
+<p>Select head classes: \(\mathcal{C}_N = \{c : |\mathcal{D}_c| \geq t\}\)</p>
+<p>Objective for block \(N\): \(\min_{w_N} \sum_{c \in \mathcal{C}_N} \sum_{s=1}^{S} \left[ \|\mathcal{F}_N(\theta^k_{c,s}; w_N) - \theta^*_c\|^2 + \lambda \sum_{(x,y) \in \mathcal{D}_c} \ell(g(x; \mathcal{F}_N(\theta^k_{c,s}; w_N)), y) \right]\)</p>
+<p>Since this is the last block: \(\mathcal{F}_N(\theta; w_N) = \theta + f(\theta; w_N)\) &#40;nearly identity&#41;</p>
+<p><strong>Iteration \(N-1\): Handle \(2^{N-1}\)-shot \(\rightarrow\) many-shot</strong></p>
+<p>Threshold: \(t = 2^N\), Training samples: \(k = 2^{N-1}\)</p>
+<p>Select head classes: \(\mathcal{C}_{N-1} = \{c : |\mathcal{D}_c| \geq t\}\) &#40;larger set than before&#41;</p>
+<p>Now block \(N-1\) feeds into already-trained block \(N\): \(\mathcal{F}_{N-1}(\theta; w_{N-1}, w_N) = \mathcal{F}_N(\theta + f(\theta; w_{N-1}); w_N)\)</p>
+<p>Multi-task objective &#40;train \(w_{N-1}\), fine-tune \(w_N\)&#41;: \(\min_{w_{N-1}, w_N} \sum_{c \in \mathcal{C}_{N-1}} \sum_{k \in \{2^{N-1}, 2^N\}} \sum_{s} \mathcal{L}(\theta^k_{c,s}, \theta^*_c; w_{N-1}, w_N)\)</p>
+<p>where \(\mathcal{L}(\theta_k, \theta^*; w) = \|\mathcal{F}(\theta_k; w) - \theta^*\|^2 + \lambda \sum_{(x,y)} \ell(g(x; \mathcal{F}(\theta_k; w)), y)\)</p>
+<p><strong>Continue recursively:</strong> Iteration \(i = N-2, N-3, ..., 1, 0\)</p>
+<p>At iteration \(i\):</p>
+<ul>
+<li><p>Threshold \(t = 2^{i+1}\)</p>
+</li>
+<li><p>Train \(k = 2^i\)-shot \(\rightarrow\) many-shot mapping</p>
+</li>
+<li><p>Multi-task across all \(k \in \{2^i, 2^{i+1}, ..., 2^N\}\)</p>
+</li>
+<li><p>Update \(w_i\), fine-tune \(\{w_{i+1}, ..., w_N\}\)</p>
+</li>
+</ul>
+<hr />
+<h3 id="clarification_back-to-front_means_metamodelnet_blocks_not_resnet_layers"><a href="#clarification_back-to-front_means_metamodelnet_blocks_not_resnet_layers" class="header-anchor">📘 <strong>Clarification: &quot;Back-to-Front&quot; Means MetaModelNet Blocks, NOT ResNet Layers</strong></a></h3>
+<p><strong>Common Confusion:</strong> Does &quot;back-to-front&quot; mean training ResNet from output layer to input layer?</p>
+<p><strong>Answer: NO&#33;</strong> The base ResNet is trained normally &#40;front-to-back via standard backpropagation&#41;.</p>
+<p><strong>What &quot;back-to-front&quot; actually means:</strong></p>
+<ul>
+<li><p>Training the <strong>residual blocks of MetaModelNet</strong> in reverse order</p>
+</li>
+<li><p>Block \(N\) first &#40;handles 64-shot → many-shot, easiest task&#41;</p>
+</li>
+<li><p>Block \(0\) last &#40;handles 1-shot → many-shot, hardest task&#41;</p>
+</li>
+</ul>
+<p><strong>Visual Clarification:</strong></p>
+<pre><code class="language-julia">MetaModelNet Structure:
+Block 0 → Block 1 → Block 2 → ... → Block N
+&#40;1→2&#41;   &#40;2→4&#41;     &#40;4→8&#41;            &#40;64→∞&#41;
+
+Training Order:
+Step 1: Train Block N ←————————————— Start here &#40;easiest&#41;
+Step 2: Train Block N-1, finetune N
+Step 3: Train Block N-2, finetune N-1, N
+  ...
+Step N: Train Block 0, finetune all others ← End here &#40;hardest&#41;</code></pre>
+<p><strong>Why this order?</strong></p>
+<ol>
+<li><p><strong>Easy to hard:</strong> Last block transformation is nearly identity &#40;64-shot already good&#41;</p>
+</li>
+<li><p><strong>Curriculum learning:</strong> Build up from well-trained models to poorly-trained models</p>
+</li>
+<li><p><strong>Stability:</strong> Earlier blocks benefit from having later blocks already trained</p>
+</li>
+<li><p><strong>Compositionality:</strong> Block 0 learns \(1 \to 2\), then relies on Blocks \(1...N\) for \(2 \to \infty\)</p>
+</li>
+</ol>
+<hr />
+<h3 id="phase_3_apply_to_tail_classes_inference"><a href="#phase_3_apply_to_tail_classes_inference" class="header-anchor">Phase 3: Apply to Tail Classes &#40;Inference&#41;</a></h3>
+<p>For each <strong>tail class</strong> \(c\) &#40;with only a few examples&#41;:</p>
+<p><strong>Step 3a: Train few-shot model</strong></p>
+<pre><code class="language-julia">Count examples n_c for tail class c
+Train base classifier θ^&#123;n_c&#125;_c on these examples</code></pre>
+<p><strong>Step 3b: Find appropriate entry point</strong></p>
+<pre><code class="language-julia">If n_c &#61; 3, use 2-shot pathway &#40;k&#61;2^1&#41;
+  → Feed θ^3_c into Block 1
+  
+If n_c &#61; 10, use 8-shot pathway &#40;k&#61;2^3&#41;  
+  → Feed θ^10_c into Block 3
+
+Output: θ̂*_c &#61; transformed weights</code></pre>
+<p><strong>Step 3c: Replace weights</strong></p>
+<pre><code class="language-julia">Use θ̂*_c instead of θ^&#123;n_c&#125;_c for final classifier</code></pre>
+<hr />
+<h3 id="how_metamodelnet_is_applied_after_training_detailed"><a href="#how_metamodelnet_is_applied_after_training_detailed" class="header-anchor">🎯 <strong>How MetaModelNet is Applied After Training &#40;Detailed&#41;</strong></a></h3>
+<p>After training is complete, you have:</p>
+<ol>
+<li><p>✅ Trained MetaModelNet with weights \(w = \{w_0, w_1, ..., w_N\}\)</p>
+</li>
+<li><p>✅ All head classes already have good models &#40;trained on abundant data&#41;</p>
+</li>
+<li><p>❓ Tail classes have poor models &#40;trained on scarce data&#41; - <strong>Need improvement&#33;</strong></p>
+</li>
+</ol>
+<h4 id="application_process_step-by-step"><a href="#application_process_step-by-step" class="header-anchor"><strong>Application Process: Step-by-Step</strong></a></h4>
+<p><strong>Scenario:</strong> Tail class &quot;library&quot; with only \(n = 5\) training images.</p>
+<p><strong>Step 1: Train the base few-shot model</strong></p>
+<p>Optimize standard classification loss: \(\theta_5^{\text{library}} = \arg\min_{\theta} \sum_{i=1}^{5} \ell(g(x_i; \theta), y_i)\)</p>
+<p>where \(y_i = \text{"library"}\) for all \(i\), and \(\theta_5^{\text{library}} \in \mathbb{R}^{2048}\) &#40;e.g., final FC layer&#41;</p>
+<p>This model is <strong>WEAK</strong> - overfits to these 5 specific images.</p>
+<p><strong>Step 2: Determine which MetaModelNet block to use</strong></p>
+<p>Number of examples: \(n = 5\)</p>
+<p>Find closest power of 2: \(k = 2^{\lfloor \log_2(5) \rfloor} = 2^2 = 4\)</p>
+<p>Block index: \(i^* = 2\) &#40;use Block 2, trained for 4-shot \(\to\) many-shot&#41;</p>
+<p><strong>Step 3: Feed through MetaModelNet starting at Block 2</strong></p>
+<p>Initialize: \(\theta^{(2)} = \theta_5^{\text{library}}\)</p>
+<p>Sequential transformation through residual blocks: <strong>Algorithm:</strong></p>
+<ul>
+<li><p>For \(i = 2, 3, ..., N\):</p>
+<ul>
+<li><p>\(\theta^{(i+1)} \leftarrow \theta^{(i)} + f(\theta^{(i)}; w_i)\)</p>
+</li>
+</ul>
+</li>
+<li><p>Set \(\hat{\theta}^*_{\text{library}} = \theta^{(N+1)}\)</p>
+</li>
+</ul>
+<p>Visual flow: \(\theta_5^{\text{library}} \xrightarrow{\text{Skip 0,1}} \boxed{\text{Block 2}} \xrightarrow{+f} \boxed{\text{Block 3}} \xrightarrow{+f} \cdots \xrightarrow{+f} \boxed{\text{Block N}} \rightarrow \hat{\theta}^*_{\text{library}}\)</p>
+<p><strong>Step 4: Replace the classifier weights</strong></p>
+<p>Original weak classifier: \(g_{\text{weak}}(x) = g(x; \theta_5^{\text{library}})\)</p>
+<p>Improved classifier: \(g_{\text{improved}}(x) = g(x; \hat{\theta}^*_{\text{library}})\)</p>
+<p>Performance comparison: <strong>Performance comparison:</strong></p>
+<ul>
+<li><p>Weak classifier accuracy: \(\text{Accuracy}_{\text{weak}} = \frac{1}{|\mathcal{T}|} \sum_{(x,y) \in \mathcal{T}} \mathbb{1}[g_{\text{weak}}(x) = y] \approx 0.35\)</p>
+</li>
+<li><p>Improved classifier accuracy: \(\text{Accuracy}_{\text{improved}} = \frac{1}{|\mathcal{T}|} \sum_{(x,y) \in \mathcal{T}} \mathbb{1}[g_{\text{improved}}(x) = y] \approx 0.58\)</p>
+</li>
+</ul>
+<p>where \(\mathcal{T}\) is the test set.</p>
+<h4 id="complete_inference_algorithm"><a href="#complete_inference_algorithm" class="header-anchor"><strong>Complete Inference Algorithm</strong></a></h4>
+<p><strong>Input:</strong> Few-shot weights \(\theta_k\) from tail class with \(k\) examples</p>
+<p><strong>Output:</strong> Predicted many-shot weights \(\hat{\theta}^*\)</p>
+<p><strong>Algorithm:</strong></p>
+<ul>
+<li><p>Find entry block: \(i^* = \lfloor \log_2(k) \rfloor\)</p>
+</li>
+<li><p>Initialize: \(\theta^{(i^*)} \leftarrow \theta_k\) </p>
+</li>
+<li><p>For \(i = i^*, i^*+1, ..., N: \quad\theta^{(i+1)} \leftarrow \theta^{(i)} + f(\theta^{(i)}; w_i)\)</p>
+</li>
+<li><p>Return: \(\hat{\theta}^* = \theta^{(N+1)}\)</p>
+</li>
+</ul>
+<p><strong>Usage for all tail classes:</strong></p>
+<p>For each tail class \(c \in \mathcal{C}_{\text{tail}}\): <strong>Algorithm:</strong></p>
+<ul>
+<li><p>Count examples: \(n_c = |\mathcal{D}_c|\)</p>
+</li>
+<li><p>Train base classifier: \(\theta^{(n_c)}_c = \text{train\_base\_classifier}(\mathcal{D}_c)\)</p>
+</li>
+<li><p>Apply MetaModelNet: \(\hat{\theta}^*_c = \text{apply\_metamodelnet}(\theta^{(n_c)}_c, n_c, \{w_0, ..., w_N\})\)</p>
+</li>
+<li><p>Final classifier: \(g_c(x) = g(x; \hat{\theta}^*_c)\)</p>
+</li>
+</ul>
+<h4 id="why_this_works_mathematical_intuition"><a href="#why_this_works_mathematical_intuition" class="header-anchor"><strong>Why This Works: Mathematical Intuition</strong></a></h4>
+<p><strong>Before MetaModelNet:</strong></p>
+<p>Few-shot model learns spurious correlations: \(\theta_5^{\text{library}} = \arg\min_{\theta} \sum_{i=1}^{5} \ell(g(x_i; \theta), y) \quad \Rightarrow \quad \text{Overfit to specific features}\)</p>
+<p>Example: If all 5 images have brown books, model learns \(\theta\) such that: \(g(x; \theta_5) \approx \mathbb{1}[\text{color}(x) = \text{brown}]\)</p>
+<p><strong>After MetaModelNet:</strong></p>
+<p><strong>Transformation:</strong></p>
+<ul>
+<li><p>Input: \(\theta_5\) &#40;few-shot weights&#41;</p>
+</li>
+<li><p>Apply meta-network: \(\hat{\theta}^* = \mathcal{F}(\theta_5; w)\)</p>
+</li>
+<li><p>Output: \(\hat{\theta}^*\) captures the general &quot;library&quot; concept</p>
+</li>
+</ul>
+<p>The meta-network learned from head classes that few-shot \(\to\) many-shot transformations involve:</p>
+<ul>
+<li><p>Increasing weight magnitudes: \(\|\hat{\theta}^*\| > \|\theta_k\|\)</p>
+</li>
+<li><p>Reducing sensitivity to spurious features</p>
+</li>
+<li><p>Amplifying features common across diverse examples</p>
+</li>
+</ul>
+<p>This is formalized through the meta-learning objective: \(w^* = \arg\min_{w} \sum_{c \in \mathcal{C}_{\text{head}}} \sum_{k} \|\mathcal{F}(\theta^k_c; w) - \theta^*_c\|^2\)</p>
+<p>which ensures \(\mathcal{F}\) learns a universal transformation applicable to new classes.</p>
+<h4 id="entry_point_selection_rules"><a href="#entry_point_selection_rules" class="header-anchor"><strong>Entry Point Selection Rules</strong></a></h4>
+<table><tr><th align="right">\(n_c\)</th><th align="right">\(k = 2^{\lfloor \log_2(n_c) \rfloor}\)</th><th align="right">Block \(i^*\)</th><th align="right">Transformation Intensity</th></tr><tr><td align="right">1</td><td align="right">1</td><td align="right">0</td><td align="right">Maximum &#40;extreme few-shot&#41;</td></tr><tr><td align="right">2-3</td><td align="right">2</td><td align="right">1</td><td align="right">Very high</td></tr><tr><td align="right">4-7</td><td align="right">4</td><td align="right">2</td><td align="right">High</td></tr><tr><td align="right">8-15</td><td align="right">8</td><td align="right">3</td><td align="right">Moderate</td></tr><tr><td align="right">16-31</td><td align="right">16</td><td align="right">4</td><td align="right">Low</td></tr><tr><td align="right">32-63</td><td align="right">32</td><td align="right">5</td><td align="right">Minimal</td></tr><tr><td align="right">64&#43;</td><td align="right">64</td><td align="right">6</td><td align="right">Nearly identity</td></tr></table>
+<p><strong>Key principle:</strong> Entry point at block \(i^* = \lfloor \log_2(n_c) \rfloor\) ensures the transformation matches the training regime of that block. Earlier blocks apply more aggressive extrapolation, later blocks apply gentle refinement.</p>
+<hr />
+<h2 id="progressive_transfer_with_residual_blocks"><a href="#progressive_transfer_with_residual_blocks" class="header-anchor">Progressive Transfer with Residual Blocks</a></h2>
+<p>Rather than learning a single transformation, build a chain of residual blocks where each block handles a specific sample-size regime:</p>
+\(\mathcal{F}_i(\theta) = \mathcal{F}_{i+1}(\theta + f(\theta; w_i))\)
+<p>This creates transformations for: 1-shot → 2-shot → 4-shot → 8-shot → ... → many-shot</p>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li><p>Identity regularization: \(\mathcal{F}_i \rightarrow I\) as \(i \rightarrow \infty\) &#40;for large sample sizes, no transformation needed&#41;</p>
+</li>
+<li><p>Compositionality: each block builds on previous ones</p>
+</li>
+<li><p>Captures smooth dynamics across sample sizes</p>
+</li>
+</ul>
+<h3 id="training_order_why_back-to-front"><a href="#training_order_why_back-to-front" class="header-anchor">Training Order: Why Back-to-Front?</a></h3>
+<p><strong>Intuition:</strong> Easier tasks first, harder tasks later</p>
+<p><strong>Last block &#40;64-shot → many-shot&#41;:</strong></p>
+<ul>
+<li><p>Nearly identity mapping &#40;already well-trained&#41;</p>
+</li>
+<li><p>Easy to learn</p>
+</li>
+<li><p>Many training examples available</p>
+</li>
+</ul>
+<p><strong>First block &#40;1-shot → many-shot&#41;:</strong>  </p>
+<ul>
+<li><p>Dramatic transformation needed</p>
+</li>
+<li><p>Hard to learn</p>
+</li>
+<li><p>But can leverage all previously learned blocks</p>
+</li>
+<li><p>Effectively learns: 1→2→4→8→...→many &#40;composition&#41;</p>
+</li>
+</ul>
+<p>Train blocks from back-to-front:</p>
+<ol>
+<li><p>Start with last block &#40;handles classes with most data&#41;</p>
+</li>
+<li><p>Train with threshold \(t = 2^{i+1}\), regressing \(k = 2^i\)-shot → many-shot</p>
+</li>
+<li><p>Move to next block with smaller threshold</p>
+</li>
+<li><p>Fine-tune all subsequent blocks in multi-task manner</p>
+</li>
+</ol>
+<p>This progressively transfers knowledge from data-rich to data-poor regimes.</p>
+<h2 id="architecture_details"><a href="#architecture_details" class="header-anchor">Architecture Details</a></h2>
+<p><strong>MetaModelNet Structure:</strong></p>
+<pre><code class="language-julia">Input: k-shot model θ_k
+│
+├─ Residual Block 0 &#40;1-shot → 2-shot&#41;
+├─ Residual Block 1 &#40;2-shot → 4-shot&#41;
+├─ Residual Block 2 &#40;4-shot → 8-shot&#41;
+│  ...
+└─ Residual Block N &#40;many-shot&#41;
+│
+Output: θ* &#40;predicted many-shot model&#41;</code></pre>
+<p>Each residual block:</p>
+<ul>
+<li><p>Batch Normalization</p>
+</li>
+<li><p>Leaky ReLU activation</p>
+</li>
+<li><p>Fully-connected layer</p>
+</li>
+<li><p>Skip connection &#40;ensures identity mapping for similar inputs&#41;</p>
+</li>
+</ul>
+<h2 id="what_the_meta-network_learns"><a href="#what_the_meta-network_learns" class="header-anchor">What the Meta-Network Learns</a></h2>
+<p><strong>Implicit Data Augmentation:</strong> The network learns class-specific transformations that capture how parameters should change - effectively predicting the impact of augmentations without explicitly generating data.</p>
+<p><strong>Class-Specific but Smooth:</strong> Similar classes &#40;e.g., &quot;iceberg&quot; and &quot;mountain&quot;&#41; have similar model parameters and transform similarly, while dissimilar classes transform differently.</p>
+<p><strong>General Patterns:</strong></p>
+<ul>
+<li><p>Many-shot models have larger parameter magnitudes &#40;higher confidence&#41;</p>
+</li>
+<li><p>Transformations capture domain-specific invariances</p>
+</li>
+</ul>
+<h2 id="results"><a href="#results" class="header-anchor">Results</a></h2>
+<h3 id="sun-397_scene_classification"><a href="#sun-397_scene_classification" class="header-anchor">SUN-397 Scene Classification</a></h3>
+<table><tr><th align="right">Method</th><th align="right">Accuracy</th></tr><tr><td align="right">Plain baseline</td><td align="right">48.03&#37;</td></tr><tr><td align="right">Over-sampling</td><td align="right">52.61&#37;</td></tr><tr><td align="right">Under-sampling</td><td align="right">51.72&#37;</td></tr><tr><td align="right">Cost-sensitive</td><td align="right">52.37&#37;</td></tr><tr><td align="right"><strong>MetaModelNet</strong></td><td align="right"><strong>57.34&#37;</strong></td></tr></table>
+<p><strong>Improvement:</strong> &#43;4.73&#37; over best baseline, &#43;9.31&#37; over plain training</p>
+<h3 id="large-scale_datasets"><a href="#large-scale_datasets" class="header-anchor">Large-Scale Datasets</a></h3>
+<ul>
+<li><p><strong>Places-205</strong> &#40;long-tail&#41;: 23.53&#37; → 30.71&#37; &#40;&#43;7.18&#37;&#41;</p>
+</li>
+<li><p><strong>ImageNet-200</strong> &#40;merged classes&#41;: 68.85&#37; → 73.46&#37; &#40;&#43;4.61&#37;&#41;</p>
+</li>
+</ul>
+<h2 id="actionable_lessons"><a href="#actionable_lessons" class="header-anchor">Actionable Lessons</a></h2>
+<h3 id="rethink_transfer_learning_for_imbalanced_data"><a href="#rethink_transfer_learning_for_imbalanced_data" class="header-anchor"><ol>
+<li><p><strong>Rethink Transfer Learning for Imbalanced Data</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Don&#39;t just pre-train and fine-tune. Learn <em>how models evolve</em> with data, then hallucinate that evolution for rare classes.</p>
+<h3 id="ol_start2_logarithmic_sample_size_discretization"><a href="#ol_start2_logarithmic_sample_size_discretization" class="header-anchor"><ol start="2">
+<li><p><strong>Logarithmic Sample Size Discretization</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Recognition accuracy improves logarithmically with data: design systems around 1-shot, 2-shot, 4-shot, 8-shot, ... rather than linear increments.</p>
+<h3 id="ol_start3_progressive_knowledge_transfer"><a href="#ol_start3_progressive_knowledge_transfer" class="header-anchor"><ol start="3">
+<li><p><strong>Progressive Knowledge Transfer</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Transfer knowledge gradually from data-rich to data-poor regimes using curriculum learning principles. Don&#39;t force a single transformation.</p>
+<h3 id="ol_start4_identity_regularization_is_critical"><a href="#ol_start4_identity_regularization_is_critical" class="header-anchor"><ol start="4">
+<li><p><strong>Identity Regularization is Critical</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>For large sample sizes, transformations should approach identity. Use residual connections to enforce this - prevents harmful transformations for well-trained models.</p>
+<h3 id="ol_start5_model_space_is_smoother_than_data_space"><a href="#ol_start5_model_space_is_smoother_than_data_space" class="header-anchor"><ol start="5">
+<li><p><strong>Model Space is Smoother Than Data Space</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Working in parameter space reveals smooth structure: similar tasks have similar parameters and transform similarly. This smoothness enables generalization.</p>
+<h3 id="ol_start6_joint_feature_classifier_dynamics"><a href="#ol_start6_joint_feature_classifier_dynamics" class="header-anchor"><ol start="6">
+<li><p><strong>Joint Feature &#43; Classifier Dynamics</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Don&#39;t freeze representations - progressively fine-tune features while learning classifier dynamics for best results &#40;58.74&#37; vs 54.99&#37; with frozen features&#41;.</p>
+<h3 id="ol_start7_class-specific_augmentation"><a href="#ol_start7_class-specific_augmentation" class="header-anchor"><ol start="7">
+<li><p><strong>Class-Specific Augmentation</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Different classes benefit from different augmentations. Meta-learning can discover these automatically rather than applying uniform strategies.</p>
+<h2 id="practical_implementation_steps"><a href="#practical_implementation_steps" class="header-anchor">Practical Implementation Steps</a></h2>
+<ol>
+<li><p><strong>Split dataset by sample size</strong> into head/tail &#40;threshold at median or percentiles&#41;</p>
+</li>
+<li><p><strong>Train many-shot models</strong> on head classes with full data</p>
+</li>
+<li><p><strong>Train k-shot models</strong> on head classes with subsampled data &#40;k &#61; 1, 2, 4, 8, ...&#41;</p>
+</li>
+<li><p><strong>Train MetaModelNet</strong> recursively from largest to smallest k</p>
+</li>
+<li><p><strong>Apply to tail classes</strong>: feed their k-shot models through appropriate residual blocks</p>
+</li>
+<li><p><strong>Fine-tune</strong> entire network if computationally feasible</p>
+</li>
+</ol>
+<h2 id="key_takeaway"><a href="#key_takeaway" class="header-anchor">Key Takeaway</a></h2>
+<p><strong>The meta-learning principle:</strong> Don&#39;t learn to classify directly from limited data. Instead, learn <em>how to learn</em> from abundant data, then transfer that learning process to scarce data scenarios. This shifts the problem from &quot;classifying with few examples&quot; to &quot;predicting parameter evolution with few examples&quot; - a more tractable problem.</p>
+<h2 id="addressing_intrinsically_sparse_classes"><a href="#addressing_intrinsically_sparse_classes" class="header-anchor">🔍 <strong>Addressing Intrinsically Sparse Classes</strong></a></h2>
+<h3 id="the_fundamental_challenge"><a href="#the_fundamental_challenge" class="header-anchor">The Fundamental Challenge</a></h3>
+<p>A critical question remains: what about classes that have sparse data from the very beginning—classes that simply don&#39;t appear frequently in the real world? Examples include:</p>
+<ul>
+<li><p>Rare medical conditions &#40;appearing in 1 in 100,000 patients&#41;</p>
+</li>
+<li><p>Uncommon wildlife species &#40;endangered animals&#41;</p>
+</li>
+<li><p>Niche architectural styles &#40;ice hotels, treehouses&#41;</p>
+</li>
+<li><p>Rare manufacturing defects</p>
+</li>
+</ul>
+<p>For these tail classes, there&#39;s no hidden reservoir of data. <strong>The sparsity is fundamental to their nature.</strong> You will never collect 1000 images of ice hotels because they&#39;re genuinely rare.</p>
+<hr />
+<p><strong>📌 Important Note on Training Data:</strong></p>
+<p>Sparse tail classes are <strong>NOT involved</strong> in training MetaModelNet at all&#33; Here&#39;s why:</p>
+<p>When training Block \(i\) for \(k = 2^i\)-shot → many-shot transformation, only classes with \(\geq t = 2k = 2^{i+1}\) examples are used:</p>
+\(\mathcal{C}_i = \{c : |\mathcal{D}_c| \geq 2^{i+1}\} \quad \text{(head classes only)}\)
+<p><strong>Example:</strong> Training Block 3 &#40;8-shot → many-shot&#41;:</p>
+<ul>
+<li><p>Requires classes with \(\geq 16\) examples</p>
+</li>
+<li><p>Ice hotel class with only 3 examples: <strong>NOT USED</strong></p>
+</li>
+<li><p>Hotel room class with 1000 examples: <strong>USED</strong></p>
+</li>
+</ul>
+<p>This means:</p>
+<ol>
+<li><p><strong>Head classes</strong> &#40;abundant data&#41; are used to train MetaModelNet</p>
+</li>
+<li><p><strong>Tail classes</strong> &#40;sparse data&#41; only appear during inference/testing</p>
+</li>
+<li><p>MetaModelNet never sees the tail classes during training</p>
+</li>
+<li><p>The transformation is learned purely from head classes, then applied to unseen tail classes</p>
+</li>
+</ol>
+<p><strong>Mathematical formulation:</strong></p>
+<p>Training set for MetaModelNet: \(\mathcal{T}_{\text{meta}} = \{(\theta^k_c, \theta^*_c) : c \in \mathcal{C}_{\text{head}}, k \in \{1, 2, 4, ..., 64\}\}\)</p>
+<p>where \(\mathcal{C}_{\text{head}} \cap \mathcal{C}_{\text{tail}} = \emptyset\) &#40;disjoint sets&#41;</p>
+<p>Application at test time: \(\text{For } c \in \mathcal{C}_{\text{tail}}: \quad \hat{\theta}^*_c = \mathcal{F}(\theta^k_c; w) \quad \text{(zero-shot transfer of dynamics)}\)</p>
+<p>The tail class is completely novel to MetaModelNet - it has never seen &quot;ice hotel&quot; parameters before. The transfer works because the learned dynamics generalize across semantically similar classes.</p>
+<hr />
+<h3 id="how_metamodelnet_handles_this"><a href="#how_metamodelnet_handles_this" class="header-anchor">How MetaModelNet Handles This</a></h3>
+<p>The method addresses this through <strong>transfer of learned dynamics from similar head classes</strong>. The magic is that even though you never have abundant data for the tail class, you can still predict what its well-trained model would look like.</p>
+<h4 id="mathematical_formulation"><a href="#mathematical_formulation" class="header-anchor">Mathematical Formulation</a></h4>
+<p><strong>For tail class \(c_{\text{tail}}\) with only \(k\) examples:</strong></p>
+<p>The few-shot model is: \(\theta^k_{c_{\text{tail}}} = \arg\min_{\theta} \sum_{i=1}^{k} \ell(g(x_i; \theta), c_{\text{tail}})\)</p>
+<p>We want to predict the &#40;unobservable&#41; many-shot model: \(\theta^*_{c_{\text{tail}}} = \arg\min_{\theta} \sum_{i=1}^{N \to \infty} \ell(g(x_i; \theta), c_{\text{tail}}) \quad \text{(impossible - no data!)}\)</p>
+<p><strong>MetaModelNet approximation:</strong> \(\hat{\theta}^*_{c_{\text{tail}}} = \mathcal{F}(\theta^k_{c_{\text{tail}}}; w)\)</p>
+<p>where \(w\) was learned from head classes that have both \(\theta^k\) and \(\theta^*\) available.</p>
+<h4 id="why_this_works_semantic_similarity"><a href="#why_this_works_semantic_similarity" class="header-anchor">Why This Works: Semantic Similarity</a></h4>
+<p><strong>Key insight:</strong> Similar classes follow similar parameter evolution trajectories.</p>
+<p>Consider head class &quot;hotel room&quot; with similar semantics to tail class &quot;ice hotel&quot;:</p>
+\(\text{Distance in parameter space: } d(\theta^k_{\text{hotel}}, \theta^k_{\text{ice hotel}}) \approx \text{small}\)
+<p>Their transformations are also similar: \(d(\theta^*_{\text{hotel}} - \theta^k_{\text{hotel}}, \theta^*_{\text{ice hotel}} - \theta^k_{\text{ice hotel}}) \approx \text{small}\)</p>
+<p>Therefore: \(\mathcal{F}(\theta^k_{\text{ice hotel}}; w) \approx \theta^*_{\text{ice hotel}} \quad \text{even without seeing many ice hotel images!}\)</p>
+<h4 id="what_patterns_does_metamodelnet_learn"><a href="#what_patterns_does_metamodelnet_learn" class="header-anchor">What Patterns Does MetaModelNet Learn?</a></h4>
+<p>From head classes like &quot;hotel room&quot; &#40;1000 images&#41;, &quot;bedroom&quot; &#40;800 images&#41;, MetaModelNet observes:</p>
+<p><strong>When few-shot model &#40;3 examples&#41;:</strong> \(\theta^3 = \begin{bmatrix} 0.2 & -0.1 & 0.8 & \cdots \end{bmatrix}^T \quad \text{(overfits to specific lighting, colors)}\)</p>
+<p><strong>Transforms to many-shot model:</strong> \(\theta^* = \begin{bmatrix} 0.7 & -0.4 & 0.3 & \cdots \end{bmatrix}^T \quad \text{(generalizes to structure, layout)}\)</p>
+<p><strong>The transformation pattern learned:</strong></p>
+<ul>
+<li><p>Amplify weights corresponding to geometric features &#40;architecture, spatial layout&#41;</p>
+</li>
+<li><p>Reduce weights corresponding to appearance features &#40;specific colors, lighting&#41;</p>
+</li>
+<li><p>Increase overall magnitude: \(\|\theta^*\| > \|\theta^k\|\)</p>
+</li>
+</ul>
+<p>This pattern is encoded in MetaModelNet: \(\mathcal{F}(\theta; w) = \theta + \underbrace{\text{amplify geometry}}_{\text{learned from head}} - \underbrace{\text{suppress appearance}}_{\text{learned from head}}\)</p>
+<h3 id="the_core_assumption_universal_dynamics"><a href="#the_core_assumption_universal_dynamics" class="header-anchor">The Core Assumption: Universal Dynamics</a></h3>
+<p><strong>Mathematical statement:</strong></p>
+<p>Assume classes can be embedded in a semantic space \(\mathcal{S}\) where similar classes are nearby. For classes \(c_1, c_2\):</p>
+\(\text{If } d_{\mathcal{S}}(c_1, c_2) < \epsilon \text{ (semantically similar)}\)
+<p>Then their parameter evolution is similar: \(\|\Delta\theta_{c_1} - \Delta\theta_{c_2}\| < \delta\)</p>
+<p>where \(\Delta\theta_c = \theta^*_c - \theta^k_c\) is the transformation from few-shot to many-shot.</p>
+<p><strong>This means:</strong> \(\mathcal{F}(\theta^k_{c_2}; w) \approx \theta^k_{c_2} + \Delta\theta_{c_1} \approx \theta^*_{c_2}\)</p>
+<p>Even though we never observed \(\theta^*_{c_2}\), we can approximate it using the transformation learned from similar class \(c_1\).</p>
+<h3 id="what_this_method_does_vs_doesnt_do"><a href="#what_this_method_does_vs_doesnt_do" class="header-anchor">What This Method Does vs. Doesn&#39;t Do</a></h3>
+<p><strong>Does NOT:</strong></p>
+<ul>
+<li><p>Create new training images for tail classes</p>
+</li>
+<li><p>Magically find more data for rare classes</p>
+</li>
+<li><p>Solve the data collection problem</p>
+</li>
+</ul>
+<p><strong>DOES:</strong></p>
+<ul>
+<li><p>Extrapolate what model parameters <em>would become</em> if more data existed</p>
+</li>
+<li><p>Transfer parameter evolution patterns from similar head classes</p>
+</li>
+<li><p>Exploit shared hierarchical features in deep networks</p>
+</li>
+</ul>
+<h3 id="why_it_works_shared_representations"><a href="#why_it_works_shared_representations" class="header-anchor">Why It Works: Shared Representations</a></h3>
+<p>Deep CNNs learn hierarchical features:</p>
+<p><strong>Layer 1-3 &#40;low-level&#41;:</strong> Edges, textures, colors - <strong>shared across all classes</strong></p>
+<p><strong>Layer 4-5 &#40;mid-level&#41;:</strong> Object parts, patterns - <strong>shared within domains</strong> &#40;e.g., all indoor scenes&#41;</p>
+<p><strong>Layer 6-7 &#40;high-level&#41;:</strong> Class-specific features - <strong>unique to each class</strong></p>
+<p>When MetaModelNet transforms parameters, it primarily affects the final layers &#40;class-specific&#41;. The transformation learned from &quot;hotel room&quot; → &quot;bedroom&quot; → &quot;living room&quot; teaches:</p>
+\(\mathcal{F}: \text{"How to refine class-specific features based on shared mid-level structure"}\)
+<p>Since &quot;ice hotel&quot; shares mid-level features &#40;windows, walls, interior space&#41; with head classes, the same refinement applies:</p>
+\(\text{Few-shot ice hotel} \xrightarrow{\text{same refinement as head classes}} \text{Predicted many-shot ice hotel}\)
+<h3 id="concrete_example_ice_hotel_3_images"><a href="#concrete_example_ice_hotel_3_images" class="header-anchor">Concrete Example: Ice Hotel &#40;3 images&#41; </a></h3>
+<p><strong>Training data:</strong> 3 images of ice hotels &#40;all happen to have blue lighting&#41;</p>
+<p><strong>Few-shot model learns:</strong> \(\theta^3_{\text{ice hotel}} \Rightarrow g(x; \theta^3) \approx \begin{cases} 
+\text{ice hotel} & \text{if } \text{color}(x) = \text{blue} \\
+\text{other} & \text{otherwise}
+\end{cases}\)</p>
+<p><strong>MetaModelNet learned from head classes:</strong></p>
+<ul>
+<li><p>&quot;Hotel room&quot; with 3 images also overfits to specific lighting</p>
+</li>
+<li><p>Transformation to many-shot: reduce lighting sensitivity, increase structural features</p>
+</li>
+<li><p>Pattern: \(\mathcal{F}(\theta^3) = \theta^3 + \alpha \cdot \text{structure} - \beta \cdot \text{color}\)</p>
+</li>
+</ul>
+<p><strong>Applied to ice hotel:</strong> \(\hat{\theta}^*_{\text{ice hotel}} = \mathcal{F}(\theta^3_{\text{ice hotel}}; w) \Rightarrow g(x; \hat{\theta}^*) \approx \begin{cases}
+\text{ice hotel} & \text{if } \text{structure}(x) = \text{vaulted ice + interior} \\
+\text{other} & \text{otherwise}
+\end{cases}\)</p>
+<p>Now it recognizes ice hotels with different lighting colors&#33;</p>
+<h3 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h3>
+<p><strong>Model dynamics are more universal than the data itself.</strong> The way classifier weights evolve from few-shot to many-shot follows patterns that generalize across semantically similar tasks. MetaModelNet captures these universal dynamics from head classes and applies them to tail classes, effectively &quot;hallucinating&quot; what well-trained parameters would look like without requiring the actual abundant training data.</p>
+<p>This works because:</p>
+<ol>
+<li><p><strong>Shared low-level features</strong> across all classes &#40;edges, textures&#41;</p>
+</li>
+<li><p><strong>Shared mid-level features</strong> within domains &#40;indoor spaces, animals, etc.&#41;</p>
+</li>
+<li><p><strong>Similar parameter evolution</strong> for semantically related classes</p>
+</li>
+<li><p><strong>Learned transformation</strong> that extrapolates from observed head class dynamics</p>
+</li>
+</ol>
+<p>The fundamental trade-off: You need diverse, abundant head classes to learn good dynamics, but once learned, these dynamics transfer to any tail class with minimal examples.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 07, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
