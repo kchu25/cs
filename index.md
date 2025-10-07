@@ -7,4 +7,5 @@
 - [interpretation](tag/interpretation)
 - [hashing](tag/hashing)
 - [machine-learning](tag/machine-learning)
+- [one-or-few-shots-learning](tag/one-or-few-shots-learning)
 
