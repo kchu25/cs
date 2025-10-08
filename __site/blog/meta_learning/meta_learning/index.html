@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Meta-Learning in Machine Learning</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="meta-learning_in_machine_learning"><a href="#meta-learning_in_machine_learning" class="header-anchor">Meta-Learning in Machine Learning</a></h1>
+<h2 id="what_is_meta-learning"><a href="#what_is_meta-learning" class="header-anchor">What is Meta-Learning?</a></h2>
+<p><strong>Meta-learning</strong>, often called &quot;learning to learn,&quot; is a paradigm in machine learning where models are trained to quickly adapt to new tasks using limited data. Instead of learning a single task, meta-learning algorithms learn how to learn across a distribution of tasks.</p>
+<h3 id="core_concept"><a href="#core_concept" class="header-anchor">Core Concept</a></h3>
+<p>Traditional ML: Learn specific task \(T\) with dataset \(D\)</p>
+\[\theta^* = \arg\min_\theta \mathcal{L}(D; \theta)\]
+<p>Meta-Learning: Learn across multiple tasks \(\{T_1, T_2, ..., T_n\}\) to quickly adapt to new task \(T_{new}\)</p>
+\[\phi^* = \arg\min_\phi \sum_{i=1}^{n} \mathcal{L}(T_i; \phi)\]
+<p>where \(\phi\) represents meta-parameters that enable rapid adaptation.</p>
+<h2 id="relationship_to_zero-shot_and_few-shot_learning"><a href="#relationship_to_zero-shot_and_few-shot_learning" class="header-anchor">Relationship to Zero-Shot and Few-Shot Learning</a></h2>
+<p>Meta-learning and few-shot learning are <strong>deeply related</strong> concepts, though not identical.</p>
+<h3 id="few-shot_learning"><a href="#few-shot_learning" class="header-anchor">Few-Shot Learning</a></h3>
+<p><strong>Few-shot learning</strong> is the task/problem: learning to make predictions on a new task with very few examples &#40;typically 1-5 examples per class&#41;.</p>
+<ul>
+<li><p><strong>1-shot learning</strong>: 1 example per class</p>
+</li>
+<li><p><strong>5-shot learning</strong>: 5 examples per class</p>
+</li>
+<li><p><strong>K-shot N-way</strong>: K examples for each of N classes</p>
+</li>
+</ul>
+<h3 id="zero-shot_learning"><a href="#zero-shot_learning" class="header-anchor">Zero-Shot Learning</a></h3>
+<p><strong>Zero-shot learning</strong> is the extreme case: making predictions on classes never seen during training, typically using auxiliary information &#40;e.g., class descriptions, attributes, or semantic embeddings&#41;.</p>
+<h3 id="how_they_connect"><a href="#how_they_connect" class="header-anchor">How They Connect</a></h3>
+<p><strong>Meta-learning is a methodology/approach</strong> that is commonly used to solve few-shot and zero-shot learning problems. The relationship:</p>
+<pre><code class="language-julia">Meta-Learning &#40;approach/method&#41;
+    ├── Can enable → Few-Shot Learning &#40;problem&#41;
+    └── Can enable → Zero-Shot Learning &#40;problem&#41;</code></pre>
+<h2 id="popular_meta-learning_approaches"><a href="#popular_meta-learning_approaches" class="header-anchor">Popular Meta-Learning Approaches</a></h2>
+<h3 id="model-agnostic_meta-learning_maml"><a href="#model-agnostic_meta-learning_maml" class="header-anchor"><ol>
+<li><p>Model-Agnostic Meta-Learning &#40;MAML&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>MAML learns a &quot;sweet spot&quot; for your neural network weights where you can quickly fine-tune to any new task with just a few gradient steps.</p>
+<p><strong>The Big Idea:</strong> Instead of learning one task really well, MAML finds starting weights that are easy to adapt to many different tasks.</p>
+<p><strong>How it works &#40;in plain English&#41;:</strong></p>
+<p>Let&#39;s say you have a neural network with weights \(\theta\) &#40;these are your &quot;meta-parameters&quot; - think of them as your starting point&#41;.</p>
+<p><strong>Step 1: Sample a batch of tasks</strong></p>
+<ul>
+<li><p>You have access to many different tasks during training &#40;like recognizing cats vs dogs, cars vs trucks, etc.&#41;</p>
+</li>
+<li><p>Randomly pick a few tasks from your collection &#40;maybe 5-10 tasks&#41;</p>
+</li>
+<li><p>Think of &quot;sampling&quot; like reaching into a bag and pulling out a handful of different mini-problems</p>
+</li>
+</ul>
+<p><strong>What&#39;s a &quot;task&quot;?</strong> Yes, exactly&#33; Same network architecture, but different prediction problems. For example:</p>
+<ul>
+<li><p><strong>Vision:</strong> Recognizing cats vs dogs &#40;task 1&#41;, cars vs trucks &#40;task 2&#41;, birds vs planes &#40;task 3&#41; - same CNN architecture, different classes</p>
+</li>
+<li><p><strong>Biology:</strong> Predicting E. coli promoters &#40;task 1&#41;, yeast promoters &#40;task 2&#41;, human promoters &#40;task 3&#41; - same sequence model, different organisms</p>
+</li>
+<li><p><strong>Language:</strong> Sentiment analysis for movie reviews &#40;task 1&#41;, product reviews &#40;task 2&#41;, tweets &#40;task 3&#41; - same architecture, different domains</p>
+</li>
+</ul>
+<p>The key is that each task has its own small dataset with support examples &#40;for training/adapting&#41; and query examples &#40;for testing&#41;. The network architecture stays the same across all tasks, but what you&#39;re predicting changes</p>
+<p><strong>Step 2: For each task, simulate the adaptation process</strong></p>
+<p>This is the key insight&#33; For each task you picked:</p>
+<blockquote>
+<p>a&#41; <strong>Pretend you&#39;re adapting to this new task</strong> - Take your current starting weights \(\theta\) and do a quick update using just the few examples from this task:</p>
+</blockquote>
+\(\theta_i' = \theta - \alpha \nabla_\theta \mathcal{L}_{T_i}(\theta)\)
+<p>Think of \(\theta_i'\) as &quot;adapted parameters&quot; - they&#39;re what your weights become after you&#39;ve tried to learn task \(i\). It&#39;s like: &quot;If I started from \(\theta\) and took one learning step on this task, where would I end up?&quot;</p>
+<blockquote>
+<p>b&#41; <strong>Check how well the adapted weights work</strong> - Now test these adapted weights \(\theta_i'\) on some test examples from task \(i\). This gives you a loss \(\mathcal{L}_{T_i}(\theta_i')\) that tells you: &quot;After adapting, how good am I at this task?&quot;</p>
+</blockquote>
+<p><strong>Step 3: Update your starting point &#40;meta-parameters&#41;</strong></p>
+<p>Here&#39;s the magic and the <strong>key trick</strong>: You&#39;re not trying to be good at any one task. You&#39;re trying to find starting weights \(\theta\) such that when you adapt to ANY task, you do well quickly.</p>
+\(\theta \leftarrow \theta - \beta \nabla_\theta \sum_i \mathcal{L}_{T_i}(\theta_i')\)
+<p><strong>Why this works &#40;the second-order gradient trick&#41;:</strong></p>
+<p>The loss \(\mathcal{L}_{T_i}(\theta_i')\) is evaluated at the <em>adapted</em> parameters \(\theta_i'\), but we&#39;re taking the gradient with respect to the <em>original</em> \(\theta\)&#33; </p>
+<p>Since \(\theta_i' = \theta - \alpha \nabla_\theta \mathcal{L}_{T_i}(\theta)\), when we compute \(\nabla_\theta \mathcal{L}_{T_i}(\theta_i')\), we&#39;re differentiating through the adaptation step itself. This is a <strong>gradient of a gradient</strong> - a second-order derivative&#33;</p>
+<p>Think of it this way:</p>
+<ul>
+<li><p><strong>First-order gradient</strong> &#40;normal training&#41;: &quot;How should I change \(\theta\) to reduce loss on this task?&quot;</p>
+</li>
+<li><p><strong>Second-order gradient</strong> &#40;MAML&#41;: &quot;How should I change \(\theta\) so that when I take a gradient step, I end up at a place with low loss?&quot;</p>
+</li>
+</ul>
+<p>The meta-gradient captures: &quot;If I start from \(\theta\) and adapt, which direction for \(\theta\) would make that adaptation more successful?&quot; This moves \(\theta\) to a better starting position - one where all those quick adaptations lead to better performance.</p>
+<p><strong>Success stories &#40;yes, it actually works&#33;&#41;:</strong> It does seem almost magical, but MAML and meta-learning have shown real success:</p>
+<ul>
+<li><p><strong>Robotics</strong>: MAML was successfully applied to policy-gradient-based reinforcement learning, enabling robots to quickly adapt motor skills &#40;grasping, pushing objects&#41; to new scenarios with just a few real-world trials</p>
+</li>
+<li><p><strong>Drug Discovery</strong>: Graph neural networks with MAML initialization have been used for molecular property prediction when labeled data is scarce, helping predict chemical properties for new compounds</p>
+</li>
+<li><p><strong>Biomedical NLP</strong>: Meta-learning has been applied to low-resource biomedical event detection, where labeled medical data is expensive to obtain</p>
+</li>
+<li><p><strong>Computer Vision</strong>: The original MAML paper demonstrated strong few-shot image classification - recognizing new objects from just 1-5 examples per class</p>
+</li>
+<li><p><strong>Large Language Models</strong>: Recent work &#40;MAML-en-LLM&#41; applies meta-learning to improve LLMs&#39; in-context learning, showing 2&#37; average improvement on unseen domains</p>
+</li>
+</ul>
+<p>The key insight: when tasks share underlying structure &#40;like &quot;all are image classification&quot; or &quot;all are grasping objects&quot;&#41;, MAML can extract that shared structure into the initialization.</p>
+<h3 id="ol_start2_prototypical_networks"><a href="#ol_start2_prototypical_networks" class="header-anchor"><ol start="2">
+<li><p>Prototypical Networks</p>
+</li>
+</ol>
+</a></h3>
+<p>Learn an embedding space where classification is done by finding the nearest class prototype.</p>
+<p>For a support set \(S\), the prototype for class \(k\) is:</p>
+\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\phi(x_i)\]
+<p>Classification uses distance to prototypes:</p>
+\[P(y=k|x) = \frac{\exp(-d(f_\phi(x), c_k))}{\sum_{k'} \exp(-d(f_\phi(x), c_{k'}))}\]
+<h3 id="ol_start3_matching_networks"><a href="#ol_start3_matching_networks" class="header-anchor"><ol start="3">
+<li><p>Matching Networks</p>
+</li>
+</ol>
+</a></h3>
+<p>Use attention mechanisms and episodic training to learn how to match query examples to support examples.</p>
+<h3 id="ol_start4_relation_networks"><a href="#ol_start4_relation_networks" class="header-anchor"><ol start="4">
+<li><p>Relation Networks</p>
+</li>
+</ol>
+</a></h3>
+<p>Learn a neural network to compute similarity/relation scores between examples, rather than using fixed distance metrics.</p>
+<h2 id="key_principles_of_meta-learning"><a href="#key_principles_of_meta-learning" class="header-anchor">Key Principles of Meta-Learning</a></h2>
+<ol>
+<li><p><strong>Episodic Training</strong>: Training mimics testing by creating many small learning episodes</p>
+</li>
+<li><p><strong>Task Distribution</strong>: Model sees diverse tasks during training to generalize to new tasks</p>
+</li>
+<li><p><strong>Support and Query Sets</strong>: </p>
+<ul>
+<li><p>Support set: Few examples used for adaptation</p>
+</li>
+<li><p>Query set: Examples used to evaluate adapted model</p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="mathematical_framework"><a href="#mathematical_framework" class="header-anchor">Mathematical Framework</a></h2>
+<p>A meta-learning episode typically involves:</p>
+<ul>
+<li><p><strong>Support set</strong> \(S = \{(x_i^s, y_i^s)\}_{i=1}^{K \times N}\) &#40;K shots, N ways&#41;</p>
+</li>
+<li><p><strong>Query set</strong> \(Q = \{(x_j^q, y_j^q)\}_{j=1}^{M}\)</p>
+</li>
+</ul>
+<p>The meta-objective:</p>
+\[\min_\theta \mathbb{E}_{T \sim p(T)} \left[ \mathcal{L}_T(f_{\theta'}; Q) \mid \theta' = \text{adapt}(\theta, S) \right]\]
+<h2 id="practical_applications"><a href="#practical_applications" class="header-anchor">Practical Applications</a></h2>
+<ul>
+<li><p><strong>Computer Vision</strong>: Recognizing new object classes from few images</p>
+</li>
+<li><p><strong>NLP</strong>: Language models adapting to new domains/tasks &#40;like GPT-3&#39;s in-context learning&#41;</p>
+</li>
+<li><p><strong>Robotics</strong>: Quickly learning new motor skills</p>
+</li>
+<li><p><strong>Drug Discovery</strong>: Predicting properties of new molecules with limited data</p>
+</li>
+<li><p><strong>Personalization</strong>: Adapting to individual users with minimal interaction</p>
+</li>
+</ul>
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ul>
+<li><p><strong>Meta-learning</strong> is an approach for training models to adapt quickly</p>
+</li>
+<li><p><strong>Few-shot/zero-shot learning</strong> are problems that meta-learning can solve</p>
+</li>
+<li><p>Modern large language models &#40;like GPT-3, Claude&#41; exhibit meta-learning properties through in-context learning</p>
+</li>
+<li><p>The goal is sample efficiency: achieving good performance with minimal task-specific data</p>
+</li>
+</ul>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

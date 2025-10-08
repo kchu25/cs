@@ -2,9 +2,20 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
-
+    <loc>https://kchu25.github.io/blog/fewshots/learn_tail/index.html</loc>
+    <lastmod>2025-10-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/index.html</loc>
-    <lastmod>2025-10-07</lastmod>
+    <lastmod>2025-10-08</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/meta_learning/meta_learning/index.html</loc>
+    <lastmod>2025-10-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
@@ -29,6 +40,12 @@
 <url>
     <loc>https://kchu25.github.io/blog/machine-learning/gating_activation/index.html</loc>
     <lastmod>2025-10-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/meta_learning/metric_learning/index.html</loc>
+    <lastmod>2025-10-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>

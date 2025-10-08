@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Metric-Based Meta-Learning: The Intuitive Approach</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="metric-based_meta-learning_the_intuitive_approach"><a href="#metric-based_meta-learning_the_intuitive_approach" class="header-anchor">Metric-Based Meta-Learning: The Intuitive Approach</a></h1>
+<h2 id="the_core_idea_learning_to_compare_not_learning_parameters"><a href="#the_core_idea_learning_to_compare_not_learning_parameters" class="header-anchor">The Core Idea: Learning to Compare, Not Learning Parameters</a></h2>
+<p>While MAML learns good initialization weights, <strong>metric-based meta-learning</strong> takes a completely different approach: instead of learning <em>how to adapt</em>, learn <em>how to compare</em>.</p>
+<p>Think about it: When you see a new animal you&#39;ve never encountered, how do you classify it? You probably compare it to animals you know. &quot;It has stripes like a zebra, but it&#39;s orange like a tiger... it must be related to cats&#33;&quot; You&#39;re doing <strong>similarity-based reasoning</strong>.</p>
+<p>That&#39;s exactly what metric-based methods do: learn an embedding space where similar things are close together, then classify by comparing to examples you&#39;ve seen.</p>
+<h2 id="prototypical_networks_show_me_one_example_of_each"><a href="#prototypical_networks_show_me_one_example_of_each" class="header-anchor">Prototypical Networks: &quot;Show Me One Example of Each&quot;</a></h2>
+<h3 id="the_intuition"><a href="#the_intuition" class="header-anchor">The Intuition</a></h3>
+<p>Imagine you&#39;re a doctor learning to diagnose rare diseases. For each disease, you&#39;ve only seen a few patients &#40;your &quot;support set&quot;&#41;. When a new patient arrives &#40;your &quot;query&quot;&#41;, you:</p>
+<ol>
+<li><p><strong>Remember the typical presentation</strong> of each disease &#40;compute prototypes&#41;</p>
+</li>
+<li><p><strong>Compare the new patient</strong> to these typical cases</p>
+</li>
+<li><p><strong>Diagnose based on similarity</strong> - which disease does this patient most resemble?</p>
+</li>
+</ol>
+<h3 id="how_it_actually_works"><a href="#how_it_actually_works" class="header-anchor">How It Actually Works</a></h3>
+<p><strong>Step 1: Create a prototype for each class</strong></p>
+<p>For each class \(k\), take all your support examples and embed them into a learned space using a neural network \(f_\phi\) &#40;like a CNN or transformer&#41;. Then average them:</p>
+\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\phi(x_i)\]
+<p>Think of \(c_k\) as the &quot;center of mass&quot; or &quot;typical representative&quot; of class \(k\) in embedding space.</p>
+<p><strong>Example:</strong> For 5-shot cat classification:</p>
+<ul>
+<li><p>You have 5 cat images</p>
+</li>
+<li><p>Pass each through your embedding network: get 5 vectors in embedding space</p>
+</li>
+<li><p>Average them → this is your &quot;cat prototype&quot;</p>
+</li>
+<li><p>Do the same for dogs, birds, etc.</p>
+</li>
+</ul>
+<p><strong>Step 2: Classify by distance</strong></p>
+<p>For a new query example \(x\), embed it with the same network \(f_\phi(x)\), then see which prototype it&#39;s closest to:</p>
+\[P(y=k|x) = \frac{\exp(-d(f_\phi(x), c_k))}{\sum_{k'} \exp(-d(f_\phi(x), c_{k'}))}\]
+<p>This is just a softmax over negative distances&#33; Closer &#61; higher probability. Common choices for \(d\) are Euclidean distance or cosine distance.</p>
+<p><strong>The beauty:</strong> At test time, you don&#39;t need any gradient updates or fine-tuning&#33; Just compute prototypes from your support set and classify.</p>
+<p><strong>Wait, what about totally new classes?</strong></p>
+<p>This is a common confusion&#33; The magic of Prototypical Networks is that <strong>you&#39;re NOT restricted to old classes at all</strong>. Here&#39;s why:</p>
+<p>At test time, you can have completely new classes that were never seen during training:</p>
+<ul>
+<li><p><strong>Training</strong>: You learned on classes &#123;cat, dog, bird, fish, rabbit&#125;</p>
+</li>
+<li><p><strong>Test time</strong>: You get a support set with completely new classes &#123;tiger, elephant, giraffe&#125;</p>
+</li>
+<li><p><strong>It still works&#33;</strong> You compute prototypes for tiger/elephant/giraffe using the learned embedding function \(f_\phi\)</p>
+</li>
+</ul>
+<p><strong>How is this possible?</strong></p>
+<ul>
+<li><p>What you learned during training is the <em>embedding function</em> \(f_\phi\), not the classes themselves</p>
+</li>
+<li><p>\(f_\phi\) learned to extract features that are generally useful for distinguishing animals &#40;edges, textures, shapes, parts&#41;</p>
+</li>
+<li><p>At test time, you apply this same embedding function to new classes</p>
+</li>
+<li><p>The prototypes for new classes are just averages in this learned embedding space</p>
+</li>
+</ul>
+<p><strong>Example:</strong></p>
+<ul>
+<li><p>During training, \(f_\phi\) learned: &quot;furry texture&quot;, &quot;ear shape&quot;, &quot;body proportions&quot;, etc. are useful features</p>
+</li>
+<li><p>At test time with &quot;tiger&quot; &#40;never seen before&#41;:</p>
+<ul>
+<li><p>Embed 5 tiger images → get 5 vectors capturing &quot;striped pattern&quot;, &quot;cat-like face&quot;, &quot;large body&quot;</p>
+</li>
+<li><p>Average them → tiger prototype</p>
+</li>
+<li><p>This prototype will naturally cluster near other feline classes in embedding space</p>
+</li>
+</ul>
+</li>
+<li><p>When you query with a new tiger image, it gets embedded close to the tiger prototype → correct classification&#33;</p>
+</li>
+</ul>
+<p><strong>The key assumption:</strong> Your new test classes should come from a similar distribution as training classes. If you trained on animals and test on vehicles, the embedding space won&#39;t transfer well &#40;the features that distinguish cats from dogs aren&#39;t useful for cars vs trucks&#41;.</p>
+<p><strong>This is the entire point of few-shot learning:</strong> Learn an embedding function that generalizes to <em>new classes</em> from the same domain, requiring only a few examples per new class to define their prototypes.</p>
+<h3 id="what_gets_learned"><a href="#what_gets_learned" class="header-anchor">What Gets Learned?</a></h3>
+<p>The network \(f_\phi\) learns to create embeddings where:</p>
+<ul>
+<li><p>Examples from the same class cluster together</p>
+</li>
+<li><p>Examples from different classes spread apart</p>
+</li>
+<li><p>The embedding space is &quot;good for comparison&quot; across many tasks</p>
+</li>
+</ul>
+<p><strong>Training:</strong> During training, you sample episodes &#40;tasks&#41; with their own support and query sets. The loss pushes the model to correctly classify query examples by proximity to prototypes. Over thousands of episodes across different tasks, the embedding network learns what features are generally useful for distinguishing classes.</p>
+<h2 id="matching_networks_let_me_see_all_examples"><a href="#matching_networks_let_me_see_all_examples" class="header-anchor">Matching Networks: &quot;Let Me See All Examples&quot;</a></h2>
+<h3 id="the_intuition__2"><a href="#the_intuition__2" class="header-anchor">The Intuition</a></h3>
+<p>Prototypical Networks average all examples into one prototype. But what if different examples of a class are quite diverse? What if some support examples are more relevant than others?</p>
+<p><strong>Matching Networks</strong> say: &quot;Don&#39;t average&#33; Keep all support examples and use <strong>attention</strong> to weigh how relevant each one is to the query.&quot;</p>
+<h3 id="how_it_works"><a href="#how_it_works" class="header-anchor">How It Works</a></h3>
+<p>Instead of comparing to a single prototype, you compare the query to <em>every</em> support example and take a weighted combination:</p>
+\[\hat{y} = \sum_{(x_i, y_i) \in S} a(f(x), g(x_i)) \cdot y_i\]
+<p>where \(a(·,·)\) is an attention mechanism that measures similarity between the query embedding \(f(x)\) and each support embedding \(g(x_i)\).</p>
+<p><strong>Example:</strong> Classifying a new dog image:</p>
+<ul>
+<li><p>Support set has: golden retriever, poodle, husky, chihuahua, german shepherd</p>
+</li>
+<li><p>Your query is a corgi</p>
+</li>
+<li><p>Attention might weigh the golden retriever and german shepherd higher &#40;similar body shape&#41;</p>
+</li>
+<li><p>The prediction is a weighted vote from all support examples</p>
+</li>
+</ul>
+<p><strong>The advantage:</strong> More flexible&#33; Can handle multi-modal classes or when different aspects of examples are relevant in different contexts.</p>
+<p><strong>The cost:</strong> More computation - you need to compare against all support examples, not just one prototype per class.</p>
+<h2 id="relation_networks_learn_the_comparison_itself"><a href="#relation_networks_learn_the_comparison_itself" class="header-anchor">Relation Networks: &quot;Learn the Comparison Itself&quot;</a></h2>
+<h3 id="the_intuition__3"><a href="#the_intuition__3" class="header-anchor">The Intuition</a></h3>
+<p>Both Prototypical and Matching Networks use <strong>fixed</strong> distance metrics &#40;Euclidean, cosine&#41;. But what if the right way to compare things is more complex?</p>
+<p><strong>Relation Networks</strong> say: &quot;Let&#39;s learn a neural network \(r_\phi\) that takes two embeddings and outputs how related they are&#33;&quot;</p>
+<h3 id="how_it_works__2"><a href="#how_it_works__2" class="header-anchor">How It Works</a></h3>
+<ol>
+<li><p><strong>Embed</strong> both query and support examples: \(f_\phi(x_{query})\), \(f_\phi(x_{support})\)</p>
+</li>
+<li><p><strong>Concatenate</strong> or combine them: \(C(f_\phi(x_q), f_\phi(x_s))\)</p>
+</li>
+<li><p><strong>Feed through relation network</strong>: \(r_\phi(C(f_\phi(x_q), f_\phi(x_s))) \rightarrow\) relation score</p>
+</li>
+</ol>
+<p>The relation network \(r_\phi\) learns to output high scores for same-class pairs and low scores for different-class pairs.</p>
+\[P(y_{query} = k) \propto \frac{1}{|S_k|} \sum_{x_i \in S_k} r_\phi(C(f_\phi(x_{query}), f_\phi(x_i)))\]
+<p><strong>Example:</strong> Classifying tumors as malignant/benign:</p>
+<ul>
+<li><p>The relation network might learn: &quot;If both images show irregular borders AND dense tissue → high relation score&quot;</p>
+</li>
+<li><p>This is more nuanced than simple Euclidean distance</p>
+</li>
+</ul>
+<p><strong>The advantage:</strong> Maximum flexibility&#33; The neural network can learn complex, task-specific notions of similarity.</p>
+<p><strong>The cost:</strong> More parameters to learn, more risk of overfitting.</p>
+<h2 id="key_principles_explained"><a href="#key_principles_explained" class="header-anchor">Key Principles Explained</a></h2>
+<h3 id="episodic_training_training_must_look_like_testing"><a href="#episodic_training_training_must_look_like_testing" class="header-anchor"><ol>
+<li><p>Episodic Training: &quot;Training Must Look Like Testing&quot;</p>
+</li>
+</ol>
+</a></h3>
+<p>This is <strong>crucial</strong> and often the most confusing part.</p>
+<p><strong>The Problem:</strong> If you train a model on 1000 cat images and 1000 dog images, it learns &quot;what cats and dogs look like.&quot; But at test time, you want it to recognize <em>new</em> animals from just 5 examples each&#33; This is a huge distribution shift.</p>
+<p><strong>The Solution:</strong> Make training look like testing. Create &quot;episodes&quot; &#40;artificial few-shot scenarios&#41;:</p>
+<ol>
+<li><p>Sample \(N\) classes from your training data &#40;e.g., N&#61;5 for &quot;5-way&quot;&#41;</p>
+</li>
+<li><p>For each class, sample \(K\) examples as support set &#40;e.g., K&#61;5 for &quot;5-shot&quot;&#41;</p>
+</li>
+<li><p>Sample additional examples as query set</p>
+</li>
+<li><p>Train the model to correctly classify queries using only the support set</p>
+</li>
+<li><p>Repeat with different random classes and examples</p>
+</li>
+</ol>
+<p><strong>Example episode:</strong></p>
+<ul>
+<li><p><strong>Classes sampled:</strong> goldfish, parakeet, hamster, rabbit, turtle &#40;5-way&#41;</p>
+</li>
+<li><p><strong>Support set:</strong> 5 images of each animal &#40;5-shot&#41;</p>
+</li>
+<li><p><strong>Query set:</strong> 10 new images to classify</p>
+</li>
+<li><p><strong>Train:</strong> Update model to correctly classify these queries using only those 25 support images</p>
+</li>
+</ul>
+<p>Over thousands of episodes with different classes, the model learns to be good at &quot;learning from a few examples&quot; rather than memorizing specific classes.</p>
+<h3 id="ol_start2_task_distribution_diversity_is_key"><a href="#ol_start2_task_distribution_diversity_is_key" class="header-anchor"><ol start="2">
+<li><p>Task Distribution: &quot;Diversity Is Key&quot;</p>
+</li>
+</ol>
+</a></h3>
+<p>For meta-learning to work, you need:</p>
+<ul>
+<li><p><strong>Many tasks</strong> during training &#40;not just cat vs dog over and over&#41;</p>
+</li>
+<li><p><strong>Diverse tasks</strong> that share some structure but aren&#39;t identical</p>
+</li>
+<li><p>Tasks at test time should come from the same distribution</p>
+</li>
+</ul>
+<p><strong>Good scenario:</strong> Training on 80&#37; of animal classes, testing on the remaining 20&#37;. The tasks share structure &#40;all are image classification, all are animals&#41;, but test classes are new.</p>
+<p><strong>Bad scenario:</strong> Training on animals, testing on vehicles. The task distribution has shifted too much.</p>
+<p><strong>Why diversity matters:</strong> If all training tasks are too similar, the model overfits to those specific tasks. If they&#39;re too diverse &#40;no shared structure&#41;, there&#39;s nothing to transfer. You want the sweet spot: related but varied.</p>
+<h3 id="ol_start3_support_and_query_sets_learn_from_few_test_on_more"><a href="#ol_start3_support_and_query_sets_learn_from_few_test_on_more" class="header-anchor"><ol start="3">
+<li><p>Support and Query Sets: &quot;Learn from Few, Test on More&quot;</p>
+</li>
+</ol>
+</a></h3>
+<p>This mimics real-world deployment:</p>
+<p><strong>Support Set &#40;S&#41;:</strong></p>
+<ul>
+<li><p>The few labeled examples you have for a new task</p>
+</li>
+<li><p>Used to &quot;adapt&quot; the model &#40;compute prototypes, attention weights, etc.&#41;</p>
+</li>
+<li><p>Typically small: K&#61;1,5,10 examples per class</p>
+</li>
+</ul>
+<p><strong>Query Set &#40;Q&#41;:</strong></p>
+<ul>
+<li><p>New examples you want to predict</p>
+</li>
+<li><p>Used to evaluate how well adaptation worked</p>
+</li>
+<li><p>Usually larger than support set</p>
+</li>
+</ul>
+<p><strong>During training:</strong> Both support and query come from training classes. The model learns to use support effectively to classify queries.</p>
+<p><strong>During testing:</strong> Support and query come from <em>new</em> classes never seen during training. If training worked, the model should transfer its meta-learning ability to these new tasks.</p>
+<p><strong>Critical insight:</strong> The model never updates its weights at test time &#40;for metric-based methods&#41;. All the learning happens during training across many episodes. At test time, you just compute embeddings and compare.</p>
+<h2 id="comparison_when_to_use_what"><a href="#comparison_when_to_use_what" class="header-anchor">Comparison: When to Use What?</a></h2>
+<table><tr><th align="right">Method</th><th align="right">Pros</th><th align="right">Cons</th><th align="right">Best For</th></tr><tr><td align="right"><strong>Prototypical Networks</strong></td><td align="right">Simple, fast, works well</td><td align="right">Assumes classes are unimodal &#40;single cluster&#41;</td><td align="right">Most few-shot tasks, good default choice</td></tr><tr><td align="right"><strong>Matching Networks</strong></td><td align="right">Flexible, handles multi-modal classes</td><td align="right">Slower, more memory</td><td align="right">Complex classes with high intra-class variance</td></tr><tr><td align="right"><strong>Relation Networks</strong></td><td align="right">Most flexible, learns comparison</td><td align="right">Most parameters, can overfit</td><td align="right">When you have enough training tasks and data</td></tr><tr><td align="right"><strong>MAML</strong></td><td align="right">Versatile, works beyond classification</td><td align="right">Expensive &#40;second-order gradients&#41;, complex</td><td align="right">When you need actual adaptation/fine-tuning</td></tr></table>
+<h2 id="the_big_picture"><a href="#the_big_picture" class="header-anchor">The Big Picture</a></h2>
+<p>Metric-based methods are elegant because they reframe the problem:</p>
+<ul>
+<li><p><strong>Traditional ML:</strong> Learn to recognize specific classes</p>
+</li>
+<li><p><strong>MAML:</strong> Learn initialization that adapts quickly to new classes</p>
+</li>
+<li><p><strong>Metric Learning:</strong> Learn an embedding space where classification is just comparison</p>
+</li>
+</ul>
+<p>All three are valid meta-learning approaches, just with different philosophies&#33; Metric methods tend to be simpler and faster at test time &#40;no gradient updates needed&#41;, while MAML is more flexible but computationally heavier.</p>
+<h2 id="my_take_which_approach_wins_in_practice"><a href="#my_take_which_approach_wins_in_practice" class="header-anchor">My Take: Which Approach Wins in Practice?</a></h2>
+<p><strong>TL;DR: Prototypical Networks have become the practical favorite, though MAML shines in specific scenarios.</strong></p>
+<p>Here&#39;s my honest assessment based on what I see in the literature and real deployments:</p>
+<p><strong>Prototypical Networks are the workhorse</strong> &#40;and I&#39;d bet on them for most projects&#41;:</p>
+<ul>
+<li><p><strong>Simplicity wins</strong>: They&#39;re incredibly easy to implement, debug, and understand. No second-order gradients, no inner/outer loop complexity</p>
+</li>
+<li><p><strong>Speed matters</strong>: At test time, you just compute embeddings and compare - no gradient updates needed. This is 10-100x faster than MAML</p>
+</li>
+<li><p><strong>It just works</strong>: The original 2017 paper showed they matched or beat MAML on standard benchmarks, and they&#39;ve aged well. Most recent few-shot papers still use Prototypical Networks as their baseline</p>
+</li>
+<li><p><strong>Production-ready</strong>: When companies deploy few-shot learning &#40;image classification, drug discovery, NLP&#41;, I see Prototypical Networks or variants far more often</p>
+</li>
+<li><p><strong>Active research</strong>: There&#39;s a thriving ecosystem of improvements &#40;transductive variants, adaptive prototypes, attention-based refinements&#41;</p>
+</li>
+</ul>
+<p><strong>MAML has its place</strong> &#40;and sometimes it&#39;s the only option&#41;:</p>
+<ul>
+<li><p><strong>Beyond classification</strong>: MAML works for regression, reinforcement learning, and other tasks where &quot;distance to prototype&quot; doesn&#39;t make sense</p>
+</li>
+<li><p><strong>When you need adaptation</strong>: If test-time fine-tuning is acceptable &#40;you have compute budget and can update weights&#41;, MAML can squeeze out better performance</p>
+</li>
+<li><p><strong>Theoretical elegance</strong>: MAML is more general and theoretically satisfying - it&#39;s a meta-learning algorithm that works across domains</p>
+</li>
+<li><p><strong>Robotics loves it</strong>: For policy learning in robotics, MAML&#39;s gradient-based adaptation is often superior to metric approaches</p>
+</li>
+</ul>
+<p><strong>Why MAML works for regression &#40;and metric learning doesn&#39;t&#41;:</strong></p>
+<p>Think about predicting continuous values - like predicting drug efficacy scores, temperature curves, or function approximation. How do you use &quot;distance to prototype&quot; when your output is a continuous number, not a class label?</p>
+<p><strong>The problem with metric approaches:</strong></p>
+<ul>
+<li><p>Prototypical Networks compute class prototypes: \(c_k = \text{average of embeddings for class } k\)</p>
+</li>
+<li><p>This only makes sense for discrete classes&#33; For regression, there&#39;s no discrete set of &quot;classes&quot; to prototype</p>
+</li>
+<li><p>You could try nearest-neighbor regression &#40;find similar inputs, average their outputs&#41;, but this doesn&#39;t learn a good function approximator</p>
+</li>
+</ul>
+<p><strong>Why MAML shines here:</strong></p>
+<ul>
+<li><p>MAML learns initialization for a <em>function</em> \(f_\theta\) that outputs continuous values</p>
+</li>
+<li><p>At test time, you get a few input-output pairs: \(\{(x_1, y_1), (x_2, y_2), ..., (x_K, y_K)\}\) where \(y\) is continuous</p>
+</li>
+<li><p>You take a few gradient steps to adapt \(\theta\) to fit these pairs: minimize \(\sum_i (f_\theta(x_i) - y_i)^2\)</p>
+</li>
+<li><p>Now you can predict on new inputs from the same task/distribution</p>
+</li>
+</ul>
+<p><strong>Example - Drug Efficacy Prediction:</strong> Suppose you want to predict how effective a drug will be &#40;continuous score 0-100&#41; based on molecular structure.</p>
+<ul>
+<li><p><strong>Training tasks</strong>: Different drug families &#40;kinase inhibitors, antibiotics, etc.&#41;, each with some labeled molecules</p>
+</li>
+<li><p><strong>MAML learns</strong>: An initialization that, when given a few examples from a <em>new</em> drug family, can quickly adapt to predict efficacy for other molecules in that family</p>
+</li>
+<li><p><strong>At test time</strong>: New drug family appears. You have 5 labeled molecules. Fine-tune from MAML initialization → can now predict for other molecules in this family</p>
+</li>
+</ul>
+<p><strong>Example - Sine Wave Regression &#40;classic MAML demo&#41;:</strong></p>
+<ul>
+<li><p><strong>Task distribution</strong>: Sine waves with different amplitudes and phases: \(y = A \sin(x + \phi)\)</p>
+</li>
+<li><p><strong>Each task</strong>: A specific sine wave &#40;specific \(A\) and \(\phi\)&#41;</p>
+</li>
+<li><p><strong>MAML learns</strong>: Initialization that, given 5 points from <em>any</em> sine wave, can quickly fit that specific wave</p>
+</li>
+<li><p><strong>At test</strong>: Show 5 points from a new sine wave → adapt → accurately predict the rest of the curve</p>
+</li>
+</ul>
+<p>The original MAML paper demonstrated this beautifully - the network learns the &quot;structure&quot; of sine waves &#40;periodicity, smoothness&#41; and can quickly specialize to any particular sine wave from just a few points.</p>
+<p><strong>This is MAML&#39;s superpower:</strong> It learns good priors for <em>functions</em>, not just classifiers. Metric learning is stuck in classification land.</p>
+<p><strong>The evidence:</strong></p>
+<ul>
+<li><p>Citation counts: Prototypical Networks &#40;2017&#41; has similar citations to MAML &#40;2017&#41;, but ProtoNets have cleaner follow-up work</p>
+</li>
+<li><p>Benchmarks: On miniImageNet and Omniglot &#40;standard few-shot benchmarks&#41;, they&#39;re neck-and-neck, with ProtoNets often winning in 1-shot and MAML in 5-shot</p>
+</li>
+<li><p>Recent trends: Many 2023-2024 papers build on Prototypical Networks or use them as strong baselines. MAML appears more in specialized domains &#40;RL, cross-modal learning&#41;</p>
+</li>
+</ul>
+<p><strong>My practical advice:</strong></p>
+<ol>
+<li><p><strong>Start with Prototypical Networks</strong> for image/text classification tasks. You&#39;ll get 90&#37; of the performance with 10&#37; of the complexity</p>
+</li>
+<li><p><strong>Reach for MAML when</strong>: you need actual test-time adaptation, you&#39;re doing RL/regression, or you have strong domain shift between train and test</p>
+</li>
+<li><p><strong>Consider hybrids</strong>: Proto-MAML combines both approaches - use prototypes for initialization, then fine-tune. Sometimes best of both worlds&#33;</p>
+</li>
+</ol>
+<p><strong>The uncomfortable truth:</strong> For many real-world applications, the best approach is often embarrassingly simple: </p>
+<ul>
+<li><p>Pre-train a big model &#40;like CLIP, ResNet, or a transformer&#41;</p>
+</li>
+<li><p>Use transfer learning with a small head</p>
+</li>
+<li><p>Or just use prototypical networks on top of frozen features</p>
+</li>
+</ul>
+<p>The meta-learning &quot;magic&quot; might be less important than good representations from large-scale pre-training. But when you truly have diverse tasks and limited data? That&#39;s where these methods shine.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
