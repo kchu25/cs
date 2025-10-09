@@ -1,7 +1,6 @@
 @def title = "A Conversational Guide to Bayesian Networks"
 @def published = "9 October 2025"
-@def tags = ["machine-learning"]
-
+@def tags = ["machine-learning", "probabilistic-models"]
 # A Conversational Guide to Bayesian Networks
 
 Hey there! Let's dive into Bayesian networks, which are one of those beautiful ideas in machine learning that combine graph theory, probability, and causal reasoning into something really practical.
@@ -152,3 +151,178 @@ They're great because they:
 - Can incorporate both data and expert knowledge
 
 And that's the essence of Bayesian networks! They're powerful tools that combine the elegance of probability theory with the intuition of causal graphs. Pretty neat, right?
+
+## Wait, What About Continuous Variables?
+
+Great question! Everything above assumes discrete variables, but what if your data is **real-valued** (continuous)? Things get more interesting—and sometimes more challenging.
+
+### The Challenge with Continuous Variables
+
+With discrete variables, we store conditional probability tables (CPTs). But with continuous variables, we need to represent **probability density functions** instead. You can't just make a table of infinite values!
+
+### Approach 1: Gaussian Bayesian Networks (Linear Gaussian Models)
+
+The most popular approach is to assume **linear Gaussian relationships**. If all variables are continuous and normally distributed, life becomes much easier.
+
+**The Setup:**
+
+For each node $X_i$ with parents $\text{Pa}(X_i)$, we assume:
+
+$X_i = \beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j + \epsilon_i$
+
+where $\epsilon_i \sim \mathcal{N}(0, \sigma_i^2)$ is Gaussian noise.
+
+This means:
+$X_i \mid \text{Pa}(X_i) \sim \mathcal{N}\left(\beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j, \sigma_i^2\right)$
+
+**Why This Is Great:**
+
+- The joint distribution remains Gaussian (a multivariate normal)
+- Inference is **exact and efficient** using linear algebra
+- Parameter learning is just linear regression!
+- The network represents: $P(\mathbf{X}) = \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})$
+
+**Parameter Learning:**
+
+For each node, just run **linear regression**:
+
+$\hat{\beta}_i = (\mathbf{X}_{\text{Pa}}^\top \mathbf{X}_{\text{Pa}})^{-1} \mathbf{X}_{\text{Pa}}^\top \mathbf{X}_i$
+
+$\hat{\sigma}_i^2 = \frac{1}{N} \sum_{n=1}^N (x_i^{(n)} - \hat{x}_i^{(n)})^2$
+
+**Inference:**
+
+Computing $P(X_i \mid E)$ (where $E$ is observed evidence) involves:
+1. Partitioning the covariance matrix
+2. Using the conditional Gaussian formula:
+
+$P(X \mid Y=y) = \mathcal{N}(\mu_X + \Sigma_{XY}\Sigma_{YY}^{-1}(y - \mu_Y), \Sigma_{XX} - \Sigma_{XY}\Sigma_{YY}^{-1}\Sigma_{YX})$
+
+This is exact and computationally efficient!
+
+### Approach 2: Conditional Linear Gaussian (CLG) Networks
+
+What if you have **both discrete and continuous variables**? CLG networks handle this hybrid case.
+
+**The Idea:**
+
+- Discrete variables can be parents of any variable
+- Continuous variables can only be parents of continuous variables
+- For continuous children, the parameters $\beta$ and $\sigma^2$ **depend on discrete parents**
+
+**Example:**
+
+$X_{\text{temp}} \mid \text{Season}, \text{Humidity} = \begin{cases}
+\mathcal{N}(70 + 0.5 \cdot \text{Humidity}, 5^2) & \text{if Season = Summer} \\
+\mathcal{N}(40 + 0.3 \cdot \text{Humidity}, 3^2) & \text{if Season = Winter}
+\end{cases}$
+
+You're essentially learning a **different linear Gaussian model for each configuration of discrete parents**.
+
+### Approach 3: Discretization
+
+The simplest (but often crude) approach: **bin your continuous variables**.
+
+**Methods:**
+- **Equal-width binning**: Divide the range into equal intervals
+- **Equal-frequency binning**: Each bin has roughly the same number of samples
+- **K-means clustering**: Use clustering to find natural breakpoints
+
+**Pros:** You can use standard discrete BN algorithms
+
+**Cons:** 
+- Loss of information
+- Arbitrary boundary effects
+- Need to choose the number of bins
+
+### Approach 4: Nonparametric Methods
+
+For more flexible relationships, go nonparametric!
+
+**Kernel Density Estimation (KDE):**
+
+Represent $P(X_i \mid \text{Pa}(X_i))$ using:
+
+$\hat{p}(x \mid \text{pa}) = \frac{\sum_{n=1}^N K_h(x - x_i^{(n)}) \cdot K_h(\text{pa} - \text{pa}^{(n)})}{\sum_{n=1}^N K_h(\text{pa} - \text{pa}^{(n)})}$
+
+where $K_h$ is a kernel function (like Gaussian) with bandwidth $h$.
+
+**Mixture Models:**
+
+Model each conditional as a **mixture of Gaussians**:
+
+$P(X_i \mid \text{Pa}(X_i)) = \sum_{k=1}^K w_k(\text{Pa}) \cdot \mathcal{N}(\mu_k(\text{Pa}), \sigma_k^2)$
+
+The weights and parameters depend on the parents.
+
+### Approach 5: Copula Bayesian Networks
+
+For really complex dependencies, **copulas** separate the marginal distributions from the dependence structure.
+
+**The Copula Decomposition:**
+
+$P(X_i \mid \text{Pa}(X_i)) = c(F(X_i), F(\text{Pa}_1), \ldots, F(\text{Pa}_m)) \cdot f(X_i)$
+
+where:
+- $F$ are marginal CDFs (can be any distribution)
+- $c$ is the copula (captures dependence)
+- $f$ is the marginal PDF
+
+This is super flexible but more complex to work with.
+
+### Optimization for Continuous Variables
+
+**Structure Learning:**
+
+The same principles apply, but the scoring functions need adjustment:
+
+- **BIC for Gaussian networks:**
+  $\text{BIC} = -\frac{N}{2} \sum_i \log(2\pi\hat{\sigma}_i^2) - \frac{N}{2}n - \frac{d}{2}\log N$
+  
+  where $n$ is the number of nodes and $d$ is the number of parameters.
+
+- **Use mutual information** as a measure of dependence:
+  $I(X; Y) = \int \int p(x,y) \log \frac{p(x,y)}{p(x)p(y)} dx dy$
+
+**Parameter Learning:**
+
+- For linear Gaussian: just **least squares regression** for each node
+- For nonparametric: use **maximum likelihood** with kernel methods or EM for mixtures
+- **Regularization** becomes important with continuous variables to prevent overfitting:
+  - L2 penalty: $\|\boldsymbol{\beta}\|_2^2$
+  - Lasso (L1): $\|\boldsymbol{\beta}\|_1$ (promotes sparsity)
+
+**Inference:**
+
+- Linear Gaussian: use **closed-form conditional Gaussian formulas**
+- Nonparametric: may need **Monte Carlo methods** or **variational inference**
+- Can use **particle filters** for sequential/temporal data
+
+### Practical Recommendations for Continuous Variables
+
+1. **Start with Linear Gaussian** if your relationships look linear—it's fast and exact
+2. **Check assumptions**: Plot residuals to see if linearity and Gaussianity hold
+3. **Use CLG for hybrid networks** when you have both discrete and continuous variables
+4. **Go nonparametric** only when you have lots of data and need flexibility
+5. **Consider transformations**: Sometimes log or Box-Cox transforms make relationships more linear
+6. **Regularize**: Especially important for continuous variables to avoid overfitting
+
+### A Quick Example
+
+Say you're modeling temperature, humidity, and pressure:
+
+```
+Structure: Pressure → Temperature ← Humidity
+```
+
+**Linear Gaussian Model:**
+- $\text{Pressure} \sim \mathcal{N}(1013, 10^2)$
+- $\text{Humidity} \sim \mathcal{N}(60, 15^2)$
+- $\text{Temperature} = 20 - 0.05 \cdot \text{Pressure} + 0.1 \cdot \text{Humidity} + \epsilon$, where $\epsilon \sim \mathcal{N}(0, 5^2)$
+
+To answer "What's the temperature given pressure = 1000?":
+1. Condition on the evidence
+2. Use the conditional Gaussian formula
+3. Get $\text{Temperature} \mid \text{Pressure}=1000 \sim \mathcal{N}(\mu', \sigma'^2)$ exactly!
+
+The continuous case adds complexity, but also opens up Bayesian networks to a huge range of real-world applications where measurements are naturally continuous!
