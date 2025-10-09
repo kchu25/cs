@@ -25,18 +25,18 @@
 
 
 <!-- Content appended here -->
-<div class="franklin-content"><h1 id="meta-learning_in_machine_learning"><a href="#meta-learning_in_machine_learning" class="header-anchor">Meta-Learning in Machine Learning</a></h1>
-<h2 id="what_is_meta-learning"><a href="#what_is_meta-learning" class="header-anchor">What is Meta-Learning?</a></h2>
+<div class="franklin-content"><h1 id="meta-learning_in_machine_learning__2"><a href="#meta-learning_in_machine_learning__2" class="header-anchor">Meta-Learning in Machine Learning</a></h1>
+<h2 id="what_is_meta-learning__2"><a href="#what_is_meta-learning__2" class="header-anchor">What is Meta-Learning?</a></h2>
 <p><strong>Meta-learning</strong>, often called &quot;learning to learn,&quot; is a paradigm in machine learning where models are trained to quickly adapt to new tasks using limited data. Instead of learning a single task, meta-learning algorithms learn how to learn across a distribution of tasks.</p>
-<h3 id="core_concept"><a href="#core_concept" class="header-anchor">Core Concept</a></h3>
+<h3 id="core_concept__2"><a href="#core_concept__2" class="header-anchor">Core Concept</a></h3>
 <p>Traditional ML: Learn specific task \(T\) with dataset \(D\)</p>
 \[\theta^* = \arg\min_\theta \mathcal{L}(D; \theta)\]
 <p>Meta-Learning: Learn across multiple tasks \(\{T_1, T_2, ..., T_n\}\) to quickly adapt to new task \(T_{new}\)</p>
 \[\phi^* = \arg\min_\phi \sum_{i=1}^{n} \mathcal{L}(T_i; \phi)\]
 <p>where \(\phi\) represents meta-parameters that enable rapid adaptation.</p>
-<h2 id="relationship_to_zero-shot_and_few-shot_learning"><a href="#relationship_to_zero-shot_and_few-shot_learning" class="header-anchor">Relationship to Zero-Shot and Few-Shot Learning</a></h2>
+<h2 id="relationship_to_zero-shot_and_few-shot_learning__2"><a href="#relationship_to_zero-shot_and_few-shot_learning__2" class="header-anchor">Relationship to Zero-Shot and Few-Shot Learning</a></h2>
 <p>Meta-learning and few-shot learning are <strong>deeply related</strong> concepts, though not identical.</p>
-<h3 id="few-shot_learning"><a href="#few-shot_learning" class="header-anchor">Few-Shot Learning</a></h3>
+<h3 id="few-shot_learning__2"><a href="#few-shot_learning__2" class="header-anchor">Few-Shot Learning</a></h3>
 <p><strong>Few-shot learning</strong> is the task/problem: learning to make predictions on a new task with very few examples &#40;typically 1-5 examples per class&#41;.</p>
 <ul>
 <li><p><strong>1-shot learning</strong>: 1 example per class</p>
@@ -46,15 +46,15 @@
 <li><p><strong>K-shot N-way</strong>: K examples for each of N classes</p>
 </li>
 </ul>
-<h3 id="zero-shot_learning"><a href="#zero-shot_learning" class="header-anchor">Zero-Shot Learning</a></h3>
+<h3 id="zero-shot_learning__2"><a href="#zero-shot_learning__2" class="header-anchor">Zero-Shot Learning</a></h3>
 <p><strong>Zero-shot learning</strong> is the extreme case: making predictions on classes never seen during training, typically using auxiliary information &#40;e.g., class descriptions, attributes, or semantic embeddings&#41;.</p>
-<h3 id="how_they_connect"><a href="#how_they_connect" class="header-anchor">How They Connect</a></h3>
+<h3 id="how_they_connect__2"><a href="#how_they_connect__2" class="header-anchor">How They Connect</a></h3>
 <p><strong>Meta-learning is a methodology/approach</strong> that is commonly used to solve few-shot and zero-shot learning problems. The relationship:</p>
 <pre><code class="language-julia">Meta-Learning &#40;approach/method&#41;
     ├── Can enable → Few-Shot Learning &#40;problem&#41;
     └── Can enable → Zero-Shot Learning &#40;problem&#41;</code></pre>
-<h2 id="popular_meta-learning_approaches"><a href="#popular_meta-learning_approaches" class="header-anchor">Popular Meta-Learning Approaches</a></h2>
-<h3 id="model-agnostic_meta-learning_maml"><a href="#model-agnostic_meta-learning_maml" class="header-anchor"><ol>
+<h2 id="popular_meta-learning_approaches__2"><a href="#popular_meta-learning_approaches__2" class="header-anchor">Popular Meta-Learning Approaches</a></h2>
+<h3 id="model-agnostic_meta-learning_maml__2"><a href="#model-agnostic_meta-learning_maml__2" class="header-anchor"><ol>
 <li><p>Model-Agnostic Meta-Learning &#40;MAML&#41;</p>
 </li>
 </ol>
@@ -120,7 +120,7 @@
 </li>
 </ul>
 <p>The key insight: when tasks share underlying structure &#40;like &quot;all are image classification&quot; or &quot;all are grasping objects&quot;&#41;, MAML can extract that shared structure into the initialization.</p>
-<h3 id="ol_start2_prototypical_networks"><a href="#ol_start2_prototypical_networks" class="header-anchor"><ol start="2">
+<h3 id="ol_start2_prototypical_networks__2"><a href="#ol_start2_prototypical_networks__2" class="header-anchor"><ol start="2">
 <li><p>Prototypical Networks</p>
 </li>
 </ol>
@@ -130,19 +130,19 @@
 \[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\phi(x_i)\]
 <p>Classification uses distance to prototypes:</p>
 \[P(y=k|x) = \frac{\exp(-d(f_\phi(x), c_k))}{\sum_{k'} \exp(-d(f_\phi(x), c_{k'}))}\]
-<h3 id="ol_start3_matching_networks"><a href="#ol_start3_matching_networks" class="header-anchor"><ol start="3">
+<h3 id="ol_start3_matching_networks__2"><a href="#ol_start3_matching_networks__2" class="header-anchor"><ol start="3">
 <li><p>Matching Networks</p>
 </li>
 </ol>
 </a></h3>
 <p>Use attention mechanisms and episodic training to learn how to match query examples to support examples.</p>
-<h3 id="ol_start4_relation_networks"><a href="#ol_start4_relation_networks" class="header-anchor"><ol start="4">
+<h3 id="ol_start4_relation_networks__2"><a href="#ol_start4_relation_networks__2" class="header-anchor"><ol start="4">
 <li><p>Relation Networks</p>
 </li>
 </ol>
 </a></h3>
 <p>Learn a neural network to compute similarity/relation scores between examples, rather than using fixed distance metrics.</p>
-<h2 id="key_principles_of_meta-learning"><a href="#key_principles_of_meta-learning" class="header-anchor">Key Principles of Meta-Learning</a></h2>
+<h2 id="key_principles_of_meta-learning__2"><a href="#key_principles_of_meta-learning__2" class="header-anchor">Key Principles of Meta-Learning</a></h2>
 <ol>
 <li><p><strong>Episodic Training</strong>: Training mimics testing by creating many small learning episodes</p>
 </li>
@@ -157,7 +157,7 @@
 </ul>
 </li>
 </ol>
-<h2 id="mathematical_framework"><a href="#mathematical_framework" class="header-anchor">Mathematical Framework</a></h2>
+<h2 id="mathematical_framework__2"><a href="#mathematical_framework__2" class="header-anchor">Mathematical Framework</a></h2>
 <p>A meta-learning episode typically involves:</p>
 <ul>
 <li><p><strong>Support set</strong> \(S = \{(x_i^s, y_i^s)\}_{i=1}^{K \times N}\) &#40;K shots, N ways&#41;</p>
@@ -167,7 +167,7 @@
 </ul>
 <p>The meta-objective:</p>
 \[\min_\theta \mathbb{E}_{T \sim p(T)} \left[ \mathcal{L}_T(f_{\theta'}; Q) \mid \theta' = \text{adapt}(\theta, S) \right]\]
-<h2 id="practical_applications"><a href="#practical_applications" class="header-anchor">Practical Applications</a></h2>
+<h2 id="practical_applications__2"><a href="#practical_applications__2" class="header-anchor">Practical Applications</a></h2>
 <ul>
 <li><p><strong>Computer Vision</strong>: Recognizing new object classes from few images</p>
 </li>
@@ -180,7 +180,7 @@
 <li><p><strong>Personalization</strong>: Adapting to individual users with minimal interaction</p>
 </li>
 </ul>
-<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<h2 id="summary__2"><a href="#summary__2" class="header-anchor">Summary</a></h2>
 <ul>
 <li><p><strong>Meta-learning</strong> is an approach for training models to adapt quickly</p>
 </li>
