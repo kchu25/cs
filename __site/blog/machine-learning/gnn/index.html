@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Graph Neural Networks: Step-by-Step with Simple Examples</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="graph_neural_networks_step-by-step_with_simple_examples"><a href="#graph_neural_networks_step-by-step_with_simple_examples" class="header-anchor">Graph Neural Networks: Step-by-Step with Simple Examples</a></h1>
+<h2 id="simple_example_two_connected_nodes"><a href="#simple_example_two_connected_nodes" class="header-anchor">Simple Example: Two Connected Nodes</a></h2>
+<p>Let&#39;s say we have a graph with <strong>2 nodes</strong> that are <strong>connected</strong> to each other.</p>
+<h3 id="the_input"><a href="#the_input" class="header-anchor">The Input</a></h3>
+<p><strong>Node Features</strong> - Each node has a feature vector:</p>
+<ul>
+<li><p>Node 1: \(h_1 = [1, 2]\) &#40;a 2-dimensional vector&#41;</p>
+</li>
+<li><p>Node 2: \(h_2 = [3, 4]\) &#40;a 2-dimensional vector&#41;</p>
+</li>
+</ul>
+<p>We stack these into a <strong>feature matrix</strong>:</p>
+\[H = \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}\]
+<p>Each row is a node&#39;s features&#33;</p>
+<h3 id="edge_information_the_adjacency_matrix"><a href="#edge_information_the_adjacency_matrix" class="header-anchor">Edge Information: The Adjacency Matrix</a></h3>
+<p><strong>This is how we encode the graph structure&#33;</strong></p>
+\[A = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix}\]
+<p>Reading this matrix:</p>
+<ul>
+<li><p>\(A_{12} = 1\) means node 1 connects to node 2</p>
+</li>
+<li><p>\(A_{21} = 1\) means node 2 connects to node 1  </p>
+</li>
+<li><p>\(A_{11} = 0\) means node 1 doesn&#39;t connect to itself &#40;no self-loop&#41;</p>
+</li>
+</ul>
+<p><strong>The adjacency matrix IS how edge information is handled&#33;</strong> It tells us who talks to whom.</p>
+<h2 id="step-by-step_one_gnn_layer"><a href="#step-by-step_one_gnn_layer" class="header-anchor">Step-by-Step: One GNN Layer</a></h2>
+<h3 id="step_1_aggregate_neighbor_features"><a href="#step_1_aggregate_neighbor_features" class="header-anchor">Step 1: Aggregate Neighbor Features</a></h3>
+<p>Multiply the adjacency matrix by the feature matrix:</p>
+\[AH = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix} \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} = \begin{bmatrix} 3 & 4 \\ 1 & 2 \end{bmatrix}\]
+<p><strong>What just happened?</strong></p>
+<ul>
+<li><p>Row 1 of \(AH\) is \([3, 4]\) &#61; the features of node 1&#39;s neighbor &#40;node 2&#41;</p>
+</li>
+<li><p>Row 2 of \(AH\) is \([1, 2]\) &#61; the features of node 2&#39;s neighbor &#40;node 1&#41;</p>
+</li>
+</ul>
+<p>Each node now has its <strong>neighbor&#39;s information</strong>&#33;</p>
+<h3 id="step_2_transform_the_aggregated_features"><a href="#step_2_transform_the_aggregated_features" class="header-anchor">Step 2: Transform the Aggregated Features</a></h3>
+<p>Apply a learnable weight matrix. Let&#39;s say:</p>
+\[W = \begin{bmatrix} 0.5 & 0 \\ 0 & 0.5 \end{bmatrix}\]
+<p>Then:</p>
+\[(AH)W = \begin{bmatrix} 3 & 4 \\ 1 & 2 \end{bmatrix} \begin{bmatrix} 0.5 & 0 \\ 0 & 0.5 \end{bmatrix} = \begin{bmatrix} 1.5 & 2 \\ 0.5 & 1 \end{bmatrix}\]
+<p>This transforms the neighbor features through learned weights.</p>
+<h3 id="step_3_apply_nonlinearity"><a href="#step_3_apply_nonlinearity" class="header-anchor">Step 3: Apply Nonlinearity</a></h3>
+\[H^{(1)} = \sigma\left(\begin{bmatrix} 1.5 & 2 \\ 0.5 & 1 \end{bmatrix}\right)\]
+<p>If \(\sigma\) is ReLU &#40;which keeps positive values&#41;, we get:</p>
+\[H^{(1)} = \begin{bmatrix} 1.5 & 2 \\ 0.5 & 1 \end{bmatrix}\]
+<p><strong>These are the new node features after one GNN layer&#33;</strong></p>
+<h2 id="adding_self-loops_a_more_realistic_version"><a href="#adding_self-loops_a_more_realistic_version" class="header-anchor">Adding Self-Loops: A More Realistic Version</a></h2>
+<p>Usually we want nodes to keep their <strong>own information</strong> too, not just neighbor info&#33;</p>
+<p>Add self-loops by modifying the adjacency matrix:</p>
+\[\tilde{A} = A + I = \begin{bmatrix} 0 & 1 \\ 1 & 0 \end{bmatrix} + \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix} = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}\]
+<p>Now let&#39;s redo step 1:</p>
+\[\tilde{A}H = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix} \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} = \begin{bmatrix} 4 & 6 \\ 4 & 6 \end{bmatrix}\]
+<p><strong>What happened?</strong></p>
+<ul>
+<li><p>Row 1: \([1,2] + [3,4] = [4,6]\) &#40;node 1&#39;s features &#43; node 2&#39;s features&#41;</p>
+</li>
+<li><p>Row 2: \([1,2] + [3,4] = [4,6]\) &#40;node 2&#39;s features &#43; node 1&#39;s features&#41;</p>
+</li>
+</ul>
+<p>Each node now aggregates <strong>itself and its neighbors</strong>&#33;</p>
+<h2 id="complete_formula"><a href="#complete_formula" class="header-anchor">Complete Formula</a></h2>
+<p>The full GNN layer operation is:</p>
+\(H^{(l+1)} = \sigma\left(\tilde{A} H^{(l)} W^{(l)}\right)\)
+<p>Where:</p>
+<ul>
+<li><p>\(H^{(l)}\) &#61; node features at layer \(l\)</p>
+</li>
+<li><p>\(\tilde{A}\) &#61; adjacency matrix &#40;with self-loops&#41; - <strong>this is the edge information&#33;</strong></p>
+</li>
+<li><p>\(W^{(l)}\) &#61; learnable weight matrix</p>
+</li>
+<li><p>\(\sigma\) &#61; activation function</p>
+</li>
+</ul>
+<hr />
+<h3 id="side_note_what_does_hw_mean_mathematically"><a href="#side_note_what_does_hw_mean_mathematically" class="header-anchor">📘 Side Note: What Does \(HW\) Mean Mathematically?</a></h3>
+<p>When we multiply features by weights: \(H^{(l)} W^{(l)}\)</p>
+<p><strong>Dimensions:</strong></p>
+<ul>
+<li><p>\(H^{(l)} \in \mathbb{R}^{n \times d}\) &#40;n nodes, d features per node&#41;</p>
+</li>
+<li><p>\(W^{(l)} \in \mathbb{R}^{d \times d'}\) &#40;transforms d features to d&#39; features&#41;</p>
+</li>
+<li><p>Result: \(H^{(l)}W^{(l)} \in \mathbb{R}^{n \times d'}\)</p>
+</li>
+</ul>
+<p><strong>Operation-wise, for each node \(i\):</strong></p>
+\(\left(HW\right)_i = h_i W = \sum_{j=1}^{d} h_{ij} W_{j:}\)
+<p>This is a <strong>linear combination</strong> of the columns of \(W\), weighted by the node&#39;s features&#33;</p>
+<p><strong>Concrete Example:</strong></p>
+<p>Say node 1 has features \(h_1 = [2, 3]\) and we have:</p>
+\(W = \begin{bmatrix} 0.5 & 1 \\ 0.2 & 0.8 \end{bmatrix}\)
+<p>Then:</p>
+\(h_1 W = [2, 3] \begin{bmatrix} 0.5 & 1 \\ 0.2 & 0.8 \end{bmatrix} = [2 \cdot 0.5 + 3 \cdot 0.2, \; 2 \cdot 1 + 3 \cdot 0.8] = [1.6, 4.4]\)
+<p><strong>What&#39;s happening?</strong></p>
+<ul>
+<li><p>We&#39;re projecting the 2D features into a new 2D space</p>
+</li>
+<li><p>Each output dimension is a weighted sum of input features</p>
+</li>
+<li><p>The weights in \(W\) are <strong>learned during training</strong> to extract useful patterns</p>
+</li>
+</ul>
+<p><strong>Intuition:</strong></p>
+<ul>
+<li><p>Think of \(W\) as a &quot;feature mixer&quot; or &quot;lens&quot;</p>
+</li>
+<li><p>It learns which combinations of input features are important</p>
+</li>
+<li><p>Similar to a fully-connected layer in a neural network</p>
+</li>
+<li><p>If \(d' < d\): dimensionality reduction &#40;compression&#41;</p>
+</li>
+<li><p>If \(d' > d\): dimensionality expansion &#40;learning more complex representations&#41;</p>
+</li>
+</ul>
+<p><strong>Why is this useful in GNNs?</strong></p>
+<p>After \(\tilde{A}H\) aggregates neighbor features, \(W\) learns:</p>
+<ul>
+<li><p>Which aggregated patterns matter for the task</p>
+</li>
+<li><p>How to transform raw features into more abstract representations</p>
+</li>
+<li><p>Different &quot;channels&quot; or &quot;filters&quot; &#40;like in CNNs, but for graphs&#41;</p>
+</li>
+</ul>
+<hr />
+<h3 id="side-side_note_order_matters_tildeahw_vs_tildeahw"><a href="#side-side_note_order_matters_tildeahw_vs_tildeahw" class="header-anchor">🔍 Side-Side Note: Order Matters&#33; \(\tilde{A}(HW)\) vs \((\tilde{A}H)W\)</a></h3>
+<p>Wait, these give the <strong>same result</strong> by associativity of matrix multiplication:</p>
+\(\tilde{A}(HW) = (\tilde{A}H)W\)
+<p>But they have <strong>different interpretations</strong>:</p>
+<p><strong>Option 1: \((\tilde{A}H)W\) — Aggregate then Transform</strong></p>
+<ol>
+<li><p>First: \(\tilde{A}H\) aggregates raw neighbor features</p>
+</li>
+<li><p>Then: multiply by \(W\) to transform the aggregated features</p>
+</li>
+</ol>
+<p><strong>Option 2: \(\tilde{A}(HW)\) — Transform then Aggregate</strong></p>
+<ol>
+<li><p>First: \(HW\) transforms each node&#39;s features independently</p>
+</li>
+<li><p>Then: \(\tilde{A}(...)\) aggregates the transformed features from neighbors</p>
+</li>
+</ol>
+<p><strong>Implications:</strong></p>
+<table><tr><th align="right">Aspect</th><th align="right">Aggregate→Transform</th><th align="right">Transform→Aggregate</th></tr><tr><td align="right"><strong>Computation</strong></td><td align="right">Same result&#33;</td><td align="right">Same result&#33;</td></tr><tr><td align="right"><strong>Interpretation</strong></td><td align="right">Pool raw features, learn from pooled</td><td align="right">Each node transforms first, then share</td></tr><tr><td align="right"><strong>Parameters</strong></td><td align="right">One \(W\) for all nodes</td><td align="right">One \(W\) for all nodes</td></tr><tr><td align="right"><strong>Expressiveness</strong></td><td align="right">Equivalent</td><td align="right">Equivalent</td></tr></table>
+<p><strong>But here&#39;s the KEY insight:</strong></p>
+<p>Transform-then-aggregate \((\tilde{A}(HW))\) is more intuitive:</p>
+<ul>
+<li><p>Each node prepares a &quot;message&quot; by transforming its features: \(m_i = h_i W\)</p>
+</li>
+<li><p>Then neighbors aggregate these messages: \(\sum_{j \in \mathcal{N}(i)} m_j\)</p>
+</li>
+</ul>
+<p>This is the <strong>message passing</strong> view&#33; Each node:</p>
+<ol>
+<li><p>Creates an outgoing message from its features</p>
+</li>
+<li><p>Receives and sums messages from neighbors</p>
+</li>
+<li><p>Updates its representation</p>
+</li>
+</ol>
+<p><strong>More expressive architectures:</strong></p>
+<p>What if we use <strong>different weight matrices</strong> for self vs. neighbors?</p>
+\(h_i^{(l+1)} = \sigma\left(W_{\text{self}} h_i^{(l)} + \sum_{j \in \mathcal{N}(i)} W_{\text{neighbor}} h_j^{(l)}\right)\)
+<p>Now we can&#39;t write it as a simple \(\tilde{A}HW\) anymore&#33; We need:</p>
+<ul>
+<li><p>Separate transformation for the node itself</p>
+</li>
+<li><p>Separate transformation for aggregated neighbors</p>
+</li>
+</ul>
+<p>This is what <strong>GraphSAGE</strong> and other advanced GNNs do&#33;</p>
+<p><strong>Computational considerations:</strong></p>
+<p>\(\tilde{A}(HW)\) can be more efficient:</p>
+<ul>
+<li><p>Compute \(HW\) once &#40;cheap: \(O(nd \cdot dd')\)&#41;</p>
+</li>
+<li><p>Then do sparse \(\tilde{A} \times (...)\) &#40;depends on edges&#41;</p>
+</li>
+</ul>
+<p>vs \((\tilde{A}H)W\):</p>
+<ul>
+<li><p>Sparse \(\tilde{A}H\) first &#40;depends on edges&#41;  </p>
+</li>
+<li><p>Then dense \((...)W\) &#40;same cost&#41;</p>
+</li>
+</ul>
+<p>For sparse graphs, the order doesn&#39;t matter much. For dense graphs, transform-first can be faster&#33;</p>
+<p><strong>🤔 Remark: Why multiply by \(\tilde{A}\) if \(W\) already linearly combines features?</strong></p>
+<p>Great question&#33; Here&#39;s the crucial difference:</p>
+<p><strong>\(W\) operates on features &#40;columns&#41;</strong> — it mixes feature dimensions:</p>
+<ul>
+<li><p>Takes feature 1 and feature 2 and creates new combined features</p>
+</li>
+<li><p>Same transformation for EVERY node</p>
+</li>
+<li><p>Example: \([x_1, x_2] W\) → combines the two features into new features</p>
+</li>
+</ul>
+<p><strong>\(\tilde{A}\) operates on nodes &#40;rows&#41;</strong> — it mixes information ACROSS nodes:</p>
+<ul>
+<li><p>Takes node 1&#39;s features and node 2&#39;s features and combines them</p>
+</li>
+<li><p>Different aggregation for EACH node &#40;depends on graph structure&#41;</p>
+</li>
+<li><p>Example: \(\tilde{A} H\) → node \(i\) gets a weighted sum of its neighbors&#39; feature vectors</p>
+</li>
+</ul>
+<p><strong>Without \(\tilde{A}\):</strong> Just \(H^{(l+1)} = \sigma(HW)\)</p>
+<ul>
+<li><p>This is a standard fully-connected layer</p>
+</li>
+<li><p>Each node updates independently</p>
+</li>
+<li><p><strong>No information flows through the graph&#33;</strong></p>
+</li>
+<li><p>Equivalent to treating each node in isolation</p>
+</li>
+</ul>
+<p><strong>With \(\tilde{A}\):</strong> \(H^{(l+1)} = \sigma(\tilde{A}HW)\)</p>
+<ul>
+<li><p>The adjacency matrix enforces graph structure</p>
+</li>
+<li><p>Only connected nodes exchange information</p>
+</li>
+<li><p>This is what makes it a <strong>Graph</strong> Neural Network&#33;</p>
+</li>
+</ul>
+<p><strong>Analogy:</strong></p>
+<ul>
+<li><p>\(W\): A personal translator that translates your own thoughts into a new language &#40;same for everyone&#41;</p>
+</li>
+<li><p>\(\tilde{A}\): A phone network that connects you to specific people — you can only hear from those you&#39;re connected to</p>
+</li>
+</ul>
+<p>You need BOTH:</p>
+<ol>
+<li><p>The network &#40;\(\tilde{A}\)&#41; to route information</p>
+</li>
+<li><p>The transformation &#40;\(W\)&#41; to make that information useful</p>
+</li>
+</ol>
+<hr />
+<h2 id="three_node_example"><a href="#three_node_example" class="header-anchor">Three Node Example</a></h2>
+<p>Let&#39;s do one more&#33; Three nodes in a line: 1 — 2 — 3</p>
+<p><strong>Initial features:</strong></p>
+\[H^{(0)} = \begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix}\]
+<p>&#40;Each node has a 1D feature for simplicity&#41;</p>
+<p><strong>Adjacency with self-loops:</strong></p>
+\[\tilde{A} = \begin{bmatrix} 1 & 1 & 0 \\ 1 & 1 & 1 \\ 0 & 1 & 1 \end{bmatrix}\]
+<ul>
+<li><p>Node 1 connects to: itself, node 2</p>
+</li>
+<li><p>Node 2 connects to: itself, node 1, node 3</p>
+</li>
+<li><p>Node 3 connects to: itself, node 2</p>
+</li>
+</ul>
+<p><strong>After aggregation:</strong></p>
+\[\tilde{A}H^{(0)} = \begin{bmatrix} 1 & 1 & 0 \\ 1 & 1 & 1 \\ 0 & 1 & 1 \end{bmatrix} \begin{bmatrix} 1 \\ 2 \\ 3 \end{bmatrix} = \begin{bmatrix} 3 \\ 6 \\ 5 \end{bmatrix}\]
+<p>Breaking it down:</p>
+<ul>
+<li><p>Node 1: \(1 + 2 = 3\) &#40;itself &#43; neighbor 2&#41;</p>
+</li>
+<li><p>Node 2: \(1 + 2 + 3 = 6\) &#40;itself &#43; neighbors 1 and 3&#41;</p>
+</li>
+<li><p>Node 3: \(2 + 3 = 5\) &#40;itself &#43; neighbor 2&#41;</p>
+</li>
+</ul>
+<p><strong>Node 2 has the most information because it has the most neighbors&#33;</strong></p>
+<h2 id="key_insights"><a href="#key_insights" class="header-anchor">Key Insights</a></h2>
+<ol>
+<li><p><strong>Node features</strong> &#61; rows in matrix \(H\)</p>
+</li>
+<li><p><strong>Edge information</strong> &#61; encoded in adjacency matrix \(A\)</p>
+</li>
+<li><p><strong>\(AH\) operation</strong> &#61; each node aggregates neighbor features</p>
+</li>
+<li><p><strong>Weight matrix \(W\)</strong> &#61; learnable transformation</p>
+</li>
+<li><p><strong>Multiple layers</strong> &#61; information flows further across the graph</p>
+</li>
+</ol>
+<h2 id="what_about_edge_features"><a href="#what_about_edge_features" class="header-anchor">What About Edge Features?</a></h2>
+<p>Sometimes edges have their own features &#40;e.g., distance, weight, type&#41;. For this:</p>
+<ul>
+<li><p><strong>Simple approach</strong>: Use weighted adjacency matrix where \(A_{ij}\) &#61; edge weight</p>
+</li>
+<li><p><strong>Advanced approach</strong>: Message Passing Neural Networks &#40;MPNNs&#41; that explicitly compute:</p>
+</li>
+</ul>
+\[m_{ij} = \phi(h_i, h_j, e_{ij})\]
+<p>where \(e_{ij}\) is the edge feature. Then aggregate these messages.</p>
+<p>But the basic GNN doesn&#39;t use edge features—just whether edges exist &#40;in \(A\)&#41;&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 09, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
