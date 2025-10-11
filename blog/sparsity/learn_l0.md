@@ -1,7 +1,6 @@
 @def title = "Learning Sparse Neural Networks Through L0 Regularization"
 @def published = "10 October 2025"
 @def tags = ["machine-learning", "sparsity"]
-# A Conversational Guide to Bayesian Networks
 
 # Learning Sparse Neural Networks Through L0 Regularization
 
