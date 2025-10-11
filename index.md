@@ -10,4 +10,5 @@
 - [meta-learning](tag/meta-learning)
 - [one-or-few-shots-learning](tag/one-or-few-shots-learning)
 - [probabilistic-models](tag/probabilistic-models)
+- [sparsity](tag/sparsity)
 
