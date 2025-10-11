@@ -1,4 +1,4 @@
-@def title = "SHAP and DeepLIFT: A Technical Summary"
+@def title = "Introduction to Diffusion Models"
 @def published = "11 October 2025"
 @def tags = ["deep-generative-models"]
 
