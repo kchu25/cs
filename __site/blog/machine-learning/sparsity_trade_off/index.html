@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Is the Sparsity-Accuracy Tradeoff Worth It?</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="is_the_sparsity-accuracy_tradeoff_worth_it"><a href="#is_the_sparsity-accuracy_tradeoff_worth_it" class="header-anchor">Is the Sparsity-Accuracy Tradeoff Worth It?</a></h1>
+<h2 id="direct_answer_yes_in_your_case"><a href="#direct_answer_yes_in_your_case" class="header-anchor">Direct Answer: <strong>YES</strong>, in your case</a></h2>
+<p>Given your specifics &#40;R² &#61; 0.45 on test, genomics screening&#41;, the sparsity tradeoff is <strong>decisively favorable</strong>. Here&#39;s why:</p>
+<hr />
+<h2 id="quantitative_framework"><a href="#quantitative_framework" class="header-anchor">Quantitative Framework</a></h2>
+<p>The value function for model utility:</p>
+\(V(model) = \alpha \cdot Predictive\_Power - \beta \cdot Complexity\_Cost\)
+<p>where:</p>
+<ul>
+<li><p>\(\alpha\) &#61; value per unit of predictive accuracy</p>
+</li>
+<li><p>\(\beta\) &#61; cost per parameter &#40;computational, interpretational, deployment&#41;</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>Side note:</strong> This is a <strong>stylized formulation</strong> to make the tradeoff explicit. Here&#39;s how it connects to standard methods:</p>
+<p>All model selection criteria have the form: <strong>&quot;Badness of fit&quot; &#43; &quot;Penalty for complexity&quot;</strong></p>
+<ul>
+<li><p><strong>AIC/BIC</strong>: \(-2\ln(L) + k \cdot d\) — maximize likelihood &#40;good fit&#41;, but pay cost \(k\) per parameter \(d\)</p>
+</li>
+<li><p><strong>Regularization</strong>: \(MSE(θ) + \lambda||θ||_p\) — minimize prediction error, but pay cost \(\lambda\) for large/many parameters</p>
+</li>
+<li><p><strong>MDL principle</strong>: Total cost &#61; encoding data badly &#43; encoding a complex model</p>
+</li>
+<li><p><strong>Rate-distortion</strong>: Information theory version of the same thing</p>
+</li>
+</ul>
+<p>My \(V = \alpha \cdot Accuracy - \beta \cdot Complexity\) just flips the sign &#40;maximize value instead of minimize cost&#41; and makes the units explicit. The \(\lambda\) in LASSO? That&#39;s your \(\beta/\alpha\) ratio — how much you value simplicity relative to accuracy. </p>
+<p><strong>How CV estimates \(\beta/\alpha\):</strong> When you do cross-validation to pick \(\lambda\), you&#39;re testing different tradeoff points. Small \(\lambda\) &#61; &quot;accuracy matters more&quot; &#40;low \(\beta/\alpha\)&#41;, large \(\lambda\) &#61; &quot;simplicity matters more&quot; &#40;high \(\beta/\alpha\)&#41;. CV finds the \(\lambda\) where adding more complexity stops improving held-out performance — that&#39;s the point where \(\beta \cdot \Delta\text{complexity} = \alpha \cdot \Delta\text{accuracy}\) for your data&#39;s noise level. Essentially, CV uses your actual generalization curve to solve for the optimal \(\beta/\alpha\) without you having to specify it philosophically.</p>
+<p>In genomics research: high \(\beta\) &#40;interpreting 10,000 genes is impossible&#41; means you want large \(\lambda\) &#40;aggressive sparsity&#41;, often larger than what CV alone would pick.</p>
+</blockquote>
+<p><strong>Your scenario:</strong> Modest R² drop for substantial parameter reduction → \(\beta \Delta p >> \alpha \Delta R^2\)</p>
+<hr />
+<h2 id="why_sparsity_wins_here"><a href="#why_sparsity_wins_here" class="header-anchor">Why Sparsity Wins Here</a></h2>
+<h3 id="the_genomics_context_multiplier"><a href="#the_genomics_context_multiplier" class="header-anchor"><ol>
+<li><p><strong>The Genomics Context Multiplier</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>In genomics screening:</p>
+<ul>
+<li><p><strong>Interpretability premium is extreme</strong>: Which genes/variants matter? Sparse models directly answer this</p>
+</li>
+<li><p><strong>Downstream validation cost</strong>: Testing 10 genes vs 10,000 genes in wet lab &#61; &#36;10K vs &#36;1M&#43;</p>
+</li>
+<li><p><strong>Biological plausibility</strong>: Most phenotypes are driven by sparse regulatory networks anyway</p>
+</li>
+<li><p>R² &#61; 0.45 is <strong>already capturing most signal</strong> in high-dimensional genomics &#40;compare to typical R² &#61; 0.1-0.3 for complex traits&#41;</p>
+</li>
+</ul>
+<h3 id="ol_start2_diminishing_returns_on_accuracy"><a href="#ol_start2_diminishing_returns_on_accuracy" class="header-anchor"><ol start="2">
+<li><p><strong>Diminishing Returns on Accuracy</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Your R² &#61; 0.45 represents:</p>
+\[r = \sqrt{0.45} \approx 0.67\]
+<p>This correlation is <strong>actionable</strong>. The marginal gain from 0.45 → 0.55 would be:</p>
+<ul>
+<li><p>Computationally expensive &#40;might need 10x more parameters&#41;</p>
+</li>
+<li><p><strong>Scientifically negligible</strong>: You&#39;re already ranking candidates well</p>
+</li>
+<li><p>Statistically unstable: That extra 0.10 is likely overfitting noise in genomics data</p>
+</li>
+</ul>
+<h3 id="ol_start3_the_curse_breaker"><a href="#ol_start3_the_curse_breaker" class="header-anchor"><ol start="3">
+<li><p><strong>The Curse Breaker</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>High-dimensional genomics &#40;\(p >> n\)&#41;:</p>
+\[\text{Effective DOF} = \frac{n}{\text{# parameters}}\]
+<p>Sparse model → Higher effective DOF → <strong>Better generalization despite lower training R²</strong></p>
+<p>You said &quot;generalization still is acceptable&quot; - this is the <strong>key metric</strong>. Test R² maintained &#61; you haven&#39;t sacrificed real predictive power.</p>
+<hr />
+<h2 id="the_mathematics_of_worth_it"><a href="#the_mathematics_of_worth_it" class="header-anchor">The Mathematics of &quot;Worth It&quot;</a></h2>
+<p>Define sparsity level \(s\) &#40;fraction of non-zero weights&#41;. Your tradeoff curve:</p>
+\[R^2(s) = R^2_{dense} - \gamma(1-s)^\delta\]
+<p>where typically \(\delta > 1\) &#40;concave loss&#41;. You&#39;re operating in the <strong>flat region</strong> of this curve:</p>
+<ul>
+<li><p>Small \(s\) &#40;high sparsity&#41; → moderate R² loss</p>
+</li>
+<li><p>Large \(s\) &#40;dense&#41; → marginal R² gain, exponential complexity cost</p>
+</li>
+</ul>
+<p><strong>Economic calculation:</strong></p>
+<pre><code class="language-julia">Cost of 1000 parameters vs 100 parameters:
+- Inference: 10x speedup
+- Interpretability: 10x fewer hypotheses to validate
+- Overfitting risk: ~√10 reduction in variance
+
+Benefit of R² &#61; 0.50 vs 0.45:
+- Correlation: 0.71 vs 0.67 &#40;5&#37; gain&#41;
+- Ranking accuracy: ~3&#37; better at top-K selection</code></pre>
+<p><strong>Verdict</strong>: 10x cost reduction for 3-5&#37; accuracy loss &#61; <strong>massive win</strong></p>
+<hr />
+<h2 id="when_sparsity_would_not_be_worth_it"><a href="#when_sparsity_would_not_be_worth_it" class="header-anchor">When Sparsity Would NOT Be Worth It</a></h2>
+<p>Counter-examples where you&#39;d keep density:</p>
+<ol>
+<li><p><strong>Production ML systems</strong> where 0.01 AUC &#61; &#36;10M revenue &#40;ads, fraud&#41;</p>
+</li>
+<li><p><strong>Safety-critical applications</strong> &#40;autonomous vehicles, medical diagnosis&#41;</p>
+</li>
+<li><p><strong>Data is cheap, abundant</strong> &#40;\(n >> p\), no interpretability need&#41;</p>
+</li>
+<li><p><strong>The sparse solution is unstable</strong> &#40;changes wildly with data splits&#41;</p>
+</li>
+</ol>
+<p>Your genomics case has <strong>none</strong> of these properties.</p>
+<hr />
+<h2 id="actionable_conclusion"><a href="#actionable_conclusion" class="header-anchor">Actionable Conclusion</a></h2>
+<p>With R² &#61; 0.45 on test in genomics:</p>
+<ol>
+<li><p><strong>Push sparsity harder</strong>: Try for 90-95&#37; sparsity</p>
+</li>
+<li><p><strong>Watch test R², not training R²</strong>: Training loss is irrelevant here</p>
+</li>
+<li><p><strong>Use structured sparsity</strong>: Group LASSO for gene pathways</p>
+</li>
+<li><p><strong>The real metric</strong>: </p>
+</li>
+</ol>
+\[\text{Value} = \frac{R^2 \cdot \text{Interpretability}}{\text{Cost}}\]
+<p>You&#39;ve likely improved this by <strong>10-100x</strong></p>
+<h3 id="final_answer"><a href="#final_answer" class="header-anchor">Final Answer</a></h3>
+<p>In genomics screening with maintained generalization &#40;R² &#61; 0.45&#41;, the sparsity tradeoff is <strong>overwhelmingly positive</strong>. The minor accuracy sacrifice is dwarfed by gains in interpretability, computational efficiency, and scientific actionability.</p>
+<p><strong>Don&#39;t second-guess it. Deploy the sparse model.</strong></p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 28, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

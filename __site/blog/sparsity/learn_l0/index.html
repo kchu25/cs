@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Learning Sparse Neural Networks Through L0 Regularization</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="learning_sparse_neural_networks_through_l0_regularization"><a href="#learning_sparse_neural_networks_through_l0_regularization" class="header-anchor">Learning Sparse Neural Networks Through L0 Regularization</a></h1>
+<p><strong>Authors:</strong> Christos Louizos, Max Welling, Diederik P. Kingma   <strong>Published:</strong> ICLR 2018</p>
+<p><a href="https://arxiv.org/pdf/1712.01312">https://arxiv.org/pdf/1712.01312</a></p>
+<hr />
+<h2 id="deep_dive_what_does_disconnected_actually_mean"><a href="#deep_dive_what_does_disconnected_actually_mean" class="header-anchor">Deep Dive: What Does &quot;Disconnected&quot; Actually Mean?</a></h2>
+<h3 id="the_question"><a href="#the_question" class="header-anchor">The Question</a></h3>
+<blockquote>
+<p>&quot;Disconnected: how? Do you mean I can&#39;t go to good local optimum? Like every initialization is going to give you very distinct results?&quot;</p>
+</blockquote>
+<p>Great question&#33; &quot;Disconnected&quot; is a precise topological concept that&#39;s crucial to understanding why L0 optimization is fundamentally different from typical neural network optimization.</p>
+<h3 id="what_disconnected_means_geometrically"><a href="#what_disconnected_means_geometrically" class="header-anchor">What &quot;Disconnected&quot; Means Geometrically</a></h3>
+<p>The constraint set \(\mathcal{C}_k = \{\theta : \|\theta\|_0 \leq k\}\) is <strong>disconnected</strong> means it consists of <strong>separate pieces that don&#39;t touch</strong>.</p>
+<h4 id="simple_example_2d_with_k1"><a href="#simple_example_2d_with_k1" class="header-anchor">Simple Example: 2D with k&#61;1</a></h4>
+<p>Consider \(\mathcal{C}_1 = \{\theta \in \mathbb{R}^2 : \|\theta\|_0 \leq 1\}\)</p>
+<p>This set consists of:</p>
+<ul>
+<li><p>The <strong>x-axis</strong>: \(\{(\theta_1, 0) : \theta_1 \in \mathbb{R}\}\)</p>
+</li>
+<li><p>The <strong>y-axis</strong>: \(\{(0, \theta_2) : \theta_2 \in \mathbb{R}\}\)  </p>
+</li>
+<li><p>The <strong>origin</strong>: \(\{(0, 0)\}\)</p>
+</li>
+</ul>
+<p>Picture this:</p>
+<pre><code class="language-julia">|
+    | y-axis &#40;one piece&#41;
+    |
+----&#43;---- x-axis &#40;another piece&#41;
+    |
+    |</code></pre>
+<p>The point \((1, 0)\) and the point \((0, 1)\) are <strong>both in the constraint set</strong>, but there&#39;s <strong>no continuous path</strong> between them that stays within the set&#33;</p>
+<p>To go from \((1, 0)\) to \((0, 1)\) while staying in \(\mathcal{C}_1\):</p>
+<ol>
+<li><p>Walk along x-axis: \((1, 0) \to (0.5, 0) \to (0.1, 0) \to (0, 0)\)</p>
+</li>
+<li><p>Now you&#39;re stuck&#33; To reach \((0, 1)\), you&#39;d have to move to \((0, 0.1)\), but that would temporarily take you through a point like \((0.001, 0.001)\) which has \(\|\theta\|_0 = 2\) &#40;violates the constraint&#33;&#41;</p>
+</li>
+</ol>
+<p>The x-axis and y-axis are <strong>separate islands</strong> connected only at the origin.</p>
+<h3 id="why_this_breaks_gradient_descent"><a href="#why_this_breaks_gradient_descent" class="header-anchor">Why This Breaks Gradient Descent</a></h3>
+<h4 id="youre_trapped_in_your_component"><a href="#youre_trapped_in_your_component" class="header-anchor"><ol>
+<li><p>You&#39;re Trapped in Your Component</p>
+</li>
+</ol>
+</a></h4>
+<p>If you initialize at \(\theta = (2, 0)\), gradient descent can only move you along the x-axis. You can reach \((1, 0)\), \((0, 0)\), \((-5, 0)\), but <strong>never</strong> \((0, 1)\) or \((1, 1)\).</p>
+<p>Think of it like being on an island with no bridges. Gradient descent can only walk on continuous ground - it can&#39;t jump across water.</p>
+<h4 id="ol_start2_different_initializations_completely_different_solutions"><a href="#ol_start2_different_initializations_completely_different_solutions" class="header-anchor"><ol start="2">
+<li><p>Different Initializations → Completely Different Solutions</p>
+</li>
+</ol>
+</a></h4>
+<p><strong>Yes, exactly&#33;</strong> Each initialization lands you in a different connected component, and you&#39;re stuck there:</p>
+<pre><code class="language-python"># 3 parameters, k&#61;1 constraint
+init_1 &#61; &#91;1.0, 0.0, 0.0&#93;  # stuck on θ₁-axis forever
+init_2 &#61; &#91;0.0, 1.0, 0.0&#93;  # stuck on θ₂-axis forever  
+init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
+<p>Each initialization explores a <strong>completely different subspace</strong> with no way to transition between them &#40;without violating the constraint&#41;.</p>
+<h4 id="ol_start3_contrast_with_non-convex_but_connected_sets"><a href="#ol_start3_contrast_with_non-convex_but_connected_sets" class="header-anchor"><ol start="3">
+<li><p>Contrast with Non-Convex but Connected Sets</p>
+</li>
+</ol>
+</a></h4>
+<p>This is fundamentally different from typical neural network optimization:</p>
+<p><strong>Neural network loss landscape</strong> &#40;non-convex but connected&#41;:</p>
+<pre><code class="language-julia">*peak*        *peak*
+   /      \      /      \
+  /   😊   \____/   😊   \
+ /   local      valley    \</code></pre>
+<p>You can walk from one local minimum to another through high-loss regions. They&#39;re in the <strong>same connected piece</strong>.</p>
+<p><strong>L0 constraint</strong> &#40;disconnected&#41;:</p>
+<pre><code class="language-julia">😊 island 1        😊 island 2        😊 island 3
+   &#40;θ₁-axis&#41;         &#40;θ₂-axis&#41;         &#40;θ₃-axis&#41;
+
+    🌊 ocean 🌊 ocean 🌊</code></pre>
+<p>You <strong>literally cannot</strong> walk from one island to another while staying in the feasible set.</p>
+<h3 id="how_many_components_are_there"><a href="#how_many_components_are_there" class="header-anchor">How Many Components Are There?</a></h3>
+<p>For \(\|\theta\|_0 \leq k\) in \(\mathbb{R}^n\), there are \(\sum_{i=0}^{k} \binom{n}{i}\) connected components&#33;</p>
+<ul>
+<li><p>For \(k=1, n=1000\): That&#39;s \(1 + 1000 = 1001\) separate components  </p>
+</li>
+<li><p>For \(k=2, n=1000\): That&#39;s \(1 + 1000 + \binom{1000}{2} = 500,501\) separate components&#33;</p>
+</li>
+</ul>
+<p>Each component corresponds to a different <strong>support pattern</strong> &#40;which subset of parameters is non-zero&#41;.</p>
+<h3 id="the_mathematical_definition"><a href="#the_mathematical_definition" class="header-anchor">The Mathematical Definition</a></h3>
+<p>A set \(S\) is <strong>disconnected</strong> if it can be written as \(S = A \cup B\) where:</p>
+<ul>
+<li><p>\(A\) and \(B\) are non-empty</p>
+</li>
+<li><p>\(A\) and \(B\) are open in \(S\) &#40;in the subspace topology&#41;</p>
+</li>
+<li><p>\(A \cap B = \emptyset\)</p>
+</li>
+</ul>
+<p>For the L0 constraint set, each &quot;axis&quot; or subspace is one such component.</p>
+<h3 id="why_the_convex_hull_is_different"><a href="#why_the_convex_hull_is_different" class="header-anchor">Why the Convex Hull Is Different</a></h3>
+<p>The <strong>convex hull</strong> of \(\mathcal{C}_k\) fills in all the space between these disconnected pieces:</p>
+<pre><code class="language-julia">L0 ball &#40;k&#61;1&#41;:        Convex hull &#40;L1 ball&#41;:
+    |                      /\
+    |                     /  \
+----&#43;----               /    \
+    |                  /  😊  \
+    |                 /________\
+&#40;disconnected&#41;         &#40;connected&#33;&#41;</code></pre>
+<p>The L1 ball is a <strong>diamond</strong> that&#39;s completely filled in - you can walk from any point to any other point along a straight line staying inside.</p>
+<h3 id="bottom_line"><a href="#bottom_line" class="header-anchor">Bottom Line</a></h3>
+<p>&quot;Disconnected&quot; means:</p>
+<ul>
+<li><p>✅ The feasible set breaks into separate islands</p>
+</li>
+<li><p>✅ Gradient descent traps you on whichever island you start on  </p>
+</li>
+<li><p>✅ Different initializations give fundamentally different solutions with no way to compare/transition between them</p>
+</li>
+<li><p>✅ There&#39;s no continuous optimization path that explores all possibilities</p>
+</li>
+</ul>
+<p>This is why L0 optimization requires either:</p>
+<ol>
+<li><p>Exhaustive search over all \(\binom{n}{k}\) components &#40;intractable&#33;&#41;</p>
+</li>
+<li><p>Smart relaxations like this paper&#39;s approach &#40;smooth the discrete structure&#41;</p>
+</li>
+</ol>
+<hr />
+<h2 id="the_big_idea"><a href="#the_big_idea" class="header-anchor">The Big Idea</a></h2>
+<p>This paper tackles a fundamental problem in deep learning: neural networks are <strong>massively overparametrized</strong>. They have way more weights than they actually need, which wastes computation and can lead to overfitting. The authors propose a clever way to automatically prune networks <em>during training</em> using <strong>L0 regularization</strong> - essentially penalizing the network for every non-zero parameter it uses.</p>
+<hr />
+<h2 id="why_l0_norm"><a href="#why_l0_norm" class="header-anchor">Why L0 Norm?</a></h2>
+<p>Think of different regularization techniques as penalties on parameters:</p>
+<ul>
+<li><p><strong>L2 &#40;weight decay&#41;</strong>: Shrinks large weights - encourages small values</p>
+</li>
+<li><p><strong>L1 &#40;Lasso&#41;</strong>: Also shrinks weights, can push some to zero</p>
+</li>
+<li><p><strong>L0</strong>: Simply counts non-zero parameters - no shrinkage, just sparsity&#33;</p>
+</li>
+</ul>
+<p>The L0 norm is defined as:</p>
+\[\|\theta\|_0 = \sum_{j=1}^{|\theta|} \mathbb{I}[\theta_j \neq 0]\]
+<p>It&#39;s the &quot;ideal&quot; sparsity penalty because it directly counts how many parameters you&#39;re using, without caring about their actual values. Famous model selection criteria like AIC and BIC are actually special cases of L0 regularization&#33;</p>
+<hr />
+<h2 id="the_problem"><a href="#the_problem" class="header-anchor">The Problem</a></h2>
+<p>Here&#39;s the catch: the L0 norm is <strong>non-differentiable</strong> and <strong>combinatorial</strong>. With \(|\theta|\) parameters, there are \(2^{|\theta|}\) possible on/off configurations to consider. You can&#39;t just throw gradient descent at it&#33;</p>
+<h3 id="why_is_l0_non-differentiable"><a href="#why_is_l0_non-differentiable" class="header-anchor">Why is L0 Non-Differentiable?</a></h3>
+<p>The L0 norm uses the indicator function \(\mathbb{I}[\theta_j \neq 0]\):</p>
+\(\mathbb{I}[\theta_j \neq 0] = \begin{cases} 1 & \text{if } \theta_j \neq 0 \\ 0 & \text{if } \theta_j = 0 \end{cases}\)
+<p>Let&#39;s try to compute the gradient:</p>
+\(\frac{\partial}{\partial \theta_j} \mathbb{I}[\theta_j \neq 0] = \, ?\)
+<p><strong>At \(\theta_j \neq 0\):</strong> The function equals 1 &#40;constant&#41;, so the derivative is 0.</p>
+<p><strong>At \(\theta_j = 0\):</strong> The function has a discontinuous jump from 0 to 1. The derivative is undefined&#33;</p>
+<p><strong>The gradient is almost everywhere zero</strong>, which means gradient descent gets no signal about which direction to move parameters. Even worse, when you&#39;re exactly at zero, the gradient doesn&#39;t exist at all&#33;</p>
+<h3 id="the_combinatorial_explosion"><a href="#the_combinatorial_explosion" class="header-anchor">The Combinatorial Explosion</a></h3>
+<p>Even if we could handle the non-differentiability, there&#39;s a deeper problem. The L0 penalty creates a <strong>discrete optimization landscape</strong>:</p>
+<ul>
+<li><p>Each parameter can be either &quot;on&quot; &#40;\(\theta_j \neq 0\)&#41; or &quot;off&quot; &#40;\(\theta_j = 0\)&#41;</p>
+</li>
+<li><p>With \(n\) parameters, there are \(2^n\) possible configurations</p>
+</li>
+<li><p>For a small network with 10,000 parameters: \(2^{10000} \approx 10^{3010}\) configurations&#33;</p>
+</li>
+</ul>
+<p>This is fundamentally a <strong>combinatorial search problem</strong> &#40;like the knapsack problem or subset selection&#41;, which is NP-hard. You can&#39;t smoothly &quot;walk&quot; from one configuration to another - you have to make discrete jumps.</p>
+<p><strong>Gradient descent fails because:</strong></p>
+<ol>
+<li><p>The gradient provides no information &#40;it&#39;s zero almost everywhere&#41;</p>
+</li>
+<li><p>The search space is discrete, not continuous</p>
+</li>
+<li><p>Local changes in parameters don&#39;t smoothly affect the objective</p>
+</li>
+</ol>
+<h3 id="mathematical_formalization"><a href="#mathematical_formalization" class="header-anchor">Mathematical Formalization</a></h3>
+<p>The L0 minimization problem can be written as:</p>
+\(\min_{\theta \in \mathbb{R}^n} f(\theta) + \lambda \|\theta\|_0 \quad \Leftrightarrow \quad \min_{S \subseteq \{1,\ldots,n\}} \min_{\theta_S \in \mathbb{R}^{|S|}} f(\theta_S) + \lambda|S|\)
+<p>where \(S\) is the <strong>support set</strong> &#40;indices of non-zero parameters&#41; and \(\theta_S\) are parameters indexed by \(S\).</p>
+<p>This is the <strong>best subset selection problem</strong>, proven NP-hard by:</p>
+<ul>
+<li><p><strong>Natarajan &#40;1995&#41;</strong>: Showed sparse approximation is NP-hard</p>
+</li>
+<li><p><strong>Davis et al. &#40;1997&#41;</strong>: Proved subset selection is NP-hard even for convex loss functions</p>
+</li>
+</ul>
+<p><strong>Key theoretical results:</strong></p>
+<ol>
+<li><p><strong>Computational complexity</strong>: Even finding a \(\rho\)-approximation &#40;within factor \(\rho\) of optimal&#41; is NP-hard for any \(\rho < 2\) &#40;Arora et al., 1998&#41;</p>
+</li>
+<li><p><strong>Non-convexity</strong>: The constraint set \(\{\theta : \|\theta\|_0 \leq k\}\) is <strong>non-convex</strong> and <strong>disconnected</strong>:</p>
+<ul>
+<li><p>Convex hull is \(\{\theta : \|\theta\|_1 \leq \sqrt{k}\|\theta\|_2\}\) &#40;different geometry&#33;&#41;</p>
+</li>
+<li><p>No continuous path between feasible points through feasible region</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Lipschitz continuity fails</strong>: For any \(\theta\) with \(\|\theta\|_0 = k\): \(\lim_{\epsilon \to 0^+} \|\theta + \epsilon e_j\|_0 = k+1 \neq k\) where \(e_j\) is a standard basis vector with \(\theta_j = 0\). The function &quot;jumps&quot; discontinuously.</p>
+</li>
+<li><p><strong>Subdifferential is uninformative</strong>: The subdifferential of \(\|\theta\|_0\) at \(\theta\) is: \(\partial \|\theta\|_0 = \begin{cases} \{0\} & \text{if } \theta_j \neq 0 \\ [-\infty, \infty] & \text{if } \theta_j = 0 \end{cases}\) When \(\theta_j = 0\), any direction is a valid subgradient&#33;</p>
+</li>
+</ol>
+<hr />
+<h2 id="the_solution_stochastic_gates"><a href="#the_solution_stochastic_gates" class="header-anchor">The Solution: Stochastic Gates</a></h2>
+<p>The authors&#39; clever trick involves introducing &quot;gate&quot; variables:</p>
+\[\theta_j = \tilde{\theta}_j \cdot z_j, \quad z_j \in \{0, 1\}\]
+<p>Each parameter \(\tilde{\theta}_j\) has a binary gate \(z_j\) that decides whether it&#39;s &quot;on&quot; &#40;1&#41; or &quot;off&quot; &#40;0&#41;. The network then optimizes:</p>
+\[R(\tilde{\theta}, \pi) = \mathbb{E}_{q(z|\pi)}\left[\frac{1}{N}\sum_{i=1}^N \mathcal{L}(h(x_i; \tilde{\theta} \odot z), y_i)\right] + \lambda \sum_{j=1}^{|\theta|} \pi_j\]
+<p>where \(q(z_j|\pi_j) = \text{Bernoulli}(\pi_j)\).</p>
+<p>But wait - we still can&#39;t differentiate through discrete binary gates&#33;</p>
+<hr />
+<h2 id="the_hard_concrete_distribution"><a href="#the_hard_concrete_distribution" class="header-anchor">The Hard Concrete Distribution</a></h2>
+<p>Here&#39;s where things get really clever. Instead of discrete gates, they use <strong>continuous random variables</strong> passed through a hard-sigmoid:</p>
+<ol>
+<li><p>Sample \(s \sim q(s|\phi)\) from a continuous distribution</p>
+</li>
+<li><p>Apply hard-sigmoid: \(z = \min(1, \max(0, s))\)</p>
+</li>
+<li><p>This allows \(z\) to be exactly 0 or 1, while still being differentiable w.r.t. \(\phi\)&#33;</p>
+</li>
+</ol>
+<p>The <strong>hard concrete distribution</strong> is created by:</p>
+<ul>
+<li><p>Starting with a binary concrete distribution &#40;a smooth approximation of Bernoulli&#41;</p>
+</li>
+<li><p>&quot;Stretching&quot; it from \((0,1)\) to \((\gamma, \zeta)\) where \(\gamma < 0\) and \(\zeta > 1\)</p>
+</li>
+<li><p>Applying the hard-sigmoid rectification</p>
+</li>
+</ul>
+<p>The sampling procedure is:</p>
+\[u \sim U(0,1)\]
+\[s = \text{Sigmoid}(\log u - \log(1-u) + \log \alpha)/\beta\]
+\[\bar{s} = s(\zeta - \gamma) + \gamma\]
+\[z = \min(1, \max(0, \bar{s}))\]
+<p>The probability of a gate being active is:</p>
+\[q(z \neq 0|\phi) = 1 - Q(s \leq 0|\phi)\]
+<p>This can be computed in closed form and differentiated&#33;</p>
+<hr />
+<h2 id="why_this_works"><a href="#why_this_works" class="header-anchor">Why This Works</a></h2>
+<p>The hard concrete distribution has some really nice properties:</p>
+<ul>
+<li><p><strong>Exact zeros and ones</strong>: Unlike softmax relaxations, you actually get sparse parameters during training</p>
+</li>
+<li><p><strong>Differentiable</strong>: The continuous part allows gradient-based optimization</p>
+</li>
+<li><p><strong>Bimodal</strong>: Like a Bernoulli, it concentrates mass at the endpoints &#40;0 and 1&#41;</p>
+</li>
+<li><p><strong>Conditional computation</strong>: Zero parameters don&#39;t need to be computed, enabling training speedups</p>
+</li>
+</ul>
+<hr />
+<h2 id="results"><a href="#results" class="header-anchor">Results</a></h2>
+<h3 id="mnist"><a href="#mnist" class="header-anchor">MNIST</a></h3>
+<p>On simple networks &#40;MLP and LeNet-5&#41;, the method achieved:</p>
+<ul>
+<li><p>Competitive or better accuracy compared to other pruning methods</p>
+</li>
+<li><p>Significant compression &#40;e.g., LeNet: 20-50-800-500 → 20-25-45-462&#41;</p>
+</li>
+<li><p>Expected FLOPs reduction during training</p>
+</li>
+</ul>
+<h3 id="cifar-10100_wide_resnets"><a href="#cifar-10100_wide_resnets" class="header-anchor">CIFAR-10/100 &#40;Wide ResNets&#41;</a></h3>
+<p>On modern architectures:</p>
+<ul>
+<li><p><strong>Better accuracy</strong> than dropout baseline &#40;3.83&#37; vs 3.89&#37; on CIFAR-10&#41;</p>
+</li>
+<li><p><strong>Faster training</strong> through reduced FLOPs</p>
+</li>
+<li><p>Automatic learning of which neurons to keep</p>
+</li>
+</ul>
+<hr />
+<h2 id="key_advantages"><a href="#key_advantages" class="header-anchor">Key Advantages</a></h2>
+<ol>
+<li><p><strong>Trains sparse networks from scratch</strong> - no need to train a dense network first</p>
+</li>
+<li><p><strong>Principled regularization</strong> - direct connection to Bayesian inference with spike-and-slab priors</p>
+</li>
+<li><p><strong>Computational savings during training</strong> - not just at inference time</p>
+</li>
+<li><p><strong>Simple to implement</strong> - just add gates and optimize their parameters</p>
+</li>
+<li><p><strong>Group sparsity</strong> - can easily do neuron or filter pruning by sharing gates</p>
+</li>
+</ol>
+<hr />
+<h2 id="the_math_connection"><a href="#the_math_connection" class="header-anchor">The Math Connection</a></h2>
+<p>There&#39;s a beautiful theoretical connection: this approach is actually performing <strong>variational inference</strong> with spike-and-slab priors&#33; The L0 penalty emerges naturally from:</p>
+\[p(z) = \text{Bernoulli}(\pi), \quad p(\theta|z=0) = \delta(\theta), \quad p(\theta|z=1) = \mathcal{N}(\theta|0, 1)\]
+<p>The method optimizes a variational lower bound where \(\lambda\) represents the &quot;code cost&quot; - the amount of information each parameter encodes about the data.</p>
+<hr />
+<h2 id="practical_details"><a href="#practical_details" class="header-anchor">Practical Details</a></h2>
+<ul>
+<li><p>Used \(\gamma = -0.1\), \(\zeta = 1.1\), \(\beta = 2/3\)</p>
+</li>
+<li><p>Initialized \(\log \alpha\) to match original dropout rates</p>
+</li>
+<li><p>Single sample per minibatch &#40;low variance, practical speedup&#41;</p>
+</li>
+<li><p>Can be combined with L2 regularization naturally</p>
+</li>
+<li><p>Group sparsity by sharing gates across neuron/filter groups</p>
+</li>
+</ul>
+<hr />
+<h2 id="limitations_and_criticisms"><a href="#limitations_and_criticisms" class="header-anchor">Limitations and Criticisms</a></h2>
+<p>While this paper presents an elegant solution, it has several important limitations:</p>
+<h3 id="gap_between_theory_and_practice_actual_speedup"><a href="#gap_between_theory_and_practice_actual_speedup" class="header-anchor"><ol>
+<li><p><strong>Gap Between Theory and Practice: Actual Speedup</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>The big caveat</strong>: The paper shows <em>expected</em> FLOPs reduction and <em>theoretical</em> speedup, but:</p>
+<ul>
+<li><p>They only use <strong>single samples</strong> of gates per minibatch</p>
+</li>
+<li><p>Actual hardware &#40;GPUs&#41; doesn&#39;t automatically speed up from having zeros - you need <strong>structured sparsity</strong></p>
+</li>
+<li><p>Modern hardware is optimized for dense operations; sparse operations can actually be <em>slower</em> due to irregular memory access patterns</p>
+</li>
+<li><p>The paper doesn&#39;t provide <strong>wall-clock time</strong> measurements, only theoretical FLOP counts</p>
+</li>
+</ul>
+<p><strong>Reality check</strong>: Unless you explicitly implement conditional computation &#40;which they don&#39;t&#41;, training a network with stochastic gates can be <em>slower</em> than dense training due to sampling overhead.</p>
+<h3 id="ol_start2_gradient_variance_from_single_samples"><a href="#ol_start2_gradient_variance_from_single_samples" class="header-anchor"><ol start="2">
+<li><p><strong>Gradient Variance from Single Samples</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The paper uses only <strong>one sample</strong> of \(z\) per minibatch for &quot;practical speedup&quot;:</p>
+<ul>
+<li><p>This introduces high variance in gradients</p>
+</li>
+<li><p>Can lead to unstable training, especially early on</p>
+</li>
+<li><p>The authors claim &quot;this should not pose an issue&quot; but provide limited empirical validation</p>
+</li>
+<li><p>Most variance reduction techniques &#40;multiple samples, control variates&#41; would eliminate the speedup benefit</p>
+</li>
+</ul>
+<h3 id="ol_start3_hyperparameter_sensitivity"><a href="#ol_start3_hyperparameter_sensitivity" class="header-anchor"><ol start="3">
+<li><p><strong>Hyperparameter Sensitivity</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The method introduces several hyperparameters:</p>
+<ul>
+<li><p>\(\lambda\): regularization strength &#40;most critical&#41;</p>
+</li>
+<li><p>\(\gamma, \zeta\): stretching parameters for hard concrete &#40;-0.1, 1.1&#41;</p>
+</li>
+<li><p>\(\beta\): temperature &#40;2/3&#41;</p>
+</li>
+<li><p>Initialization of \(\log \alpha\)</p>
+</li>
+</ul>
+<p><strong>Issues</strong>:</p>
+<ul>
+<li><p>\(\lambda\) needs careful tuning and often requires <strong>different values per layer</strong> &#40;as shown in their &quot;λ sep.&quot; experiments&#41;</p>
+</li>
+<li><p>The &quot;right&quot; \(\lambda\) depends on dataset size, architecture, task</p>
+</li>
+<li><p>No principled way to set \(\lambda\) a priori</p>
+</li>
+</ul>
+<h3 id="ol_start4_limited_comparison_with_concurrent_methods"><a href="#ol_start4_limited_comparison_with_concurrent_methods" class="header-anchor"><ol start="4">
+<li><p><strong>Limited Comparison with Concurrent Methods</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The paper compares mainly with:</p>
+<ul>
+<li><p>Magnitude pruning &#40;Han et al., 2015&#41;</p>
+</li>
+<li><p>Bayesian methods &#40;Louizos et al., 2017; Molchanov et al., 2017&#41;</p>
+</li>
+</ul>
+<p><strong>Missing comparisons</strong>:</p>
+<ul>
+<li><p>Lottery ticket hypothesis &#40;Frankle &amp; Carbin, 2019&#41; - can you find winning tickets with L0?</p>
+</li>
+<li><p>Modern pruning methods &#40;magnitude pruning during training&#41;</p>
+</li>
+<li><p>Knowledge distillation approaches</p>
+</li>
+<li><p>Quantization-aware training</p>
+</li>
+</ul>
+<h3 id="ol_start5_sparsity_pattern_may_not_be_optimal"><a href="#ol_start5_sparsity_pattern_may_not_be_optimal" class="header-anchor"><ol start="5">
+<li><p><strong>Sparsity Pattern May Not Be Optimal</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The method learns <em>which</em> parameters to prune, but:</p>
+<ul>
+<li><p>No guarantee this is the globally optimal sparsity pattern</p>
+</li>
+<li><p>Different random seeds give different sparsity patterns</p>
+</li>
+<li><p>The learned pattern depends heavily on initialization</p>
+</li>
+<li><p>Post-hoc pruning methods can sometimes find better patterns by training dense first</p>
+</li>
+</ul>
+<h3 id="ol_start6_group_sparsity_trade-offs"><a href="#ol_start6_group_sparsity_trade-offs" class="header-anchor"><ol start="6">
+<li><p><strong>Group Sparsity Trade-offs</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>While neuron/filter sparsity enables actual speedup, it&#39;s <strong>less flexible</strong> than weight sparsity:</p>
+<ul>
+<li><p>Removes entire features/neurons, which may be too coarse-grained</p>
+</li>
+<li><p>Weight-level sparsity can achieve higher compression rates</p>
+</li>
+<li><p>The paper doesn&#39;t explore more fine-grained structured sparsity &#40;e.g., block sparsity, channel pruning patterns&#41;</p>
+</li>
+</ul>
+<h3 id="ol_start7_training_instability_at_high_sparsity"><a href="#ol_start7_training_instability_at_high_sparsity" class="header-anchor"><ol start="7">
+<li><p><strong>Training Instability at High Sparsity</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The paper doesn&#39;t deeply explore:</p>
+<ul>
+<li><p>What happens with very high \(\lambda\) &#40;90&#37;&#43; sparsity&#41;?</p>
+</li>
+<li><p>Training dynamics when many gates close early</p>
+</li>
+<li><p>Whether the network can &quot;recover&quot; if it prunes important features too early</p>
+</li>
+<li><p>The gates are stochastic during training but deterministic at test time - this train/test mismatch isn&#39;t fully analyzed</p>
+</li>
+</ul>
+<h3 id="ol_start8_bayesian_interpretation_is_approximate"><a href="#ol_start8_bayesian_interpretation_is_approximate" class="header-anchor"><ol start="8">
+<li><p><strong>Bayesian Interpretation Is Approximate</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The connection to spike-and-slab priors &#40;Appendix A&#41; makes strong approximations:</p>
+<ul>
+<li><p>Assumes fixed &quot;code cost&quot; \(\lambda\) for all parameters</p>
+</li>
+<li><p>Optimizes rather than integrates over \(\theta\)</p>
+</li>
+<li><p>The variational bound is loose</p>
+</li>
+<li><p>Not a true Bayesian treatment &#40;despite the framing&#41;</p>
+</li>
+</ul>
+<h3 id="ol_start9_limited_analysis_of_what_gets_pruned"><a href="#ol_start9_limited_analysis_of_what_gets_pruned" class="header-anchor"><ol start="9">
+<li><p><strong>Limited Analysis of What Gets Pruned</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The paper shows <em>how much</em> gets pruned but limited analysis of:</p>
+<ul>
+<li><p><em>What</em> gets pruned &#40;which features/patterns?&#41;</p>
+</li>
+<li><p>Are the learned sparse networks interpretable?</p>
+</li>
+<li><p>Do different runs learn similar sparsity patterns?</p>
+</li>
+<li><p>Sensitivity analysis of pruned vs. kept parameters</p>
+</li>
+</ul>
+<h3 id="ol_start10_scalability_questions"><a href="#ol_start10_scalability_questions" class="header-anchor"><ol start="10">
+<li><p><strong>Scalability Questions</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>While tested on WideResNets, questions remain:</p>
+<ul>
+<li><p>Does it scale to very large models &#40;BERT, GPT-scale&#41;?</p>
+</li>
+<li><p>How does it interact with other modern techniques &#40;BatchNorm, LayerNorm, residual connections&#41;?</p>
+</li>
+<li><p>Performance on other domains &#40;NLP, RL&#41;?</p>
+</li>
+</ul>
+<h3 id="ol_start11_hard-sigmoid_may_be_suboptimal"><a href="#ol_start11_hard-sigmoid_may_be_suboptimal" class="header-anchor"><ol start="11">
+<li><p><strong>Hard-Sigmoid May Be Suboptimal</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The hard-sigmoid rectification \(z = \min(1, \max(0, \bar{s}))\):</p>
+<ul>
+<li><p>Creates sparse gradients &#40;zero gradient when \(\bar{s} < 0\) or \(\bar{s} > 1\)&#41;</p>
+</li>
+<li><p>May lead to &quot;dead gates&quot; that never recover</p>
+</li>
+<li><p>The clipping at 1 may be unnecessary &#40;they could use \(\max(0, \bar{s})\) only&#41;</p>
+</li>
+</ul>
+<h3 id="what_follow-up_work_addressed"><a href="#what_follow-up_work_addressed" class="header-anchor">What Follow-Up Work Addressed</a></h3>
+<p>Several papers have since improved on these limitations:</p>
+<ul>
+<li><p><strong>DiffRNN &#40;Kuchaiev &amp; Ginsburg, 2017&#41;</strong>: Better hardware-aware sparsity</p>
+</li>
+<li><p><strong>Movement Pruning &#40;Sanh et al., 2020&#41;</strong>: Pruning based on weight movement during training</p>
+</li>
+<li><p><strong>Lottery Ticket Hypothesis &#40;Frankle &amp; Carbin, 2019&#41;</strong>: Shows dense training then pruning can work better</p>
+</li>
+<li><p><strong>Soft threshold reparameterization &#40;Kusupati et al., 2020&#41;</strong>: Alternative differentiable sparsity methods</p>
+</li>
+</ul>
+<hr />
+<h2 id="has_this_work_been_superseded_by_the_lottery_ticket_hypothesis"><a href="#has_this_work_been_superseded_by_the_lottery_ticket_hypothesis" class="header-anchor">Has This Work Been Superseded by the Lottery Ticket Hypothesis?</a></h2>
+<p><strong>Short answer: No, but they address different problems with different philosophies.</strong></p>
+<h3 id="the_lottery_ticket_hypothesis_frankle_carbin_2019"><a href="#the_lottery_ticket_hypothesis_frankle_carbin_2019" class="header-anchor">The Lottery Ticket Hypothesis &#40;Frankle &amp; Carbin, 2019&#41;</a></h3>
+<p><strong>Core claim</strong>: Dense networks contain sparse &quot;winning ticket&quot; subnetworks that, when trained in isolation <em>from the same initialization</em>, can match the full network&#39;s performance.</p>
+<p><strong>Method</strong>:</p>
+<ol>
+<li><p>Train dense network to completion</p>
+</li>
+<li><p>Prune smallest-magnitude weights</p>
+</li>
+<li><p><strong>Rewind</strong> to original initialization</p>
+</li>
+<li><p>Retrain the sparse network from that initialization</p>
+</li>
+</ol>
+<p><strong>Key insight</strong>: It&#39;s not just about <em>which</em> weights to keep, but also <em>how they&#39;re initialized</em>.</p>
+<h3 id="fundamental_differences"><a href="#fundamental_differences" class="header-anchor">Fundamental Differences</a></h3>
+<table><tr><th align="right">Aspect</th><th align="right">L0 Regularization &#40;This Paper&#41;</th><th align="right">Lottery Tickets</th></tr><tr><td align="right"><strong>Philosophy</strong></td><td align="right">Learn sparsity <em>during</em> training</td><td align="right">Find sparsity <em>after</em> training, then retrain</td></tr><tr><td align="right"><strong>Training cost</strong></td><td align="right">Single training run</td><td align="right">Train → prune → retrain &#40;often iteratively&#41;</td></tr><tr><td align="right"><strong>Initialization</strong></td><td align="right">Standard initialization</td><td align="right">Requires preserving &quot;winning&quot; initialization</td></tr><tr><td align="right"><strong>Mechanism</strong></td><td align="right">Continuous relaxation &#43; gates</td><td align="right">Magnitude pruning &#43; rewinding</td></tr><tr><td align="right"><strong>Sparsity decision</strong></td><td align="right">Learned via gradient descent</td><td align="right">Heuristic &#40;magnitude-based&#41;</td></tr><tr><td align="right"><strong>Theoretical grounding</strong></td><td align="right">Variational inference, L0 penalty</td><td align="right">Empirical observation</td></tr></table>
+<h3 id="why_theyre_complementary_not_competing"><a href="#why_theyre_complementary_not_competing" class="header-anchor">Why They&#39;re Complementary, Not Competing</a></h3>
+<p><strong>L0 Regularization strengths</strong>:</p>
+<ul>
+<li><p>✅ <strong>Single training run</strong> - more efficient if it works</p>
+</li>
+<li><p>✅ <strong>Principled</strong> - directly optimizes for sparsity</p>
+</li>
+<li><p>✅ <strong>Differentiable</strong> - can combine with other objectives</p>
+</li>
+<li><p>✅ <strong>During-training benefits</strong> - theoretical speedup while training</p>
+</li>
+</ul>
+<p><strong>Lottery Ticket strengths</strong>:</p>
+<ul>
+<li><p>✅ <strong>Empirically robust</strong> - works across many architectures/tasks</p>
+</li>
+<li><p>✅ <strong>Simple</strong> - easy to implement &#40;no new distributions or gates&#41;</p>
+</li>
+<li><p>✅ <strong>Better final performance</strong> - often achieves higher accuracy at same sparsity</p>
+</li>
+<li><p>✅ <strong>Transferable insights</strong> - reveals importance of initialization</p>
+</li>
+</ul>
+<h3 id="the_key_question_which_approach_works_better"><a href="#the_key_question_which_approach_works_better" class="header-anchor">The Key Question: Which Approach Works Better?</a></h3>
+<p><strong>Empirically, Lottery Tickets often win</strong> in terms of:</p>
+<ul>
+<li><p>Final accuracy at high sparsity levels &#40;80-95&#37;&#41;</p>
+</li>
+<li><p>Simplicity and reproducibility</p>
+</li>
+<li><p>Breadth of applications</p>
+</li>
+</ul>
+<p><strong>But there&#39;s a cost</strong>:</p>
+<ul>
+<li><p>Need to train the full dense network first &#40;expensive&#33;&#41;</p>
+</li>
+<li><p>Iterative pruning requires multiple full training runs</p>
+</li>
+<li><p>Total compute can be 5-10x a single dense training run</p>
+</li>
+</ul>
+<p><strong>L0 Regularization is better when</strong>:</p>
+<ul>
+<li><p>You want a single training run</p>
+</li>
+<li><p>You need dynamic sparsity during training</p>
+</li>
+<li><p>You want to combine sparsity with other learned objectives</p>
+</li>
+<li><p>You need a differentiable sparsity mechanism</p>
+</li>
+</ul>
+<h3 id="the_current_landscape_2025_perspective"><a href="#the_current_landscape_2025_perspective" class="header-anchor">The Current Landscape &#40;2025 perspective&#41;</a></h3>
+<p>Neither has &quot;won&quot; - both philosophies continue in modern work:</p>
+<p><strong>Lottery Ticket descendants</strong>:</p>
+<ul>
+<li><p><strong>Pruning at initialization</strong> &#40;Lee et al., 2019&#41; - can we find tickets without training?</p>
+</li>
+<li><p><strong>Early bird tickets</strong> &#40;You et al., 2020&#41; - find tickets much earlier in training</p>
+</li>
+<li><p><strong>Supermasks</strong> &#40;Zhou et al., 2019&#41; - learn which weights to keep without training them</p>
+</li>
+</ul>
+<p><strong>L0/Differentiable sparsity descendants</strong>:</p>
+<ul>
+<li><p><strong>STR &#40;Soft Threshold Reparameterization&#41;</strong> &#40;Kusupati et al., 2020&#41;</p>
+</li>
+<li><p><strong>Learned gradient sparsity</strong> &#40;Evci et al., 2020&#41;</p>
+</li>
+<li><p><strong>Dynamic sparse training</strong> &#40;Mocanu et al., 2018&#41;</p>
+</li>
+</ul>
+<p><strong>Hybrid approaches</strong>:</p>
+<ul>
+<li><p>Can you use L0 regularization to <em>find</em> lottery tickets faster?</p>
+</li>
+<li><p>Can you use lottery ticket initialization with differentiable sparsity?</p>
+</li>
+</ul>
+<h3 id="my_take"><a href="#my_take" class="header-anchor">My Take</a></h3>
+<p>The Lottery Ticket Hypothesis <strong>shifted the paradigm</strong> by showing:</p>
+<ol>
+<li><p>Dense training has value &#40;finds good initialization&#41;</p>
+</li>
+<li><p>The initialization matters as much as the final weights</p>
+</li>
+<li><p>Simple magnitude pruning is surprisingly effective</p>
+</li>
+</ol>
+<p>But it <strong>didn&#39;t make L0 regularization obsolete</strong> because:</p>
+<ol>
+<li><p>L0 is fundamentally about <em>learning</em> the sparsity pattern via gradient descent</p>
+</li>
+<li><p>Single-pass training is still valuable for efficiency</p>
+</li>
+<li><p>Differentiable sparsity enables things magnitude pruning can&#39;t &#40;e.g., NAS, multi-objective optimization&#41;</p>
+</li>
+</ol>
+<p><strong>Think of it this way</strong>: Lottery Tickets showed that the &quot;find sparse networks during training&quot; problem might be approached backwards - train dense, then find the sparse network that was hiding inside. L0 regularization tried to learn the sparse network directly. Both perspectives have merit, and modern work often blends ideas from both.</p>
+<h2 id="bottom_line__2"><a href="#bottom_line__2" class="header-anchor">Bottom Line</a></h2>
+<p>This paper presents an elegant solution to neural network sparsification by making the intractable L0 norm optimization tractable through continuous relaxation. The hard concrete distribution provides the best of both worlds: exact sparsity and differentiable optimization. The method not only compresses networks but actually improves generalization and enables faster training - a rare win-win-win&#33;</p>
+<p><strong>However</strong>, the gap between theoretical speedup and practical implementation, hyperparameter sensitivity, and limited large-scale validation are important caveats. The paper opened an important research direction, but practical deployment requires careful engineering and tuning.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 11, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

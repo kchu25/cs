@@ -44,7 +44,7 @@ where:
 ### 1. **The Genomics Context Multiplier**
 In genomics screening:
 - **Interpretability premium is extreme**: Which genes/variants matter? Sparse models directly answer this
-- **Downstream validation cost**: Testing 10 genes vs 10,000 genes in wet lab = $10K vs $1M+
+- **Downstream validation cost**: Testing 10 genes vs 10,000 genes in wet lab = \$10K vs \$1M+
 - **Biological plausibility**: Most phenotypes are driven by sparse regulatory networks anyway
 - R² = 0.45 is **already capturing most signal** in high-dimensional genomics (compare to typical R² = 0.1-0.3 for complex traits)
 
@@ -98,7 +98,7 @@ Benefit of R² = 0.50 vs 0.45:
 ## When Sparsity Would NOT Be Worth It
 
 Counter-examples where you'd keep density:
-1. **Production ML systems** where 0.01 AUC = $10M revenue (ads, fraud)
+1. **Production ML systems** where 0.01 AUC = \$10M revenue (ads, fraud)
 2. **Safety-critical applications** (autonomous vehicles, medical diagnosis)
 3. **Data is cheap, abundant** ($n >> p$, no interpretability need)
 4. **The sparse solution is unstable** (changes wildly with data splits)

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Introduction to Diffusion Models</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="introduction_to_diffusion_models"><a href="#introduction_to_diffusion_models" class="header-anchor">Introduction to Diffusion Models</a></h1>
+<h2 id="the_core_idea"><a href="#the_core_idea" class="header-anchor">The Core Idea</a></h2>
+<p>Diffusion models are built on a beautifully simple insight: <strong>it&#39;s easier to gradually destroy structure than to create it directly</strong>. So we learn to reverse the destruction process.</p>
+<p>Think of it this way: if I asked you to generate a realistic image from scratch, that&#39;s hard. But if I showed you a slightly noisy image and asked you to denoise it one step, that&#39;s much more tractable. Diffusion models exploit this asymmetry by learning to iteratively denoise.</p>
+<h2 id="the_forward_process_destruction"><a href="#the_forward_process_destruction" class="header-anchor">The Forward Process &#40;Destruction&#41;</a></h2>
+<p>We start with data \(\mathbf{x}_0 \sim q(\mathbf{x}_0)\) and gradually add Gaussian noise over \(T\) timesteps:</p>
+<blockquote>
+<p><strong>Notation note</strong>: \(q(\mathbf{x}_0)\) is the <em>data distribution</em> &#40;e.g., distribution of natural images&#41;. The \(\mathbf{x}_0\) in parentheses just indicates &quot;this is a distribution over the variable \(\mathbf{x}_0\)&quot;—it&#39;s not a parameter. When we write \(q(\mathbf{x}_t | \mathbf{x}_{t-1})\), the part after the bar is the actual conditioning/parameter.</p>
+</blockquote>
+\(q(\mathbf{x}_t | \mathbf{x}_{t-1}) = \mathcal{N}(\mathbf{x}_t; \sqrt{1-\beta_t}\mathbf{x}_{t-1}, \beta_t\mathbf{I})\)
+<p>where \(\{\beta_t\}_{t=1}^T\) is a variance schedule with \(\beta_t \in (0,1)\).</p>
+<blockquote>
+<p><strong>Variance schedule</strong>: The sequence \(\{\beta_1, \beta_2, \ldots, \beta_T\}\) controls how much noise we add at each step. It&#39;s called a &quot;schedule&quot; because we&#39;re scheduling the noise levels over time. Common choices: linear schedule &#40;\(\beta_t\) increases linearly from \(\beta_1 = 10^{-4}\) to \(\beta_T = 0.02\)&#41;, or cosine schedule &#40;smoother, often works better&#41;. Small \(\beta_t\) means we add a little noise; large \(\beta_t\) means we add a lot. The schedule is typically designed so that \(\mathbf{x}_T \approx \mathcal{N}(0, \mathbf{I})\) &#40;pure noise&#41;.</p>
+</blockquote>
+<h3 id="the_direct_sampling_trick"><a href="#the_direct_sampling_trick" class="header-anchor">The Direct Sampling Trick</a></h3>
+<p>Here&#39;s the magic: thanks to the reparameterization trick and properties of Gaussians, we can jump to <em>any</em> timestep directly without iterating through all intermediate steps.</p>
+<p>Why? Because adding Gaussian noise sequentially is just adding independent Gaussians, and the sum of independent Gaussians is itself Gaussian. Let&#39;s see how this works step by step:</p>
+<p><strong>Important relationship:</strong> We define \(\alpha_t = 1 - \beta_t\) for convenience. This means:</p>
+<ul>
+<li><p>If \(\beta_t\) is small &#40;little noise added&#41;, then \(\alpha_t \approx 1\) &#40;signal mostly preserved&#41;</p>
+</li>
+<li><p>If \(\beta_t\) is large &#40;lots of noise added&#41;, then \(\alpha_t\) is small &#40;signal heavily corrupted&#41;</p>
+</li>
+<li><p>Since \(\beta_t \in (0,1)\), we always have \(\alpha_t \in (0,1)\) as well</p>
+</li>
+</ul>
+<p><strong>Why the square roots?</strong> You might wonder why we write \(\sqrt{\alpha_t}\mathbf{x}_{t-1}\) instead of just \(\alpha_t\mathbf{x}_{t-1}\). This is crucial for variance preservation. Here&#39;s the mathematical reasoning:</p>
+<p>Starting with the forward step: \(\mathbf{x}_t = \sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{\beta_t}\boldsymbol{\epsilon}\) where \(\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathbf{I})\)</p>
+<p>We compute the variance of \(\mathbf{x}_t\):</p>
+\(\text{Var}(\mathbf{x}_t) = \text{Var}(\sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{\beta_t}\boldsymbol{\epsilon})\)
+<p>Using the property that for independent random variables \(X\) and \(Y\): \(\text{Var}(aX + bY) = a^2\text{Var}(X) + b^2\text{Var}(Y)\)</p>
+\(\text{Var}(\mathbf{x}_t) = (\sqrt{\alpha_t})^2 \text{Var}(\mathbf{x}_{t-1}) + (\sqrt{\beta_t})^2 \text{Var}(\boldsymbol{\epsilon})\)
+\(= \alpha_t \cdot \text{Var}(\mathbf{x}_{t-1}) + \beta_t \cdot \text{Var}(\boldsymbol{\epsilon})\)
+<p>Now, if we normalize our data so that \(\text{Var}(\mathbf{x}_0) = 1\) initially, and note that \(\text{Var}(\boldsymbol{\epsilon}) = 1\) by definition:</p>
+\(\text{Var}(\mathbf{x}_t) = \alpha_t \cdot 1 + \beta_t \cdot 1 = \alpha_t + \beta_t\)
+<p>Since we defined \(\alpha_t = 1 - \beta_t\):</p>
+\(\text{Var}(\mathbf{x}_t) = (1 - \beta_t) + \beta_t = 1\)
+<p><strong>Key insight:</strong> The square roots ensure that variance is preserved at every step&#33; Without them &#40;if we used \(\alpha_t\mathbf{x}_{t-1}\)&#41;, we&#39;d have \(\text{Var}(\mathbf{x}_t) = \alpha_t^2 + \beta_t \neq 1\), causing the signal to decay too quickly.</p>
+<p><strong>Step 1:</strong> Starting from \(\mathbf{x}_0\), we add noise to get \(\mathbf{x}_1\)</p>
+<ul>
+<li><p>Using the reparameterization: \(\mathbf{x}_1 = \sqrt{\alpha_1}\mathbf{x}_0 + \sqrt{1-\alpha_1}\boldsymbol{\epsilon}_1\)</p>
+</li>
+<li><p>Where \(\alpha_1 = 1-\beta_1\) and \(\boldsymbol{\epsilon}_1 \sim \mathcal{N}(0, \mathbf{I})\)</p>
+</li>
+</ul>
+<p><strong>Step 2:</strong> From \(\mathbf{x}_1\), we add more noise to get \(\mathbf{x}_2\)</p>
+<ul>
+<li><p>Starting formula: \(\mathbf{x}_2 = \sqrt{\alpha_2}\mathbf{x}_1 + \sqrt{1-\alpha_2}\boldsymbol{\epsilon}_2\)</p>
+</li>
+<li><p>Substitute the expression for \(\mathbf{x}_1\):</p>
+<ul>
+<li><p>\(\mathbf{x}_2 = \sqrt{\alpha_2}(\sqrt{\alpha_1}\mathbf{x}_0 + \sqrt{1-\alpha_1}\boldsymbol{\epsilon}_1) + \sqrt{1-\alpha_2}\boldsymbol{\epsilon}_2\)</p>
+</li>
+</ul>
+</li>
+<li><p>Distribute \(\sqrt{\alpha_2}\):</p>
+<ul>
+<li><p>\(\mathbf{x}_2 = \sqrt{\alpha_2\alpha_1}\mathbf{x}_0 + \sqrt{\alpha_2(1-\alpha_1)}\boldsymbol{\epsilon}_1 + \sqrt{1-\alpha_2}\boldsymbol{\epsilon}_2\)</p>
+</li>
+</ul>
+</li>
+<li><p>Combine the noise terms &#40;since independent Gaussians add&#41;:</p>
+<ul>
+<li><p>\(\mathbf{x}_2 = \sqrt{\alpha_2\alpha_1}\mathbf{x}_0 + \sqrt{1-\alpha_2\alpha_1}\boldsymbol{\epsilon}\)</p>
+</li>
+<li><p>Where \(\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathbf{I})\) is a combined noise term</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>The Pattern:</strong> Continuing this process, we see that:</p>
+<ul>
+<li><p>The coefficient of \(\mathbf{x}_0\) becomes a product: \(\sqrt{\alpha_t \alpha_{t-1} \cdots \alpha_1}\)</p>
+</li>
+<li><p>The noise variance accumulates: \(1 - \alpha_t \alpha_{t-1} \cdots \alpha_1\)</p>
+</li>
+<li><p>We can define \(\bar{\alpha}_t = \prod_{s=1}^t \alpha_s\) for convenience</p>
+</li>
+</ul>
+<p><strong>The Final Result:</strong> We can collapse this entire chain into a single step:</p>
+\(q(\mathbf{x}_t | \mathbf{x}_0) = \mathcal{N}(\mathbf{x}_t; \sqrt{\bar{\alpha}_t}\mathbf{x}_0, (1-\bar{\alpha}_t)\mathbf{I})\)
+<p>In other words: \(\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}\) where \(\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathbf{I})\).</p>
+<p>As \(t \to T\), we have \(\bar{\alpha}_T \to 0\), so \(\mathbf{x}_T\) becomes pure noise. The forward process is fixed—no learning happens here.</p>
+<h2 id="the_reverse_process_creation"><a href="#the_reverse_process_creation" class="header-anchor">The Reverse Process &#40;Creation&#41;</a></h2>
+<p>Now for the learned part. We want to reverse the diffusion:</p>
+\[p_\theta(\mathbf{x}_{t-1}|\mathbf{x}_t) = \mathcal{N}(\mathbf{x}_{t-1}; \boldsymbol{\mu}_\theta(\mathbf{x}_t, t), \boldsymbol{\Sigma}_\theta(\mathbf{x}_t, t))\]
+<p>Starting from \(\mathbf{x}_T \sim \mathcal{N}(0, \mathbf{I})\), we iteratively sample backwards to generate \(\mathbf{x}_0\).</p>
+<p>The key question: what should \(\boldsymbol{\mu}_\theta\) predict?</p>
+<h2 id="what_to_predict_the_clever_reparameterization"><a href="#what_to_predict_the_clever_reparameterization" class="header-anchor">What to Predict: The Clever Reparameterization</a></h2>
+<p>Here&#39;s where the elegance shines. We <em>could</em> predict \(\boldsymbol{\mu}_\theta\) directly, but there&#39;s a better way. </p>
+<p>From Bayes&#39; rule, the true reverse process posterior is:</p>
+\[q(\mathbf{x}_{t-1}|\mathbf{x}_t, \mathbf{x}_0) = \mathcal{N}(\mathbf{x}_{t-1}; \tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0), \tilde{\beta}_t\mathbf{I})\]
+<p>where </p>
+\[\tilde{\boldsymbol{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0) = \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t}\mathbf{x}_0 + \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}\mathbf{x}_t\]
+<p>Since \(\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}\), we can solve for \(\mathbf{x}_0\):</p>
+\[\mathbf{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}}(\mathbf{x}_t - \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon})\]
+<p>Substituting this back into \(\tilde{\boldsymbol{\mu}}_t\), we get:</p>
+\[\tilde{\boldsymbol{\mu}}_t = \frac{1}{\sqrt{\alpha_t}}\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\boldsymbol{\epsilon}\right)\]
+<p><strong>The insight</strong>: instead of predicting \(\boldsymbol{\mu}_\theta\) directly, we can train a network \(\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\) to predict the noise \(\boldsymbol{\epsilon}\)&#33;</p>
+<h2 id="the_training_objective"><a href="#the_training_objective" class="header-anchor">The Training Objective</a></h2>
+<p>The variational lower bound &#40;ELBO&#41; leads to:</p>
+\[L = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}}\left[\|\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\|^2\right]\]
+<p>where \(t \sim \text{Uniform}(1, T)\) and \(\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}\).</p>
+<p>That&#39;s it&#33; We&#39;re just doing <strong>noise prediction</strong> at random timesteps. The loss is a simple mean squared error.</p>
+<h2 id="sampling"><a href="#sampling" class="header-anchor">Sampling</a></h2>
+<p>To generate:</p>
+<ol>
+<li><p>Sample \(\mathbf{x}_T \sim \mathcal{N}(0, \mathbf{I})\)</p>
+</li>
+<li><p>For \(t = T, T-1, \ldots, 1\):</p>
+<ul>
+<li><p>Predict noise: \(\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\)</p>
+</li>
+<li><p>Compute mean: \(\boldsymbol{\mu}_\theta = \frac{1}{\sqrt{\alpha_t}}\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\right)\)</p>
+</li>
+<li><p>Sample: \(\mathbf{x}_{t-1} = \boldsymbol{\mu}_\theta + \sigma_t \mathbf{z}\) where \(\mathbf{z} \sim \mathcal{N}(0, \mathbf{I})\)</p>
+</li>
+</ul>
+</li>
+<li><p>Return \(\mathbf{x}_0\)</p>
+</li>
+</ol>
+<h2 id="why_this_works_the_intuition"><a href="#why_this_works_the_intuition" class="header-anchor">Why This Works: The Intuition</a></h2>
+<p>At each timestep \(t\), the network sees \(\mathbf{x}_t\) which is a specific signal-to-noise mixture of the original data. The network learns to denoise by predicting what noise was added. Early timesteps &#40;\(t\) small&#41; are easy: there&#39;s mostly signal, little noise. Later timesteps &#40;\(t\) large&#41; are harder: mostly noise, little signal.</p>
+<p>By training on all timesteps simultaneously, the network learns a hierarchy of denoisers. High \(t\): rough structure. Low \(t\): fine details.</p>
+<p>The stochastic sampling process ensures diversity—we can generate infinitely many samples from the same pure noise starting point.</p>
+<h2 id="connection_to_score-based_models"><a href="#connection_to_score-based_models" class="header-anchor">Connection to Score-Based Models</a></h2>
+<p>Here&#39;s a beautiful connection: predicting the noise \(\boldsymbol{\epsilon}_\theta\) is equivalent to predicting the score function \(\nabla_{\mathbf{x}_t} \log p(\mathbf{x}_t)\).</p>
+<p>Specifically:</p>
+\[\nabla_{\mathbf{x}_t} \log p(\mathbf{x}_t) = -\frac{\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)}{\sqrt{1-\bar{\alpha}_t}}\]
+<p>This unifies diffusion models with score matching—they&#39;re learning the gradient of the log density at different noise levels. This is langevin dynamics in disguise&#33;</p>
+<h2 id="why_diffusion_models_shine"><a href="#why_diffusion_models_shine" class="header-anchor">Why Diffusion Models Shine</a></h2>
+<ul>
+<li><p><strong>Stable training</strong>: No adversarial dynamics like GANs</p>
+</li>
+<li><p><strong>High quality</strong>: State-of-the-art sample quality</p>
+</li>
+<li><p><strong>Flexible</strong>: Easy to condition, edit, and control</p>
+</li>
+<li><p><strong>Principled</strong>: Solid probabilistic foundation via ELBO</p>
+</li>
+</ul>
+<p>The main drawback? Slow sampling due to the iterative process. But that&#39;s an active research area with methods like DDIM, DPM-Solver, and consistency models speeding things up dramatically.</p>
+<hr />
+<p><em>This is the essence of diffusion models: learn to predict noise at every stage of corruption, then reverse the process to create.</em></p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 11, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

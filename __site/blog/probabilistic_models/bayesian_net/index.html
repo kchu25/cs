@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>A Conversational Guide to Bayesian Networks</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="a_conversational_guide_to_bayesian_networks"><a href="#a_conversational_guide_to_bayesian_networks" class="header-anchor">A Conversational Guide to Bayesian Networks</a></h1>
+<p>Hey there&#33; Let&#39;s dive into Bayesian networks, which are one of those beautiful ideas in machine learning that combine graph theory, probability, and causal reasoning into something really practical.</p>
+<h2 id="what_are_bayesian_networks"><a href="#what_are_bayesian_networks" class="header-anchor">What Are Bayesian Networks?</a></h2>
+<p>Think of a Bayesian network &#40;also called a belief network or Bayes net&#41; as a <strong>graphical model that represents probabilistic relationships among variables</strong>. It&#39;s basically a directed acyclic graph &#40;DAG&#41; where:</p>
+<ul>
+<li><p><strong>Nodes</strong> represent random variables &#40;like &quot;Has Flu&quot;, &quot;Temperature&quot;, &quot;Cough&quot;&#41;</p>
+</li>
+<li><p><strong>Edges</strong> represent direct probabilistic dependencies &#40;like &quot;Has Flu → Temperature&quot;&#41;</p>
+</li>
+<li><p><strong>No cycles</strong> exist &#40;you can&#39;t follow the arrows and get back to where you started&#41;</p>
+</li>
+</ul>
+<p>The magic is that this structure lets us efficiently represent and reason about complex joint probability distributions. Instead of storing every possible combination of variables &#40;which explodes exponentially&#41;, we exploit conditional independence.</p>
+<h3 id="the_core_idea"><a href="#the_core_idea" class="header-anchor">The Core Idea</a></h3>
+<p>A Bayesian network encodes the joint probability distribution:</p>
+\[P(X_1, X_2, \ldots, X_n) = \prod_{i=1}^{n} P(X_i \mid \text{Parents}(X_i))\]
+<p>where \(\text{Parents}(X_i)\) are the direct parent nodes of \(X_i\) in the graph. This factorization is the key insight—each variable only depends on its parents, not on all other variables.</p>
+<h2 id="constructing_a_bayesian_network"><a href="#constructing_a_bayesian_network" class="header-anchor">Constructing a Bayesian Network</a></h2>
+<p>Building a Bayesian network typically involves two main steps:</p>
+<h3 id="step_1_structure_learning"><a href="#step_1_structure_learning" class="header-anchor">Step 1: Structure Learning</a></h3>
+<p>This is about figuring out <strong>which variables should be connected</strong>. You have a few approaches:</p>
+<p><strong>1. Knowledge-Based Construction</strong></p>
+<ul>
+<li><p>Use domain expertise to identify causal relationships</p>
+</li>
+<li><p>Example: A doctor knows that having the flu causes fever, so we draw an edge from &quot;Flu&quot; to &quot;Fever&quot;</p>
+</li>
+<li><p>This is the most reliable when you have good domain knowledge</p>
+</li>
+</ul>
+<p><strong>2. Constraint-Based Methods</strong></p>
+<ul>
+<li><p>Use statistical independence tests to find conditional independencies</p>
+</li>
+<li><p>The PC algorithm is a classic example—it tests pairs of variables and removes edges when conditional independence is found</p>
+</li>
+<li><p>Formula for conditional independence test: \(X \perp Y \mid Z\) means \(P(X, Y \mid Z) = P(X \mid Z) \cdot P(Y \mid Z)\)</p>
+</li>
+</ul>
+<p><strong>3. Score-Based Methods</strong></p>
+<ul>
+<li><p>Treat structure learning as an optimization problem</p>
+</li>
+<li><p>Define a scoring function &#40;like BIC or AIC&#41; and search for the structure with the best score</p>
+</li>
+<li><p>More on this in the optimization section&#33;</p>
+</li>
+</ul>
+<h3 id="step_2_parameter_learning"><a href="#step_2_parameter_learning" class="header-anchor">Step 2: Parameter Learning</a></h3>
+<p>Once you have the structure, you need to <strong>learn the conditional probability tables &#40;CPTs&#41;</strong> for each node. If node \(X\) has parents \(\text{Pa}(X)\), you need to estimate \(P(X \mid \text{Pa}(X))\).</p>
+<p><strong>Maximum Likelihood Estimation &#40;MLE&#41;</strong></p>
+<p>With complete data, this is straightforward:</p>
+\[\hat{\theta}_{x \mid pa} = \frac{\text{Count}(X=x, \text{Pa}(X)=pa)}{\text{Count}(\text{Pa}(X)=pa)}\]
+<p>Basically, just count how often each configuration appears in your data and normalize.</p>
+<p><strong>Bayesian Estimation</strong></p>
+<p>If you&#39;re worried about overfitting or have sparse data, use a Bayesian approach with priors:</p>
+\[P(\theta \mid D) \propto P(D \mid \theta) \cdot P(\theta)\]
+<p>A common choice is the Dirichlet prior, which gives you a smooth estimate even with limited data.</p>
+<h2 id="optimizing_bayesian_networks"><a href="#optimizing_bayesian_networks" class="header-anchor">Optimizing Bayesian Networks</a></h2>
+<p>Now for the fun part—optimization&#33; There are several things we might want to optimize:</p>
+<h3 id="structure_optimization_score-based"><a href="#structure_optimization_score-based" class="header-anchor"><ol>
+<li><p>Structure Optimization &#40;Score-Based&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>The goal is to find the graph structure \(G\) that best explains your data \(D\).</p>
+<p><strong>Common Scoring Functions:</strong></p>
+<ul>
+<li><p><strong>Bayesian Information Criterion &#40;BIC&#41;:</strong></p>
+</li>
+</ul>
+\[\text{BIC}(G, D) = \log P(D \mid G, \hat{\theta}) - \frac{d}{2} \log N\]
+<p>where \(d\) is the number of parameters and \(N\) is the sample size. The first term rewards fit, the second penalizes complexity.</p>
+<ul>
+<li><p><strong>Bayesian Score &#40;BD&#41;:</strong></p>
+</li>
+</ul>
+\[\text{Score}(G) = P(D \mid G) = \int P(D \mid G, \theta) P(\theta \mid G) d\theta\]
+<p>This fully Bayesian approach marginalizes over parameters.</p>
+<p><strong>Search Algorithms:</strong></p>
+<p>Since finding the optimal structure is NP-hard, we use heuristic search:</p>
+<ul>
+<li><p><strong>Hill Climbing</strong>: Start with a graph, try adding/removing/reversing single edges, keep changes that improve the score</p>
+</li>
+<li><p><strong>Simulated Annealing</strong>: Like hill climbing but occasionally accepts worse moves to escape local optima</p>
+</li>
+<li><p><strong>Genetic Algorithms</strong>: Maintain a population of candidate structures and evolve them</p>
+</li>
+<li><p><strong>Order-Based Search</strong>: Fix a variable ordering and search for the best DAG consistent with that order</p>
+</li>
+</ul>
+<h3 id="ol_start2_parameter_optimization"><a href="#ol_start2_parameter_optimization" class="header-anchor"><ol start="2">
+<li><p>Parameter Optimization</p>
+</li>
+</ol>
+</a></h3>
+<p>This is generally easier than structure learning.</p>
+<p><strong>Expectation-Maximization &#40;EM&#41; for Missing Data:</strong></p>
+<p>When you have incomplete data, you can&#39;t just count. The EM algorithm iterates:</p>
+<ul>
+<li><p><strong>E-step</strong>: Compute expected sufficient statistics given current parameters</p>
+</li>
+</ul>
+\[Q(\theta \mid \theta^{(t)}) = \mathbb{E}[\log P(D, H \mid \theta) \mid D, \theta^{(t)}]\]
+<p>where \(H\) represents hidden/missing variables</p>
+<ul>
+<li><p><strong>M-step</strong>: Maximize with respect to \(\theta\)</p>
+</li>
+</ul>
+\[\theta^{(t+1)} = \arg\max_{\theta} Q(\theta \mid \theta^{(t)})\]
+<p><strong>Gradient Descent:</strong></p>
+<p>For continuous variables or neural network-based models, you can use gradient-based optimization:</p>
+\[\theta^{(t+1)} = \theta^{(t)} + \alpha \nabla_{\theta} \log P(D \mid \theta)\]
+<h3 id="ol_start3_inference_optimization"><a href="#ol_start3_inference_optimization" class="header-anchor"><ol start="3">
+<li><p>Inference Optimization</p>
+</li>
+</ol>
+</a></h3>
+<p>Once you have the network, you need to efficiently compute queries like \(P(X \mid E)\) where \(E\) is observed evidence.</p>
+<p><strong>Exact Inference:</strong></p>
+<ul>
+<li><p><strong>Variable Elimination</strong>: Systematically eliminate variables by summing them out, choosing a good elimination order to minimize computation</p>
+</li>
+<li><p><strong>Junction Tree Algorithm</strong>: Convert the network to a tree structure where exact inference is tractable</p>
+</li>
+</ul>
+<p><strong>Approximate Inference:</strong></p>
+<p>For large networks, exact inference is intractable, so we approximate:</p>
+<ul>
+<li><p><strong>Markov Chain Monte Carlo &#40;MCMC&#41;</strong>: Sample from the posterior using Gibbs sampling or Metropolis-Hastings</p>
+</li>
+<li><p><strong>Variational Inference</strong>: Approximate the true posterior with a simpler distribution \(Q\) by minimizing KL divergence:</p>
+</li>
+</ul>
+\[Q^* = \arg\min_{Q} \text{KL}(Q \| P)\]
+<h2 id="practical_tips"><a href="#practical_tips" class="header-anchor">Practical Tips</a></h2>
+<p>When building Bayesian networks in practice:</p>
+<ol>
+<li><p><strong>Start simple</strong>: Begin with a small network and expand gradually</p>
+</li>
+<li><p><strong>Use domain knowledge</strong>: Expert input on structure is often more valuable than purely data-driven approaches</p>
+</li>
+<li><p><strong>Check for DAG property</strong>: Always ensure your graph has no cycles</p>
+</li>
+<li><p><strong>Validate</strong>: Use cross-validation to check if your network generalizes well</p>
+</li>
+<li><p><strong>Sparse is better</strong>: Networks with fewer edges are easier to interpret and less prone to overfitting</p>
+</li>
+</ol>
+<h2 id="why_bayesian_networks_rock"><a href="#why_bayesian_networks_rock" class="header-anchor">Why Bayesian Networks Rock</a></h2>
+<p>They&#39;re great because they:</p>
+<ul>
+<li><p>Make uncertainty explicit and quantifiable</p>
+</li>
+<li><p>Allow causal reasoning &#40;if you&#39;re careful about the structure&#41;</p>
+</li>
+<li><p>Handle missing data naturally</p>
+</li>
+<li><p>Provide interpretable models</p>
+</li>
+<li><p>Can incorporate both data and expert knowledge</p>
+</li>
+</ul>
+<p>And that&#39;s the essence of Bayesian networks&#33; They&#39;re powerful tools that combine the elegance of probability theory with the intuition of causal graphs. Pretty neat, right?</p>
+<h2 id="wait_what_about_continuous_variables"><a href="#wait_what_about_continuous_variables" class="header-anchor">Wait, What About Continuous Variables?</a></h2>
+<p>Great question&#33; Everything above assumes discrete variables, but what if your data is <strong>real-valued</strong> &#40;continuous&#41;? Things get more interesting—and sometimes more challenging.</p>
+<h3 id="the_challenge_with_continuous_variables"><a href="#the_challenge_with_continuous_variables" class="header-anchor">The Challenge with Continuous Variables</a></h3>
+<p>With discrete variables, we store conditional probability tables &#40;CPTs&#41;. But with continuous variables, we need to represent <strong>probability density functions</strong> instead. You can&#39;t just make a table of infinite values&#33;</p>
+<h3 id="approach_1_gaussian_bayesian_networks_linear_gaussian_models"><a href="#approach_1_gaussian_bayesian_networks_linear_gaussian_models" class="header-anchor">Approach 1: Gaussian Bayesian Networks &#40;Linear Gaussian Models&#41;</a></h3>
+<p>The most popular approach is to assume <strong>linear Gaussian relationships</strong>. If all variables are continuous and normally distributed, life becomes much easier.</p>
+<p><strong>The Setup:</strong></p>
+<p>For each node \(X_i\) with parents \(\text{Pa}(X_i)\), we assume:</p>
+\(X_i = \beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j + \epsilon_i\)
+<p>where \(\epsilon_i \sim \mathcal{N}(0, \sigma_i^2)\) is Gaussian noise.</p>
+<p>This means: \(X_i \mid \text{Pa}(X_i) \sim \mathcal{N}\left(\beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j, \sigma_i^2\right)\)</p>
+<p><strong>Why This Is Great:</strong></p>
+<ul>
+<li><p>The joint distribution remains Gaussian &#40;a multivariate normal&#41;</p>
+</li>
+<li><p>Inference is <strong>exact and efficient</strong> using linear algebra</p>
+</li>
+<li><p>Parameter learning is just linear regression&#33;</p>
+</li>
+<li><p>The network represents: \(P(\mathbf{X}) = \mathcal{N}(\boldsymbol{\mu}, \boldsymbol{\Sigma})\)</p>
+</li>
+</ul>
+<p><strong>Parameter Learning:</strong></p>
+<p>For each node, just run <strong>linear regression</strong>:</p>
+\(\hat{\beta}_i = (\mathbf{X}_{\text{Pa}}^\top \mathbf{X}_{\text{Pa}})^{-1} \mathbf{X}_{\text{Pa}}^\top \mathbf{X}_i\)
+\(\hat{\sigma}_i^2 = \frac{1}{N} \sum_{n=1}^N (x_i^{(n)} - \hat{x}_i^{(n)})^2\)
+<p><strong>Inference:</strong></p>
+<p>Computing \(P(X_i \mid E)\) &#40;where \(E\) is observed evidence&#41; involves:</p>
+<ol>
+<li><p>Partitioning the covariance matrix</p>
+</li>
+<li><p>Using the conditional Gaussian formula:</p>
+</li>
+</ol>
+\(P(X \mid Y=y) = \mathcal{N}(\mu_X + \Sigma_{XY}\Sigma_{YY}^{-1}(y - \mu_Y), \Sigma_{XX} - \Sigma_{XY}\Sigma_{YY}^{-1}\Sigma_{YX})\)
+<p>This is exact and computationally efficient&#33;</p>
+<h3 id="approach_2_conditional_linear_gaussian_clg_networks"><a href="#approach_2_conditional_linear_gaussian_clg_networks" class="header-anchor">Approach 2: Conditional Linear Gaussian &#40;CLG&#41; Networks</a></h3>
+<p>What if you have <strong>both discrete and continuous variables</strong>? CLG networks handle this hybrid case.</p>
+<p><strong>The Idea:</strong></p>
+<ul>
+<li><p>Discrete variables can be parents of any variable</p>
+</li>
+<li><p>Continuous variables can only be parents of continuous variables</p>
+</li>
+<li><p>For continuous children, the parameters \(\beta\) and \(\sigma^2\)<strong>depend on discrete parents</strong></p>
+</li>
+</ul>
+<p><strong>Example:</strong></p>
+\(X_{\text{temp}} \mid \text{Season}, \text{Humidity} = \begin{cases}
+\mathcal{N}(70 + 0.5 \cdot \text{Humidity}, 5^2) & \text{if Season = Summer} \\
+\mathcal{N}(40 + 0.3 \cdot \text{Humidity}, 3^2) & \text{if Season = Winter}
+\end{cases}\)
+<p>You&#39;re essentially learning a <strong>different linear Gaussian model for each configuration of discrete parents</strong>.</p>
+<h3 id="approach_3_discretization"><a href="#approach_3_discretization" class="header-anchor">Approach 3: Discretization</a></h3>
+<p>The simplest &#40;but often crude&#41; approach: <strong>bin your continuous variables</strong>.</p>
+<p><strong>Methods:</strong></p>
+<ul>
+<li><p><strong>Equal-width binning</strong>: Divide the range into equal intervals</p>
+</li>
+<li><p><strong>Equal-frequency binning</strong>: Each bin has roughly the same number of samples</p>
+</li>
+<li><p><strong>K-means clustering</strong>: Use clustering to find natural breakpoints</p>
+</li>
+</ul>
+<p><strong>Pros:</strong> You can use standard discrete BN algorithms</p>
+<p><strong>Cons:</strong> </p>
+<ul>
+<li><p>Loss of information</p>
+</li>
+<li><p>Arbitrary boundary effects</p>
+</li>
+<li><p>Need to choose the number of bins</p>
+</li>
+</ul>
+<h3 id="approach_4_nonparametric_methods"><a href="#approach_4_nonparametric_methods" class="header-anchor">Approach 4: Nonparametric Methods</a></h3>
+<p>For more flexible relationships, go nonparametric&#33;</p>
+<p><strong>Kernel Density Estimation &#40;KDE&#41;:</strong></p>
+<p>Represent \(P(X_i \mid \text{Pa}(X_i))\) using:</p>
+\(\hat{p}(x \mid \text{pa}) = \frac{\sum_{n=1}^N K_h(x - x_i^{(n)}) \cdot K_h(\text{pa} - \text{pa}^{(n)})}{\sum_{n=1}^N K_h(\text{pa} - \text{pa}^{(n)})}\)
+<p>where \(K_h\) is a kernel function &#40;like Gaussian&#41; with bandwidth \(h\).</p>
+<p><strong>Mixture Models:</strong></p>
+<p>Model each conditional as a <strong>mixture of Gaussians</strong>:</p>
+\(P(X_i \mid \text{Pa}(X_i)) = \sum_{k=1}^K w_k(\text{Pa}) \cdot \mathcal{N}(\mu_k(\text{Pa}), \sigma_k^2)\)
+<p>The weights and parameters depend on the parents.</p>
+<h3 id="approach_5_copula_bayesian_networks"><a href="#approach_5_copula_bayesian_networks" class="header-anchor">Approach 5: Copula Bayesian Networks</a></h3>
+<p>For really complex dependencies, <strong>copulas</strong> separate the marginal distributions from the dependence structure.</p>
+<p><strong>The Copula Decomposition:</strong></p>
+\(P(X_i \mid \text{Pa}(X_i)) = c(F(X_i), F(\text{Pa}_1), \ldots, F(\text{Pa}_m)) \cdot f(X_i)\)
+<p>where:</p>
+<ul>
+<li><p>\(F\) are marginal CDFs &#40;can be any distribution&#41;</p>
+</li>
+<li><p>\(c\) is the copula &#40;captures dependence&#41;</p>
+</li>
+<li><p>\(f\) is the marginal PDF</p>
+</li>
+</ul>
+<p>This is super flexible but more complex to work with.</p>
+<h3 id="optimization_for_continuous_variables"><a href="#optimization_for_continuous_variables" class="header-anchor">Optimization for Continuous Variables</a></h3>
+<p><strong>Structure Learning:</strong></p>
+<p>The same principles apply, but the scoring functions need adjustment:</p>
+<ul>
+<li><p><strong>BIC for Gaussian networks:</strong> \(\text{BIC} = -\frac{N}{2} \sum_i \log(2\pi\hat{\sigma}_i^2) - \frac{N}{2}n - \frac{d}{2}\log N\)</p>
+<p>where \(n\) is the number of nodes and \(d\) is the number of parameters.</p>
+</li>
+<li><p><strong>Use mutual information</strong> as a measure of dependence: \(I(X; Y) = \int \int p(x,y) \log \frac{p(x,y)}{p(x)p(y)} dx dy\)</p>
+</li>
+</ul>
+<p><strong>Parameter Learning:</strong></p>
+<ul>
+<li><p>For linear Gaussian: just <strong>least squares regression</strong> for each node</p>
+</li>
+<li><p>For nonparametric: use <strong>maximum likelihood</strong> with kernel methods or EM for mixtures</p>
+</li>
+<li><p><strong>Regularization</strong> becomes important with continuous variables to prevent overfitting:</p>
+<ul>
+<li><p>L2 penalty: \(\|\boldsymbol{\beta}\|_2^2\)</p>
+</li>
+<li><p>Lasso &#40;L1&#41;: \(\|\boldsymbol{\beta}\|_1\) &#40;promotes sparsity&#41;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Inference:</strong></p>
+<ul>
+<li><p>Linear Gaussian: use <strong>closed-form conditional Gaussian formulas</strong></p>
+</li>
+<li><p>Nonparametric: may need <strong>Monte Carlo methods</strong> or <strong>variational inference</strong></p>
+</li>
+<li><p>Can use <strong>particle filters</strong> for sequential/temporal data</p>
+</li>
+</ul>
+<h3 id="practical_recommendations_for_continuous_variables"><a href="#practical_recommendations_for_continuous_variables" class="header-anchor">Practical Recommendations for Continuous Variables</a></h3>
+<ol>
+<li><p><strong>Start with Linear Gaussian</strong> if your relationships look linear—it&#39;s fast and exact</p>
+</li>
+<li><p><strong>Check assumptions</strong>: Plot residuals to see if linearity and Gaussianity hold</p>
+</li>
+<li><p><strong>Use CLG for hybrid networks</strong> when you have both discrete and continuous variables</p>
+</li>
+<li><p><strong>Go nonparametric</strong> only when you have lots of data and need flexibility</p>
+</li>
+<li><p><strong>Consider transformations</strong>: Sometimes log or Box-Cox transforms make relationships more linear</p>
+</li>
+<li><p><strong>Regularize</strong>: Especially important for continuous variables to avoid overfitting</p>
+</li>
+</ol>
+<h3 id="a_quick_example"><a href="#a_quick_example" class="header-anchor">A Quick Example</a></h3>
+<p>Say you&#39;re modeling temperature, humidity, and pressure:</p>
+<pre><code class="language-julia">Structure: Pressure → Temperature ← Humidity</code></pre>
+<p><strong>Linear Gaussian Model:</strong></p>
+<ul>
+<li><p>\(\text{Pressure} \sim \mathcal{N}(1013, 10^2)\)</p>
+</li>
+<li><p>\(\text{Humidity} \sim \mathcal{N}(60, 15^2)\)</p>
+</li>
+<li><p>\(\text{Temperature} = 20 - 0.05 \cdot \text{Pressure} + 0.1 \cdot \text{Humidity} + \epsilon\), where \(\epsilon \sim \mathcal{N}(0, 5^2)\)</p>
+</li>
+</ul>
+<p>To answer &quot;What&#39;s the temperature given pressure &#61; 1000?&quot;:</p>
+<ol>
+<li><p>Condition on the evidence</p>
+</li>
+<li><p>Use the conditional Gaussian formula</p>
+</li>
+<li><p>Get \(\text{Temperature} \mid \text{Pressure}=1000 \sim \mathcal{N}(\mu', \sigma'^2)\) exactly&#33;</p>
+</li>
+</ol>
+<p>The continuous case adds complexity, but also opens up Bayesian networks to a huge range of real-world applications where measurements are naturally continuous&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: October 10, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
