@@ -1,5 +1,5 @@
 @def title = "Is the Sparsity-Accuracy Tradeoff Worth It?"
-@def published = "9 October 2025"
+@def published = "28 October 2025"
 @def tags = ["machine-learning"]
 
 # Is the Sparsity-Accuracy Tradeoff Worth It?
