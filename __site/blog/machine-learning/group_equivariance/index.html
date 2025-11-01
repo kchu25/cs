@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Group Equivariance in Neural Networks</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="group_equivariance_in_neural_networks"><a href="#group_equivariance_in_neural_networks" class="header-anchor">Group Equivariance in Neural Networks</a></h1>
+<h2 id="the_core_idea_no_jargon"><a href="#the_core_idea_no_jargon" class="header-anchor">The Core Idea &#40;No Jargon&#41;</a></h2>
+<p>Think of it this way: you have some <strong>transformation</strong> you can do to your data &#40;like sliding an image left, or rotating it, or shuffling a list&#41;. </p>
+<p><strong>Equivariance</strong> just means: if I apply that transformation to my input, I can predict exactly what happens to my output. The output changes in the &quot;same way&quot; as the input did.</p>
+<blockquote>
+<p><strong>Why is it called &quot;Equivariance&quot;?</strong></p>
+<p>The name comes from Latin: <em>equi-</em> &#40;equal&#41; &#43; <em>variance</em> &#40;change/variation&#41;. It literally means &quot;equal change&quot; or &quot;varying equally.&quot;</p>
+<p>When you transform the input, the output <strong>varies</strong> &#40;changes&#41;. Equivariance means both the input and output <strong>vary equally</strong> - they change in the same corresponding way. The transformation &quot;propagates through&quot; the function in a predictable manner.</p>
+<p>Compare this to <strong>invariance</strong> &#40;<em>in-</em> &#61; not&#41;, which means &quot;not varying&quot; - the output stays the same regardless of how you transform the input.</p>
+</blockquote>
+<hr />
+<h2 id="why_groups_what_are_they_really"><a href="#why_groups_what_are_they_really" class="header-anchor">Why &quot;Groups&quot;? What Are They Really?</a></h2>
+<p>A <strong>group</strong> is just a fancy name for &quot;a collection of transformations that play nice together.&quot; That&#39;s it&#33;</p>
+<p>What does &quot;play nice&quot; mean? Four simple things:</p>
+<ol>
+<li><p><strong>You can combine transformations</strong>: Slide left 5 pixels, then slide left 3 pixels &#61; slide left 8 pixels. Still in your collection.</p>
+</li>
+<li><p><strong>Order of combining doesn&#39;t matter in weird ways</strong>: &#40;slide left then slide up&#41; then rotate &#61; slide left then &#40;slide up then rotate&#41;. It&#39;s associative.</p>
+</li>
+<li><p><strong>There&#39;s a &quot;do nothing&quot; transformation</strong>: Don&#39;t move the image at all. That&#39;s your identity.</p>
+</li>
+<li><p><strong>Every transformation can be undone</strong>: Slide left 5 pixels? There&#39;s a &quot;slide right 5 pixels&quot; that undoes it.</p>
+</li>
+</ol>
+<p>That&#39;s literally all a group is - transformations with these four properties.</p>
+<hr />
+<h2 id="concrete_examples_of_groups"><a href="#concrete_examples_of_groups" class="header-anchor">Concrete Examples of Groups</a></h2>
+<h3 id="translation_group_what_cnns_use"><a href="#translation_group_what_cnns_use" class="header-anchor">Translation Group &#40;What CNNs Use&#41;</a></h3>
+<p><strong>The transformations</strong>: All possible ways to slide/shift an image</p>
+<ul>
+<li><p>Slide left 3 pixels</p>
+</li>
+<li><p>Slide right 10 pixels and down 5 pixels  </p>
+</li>
+<li><p>Don&#39;t move it at all &#40;identity&#41;</p>
+</li>
+<li><p>etc.</p>
+</li>
+</ul>
+<p><strong>Combining them</strong>: Slide right 5 then slide left 3 &#61; slide right 2 overall</p>
+<p><strong>Why this is a group</strong>: </p>
+<ul>
+<li><p>✓ Combining slides gives another slide</p>
+</li>
+<li><p>✓ You can undo any slide &#40;slide the opposite direction&#41;</p>
+</li>
+<li><p>✓ There&#39;s a &quot;don&#39;t move&quot; transformation</p>
+</li>
+<li><p>✓ Combining slides is associative</p>
+</li>
+</ul>
+<h3 id="rotation_group"><a href="#rotation_group" class="header-anchor">Rotation Group</a></h3>
+<p><strong>The transformations</strong>: All possible ways to rotate an image</p>
+<ul>
+<li><p>Rotate 30 degrees clockwise</p>
+</li>
+<li><p>Rotate 90 degrees counterclockwise</p>
+</li>
+<li><p>Don&#39;t rotate &#40;identity&#41;</p>
+</li>
+<li><p>etc.</p>
+</li>
+</ul>
+<p><strong>Combining them</strong>: Rotate 90° clockwise then 45° clockwise &#61; rotate 135° clockwise</p>
+<h3 id="permutation_group_s_n_what_graph_networks_use"><a href="#permutation_group_s_n_what_graph_networks_use" class="header-anchor">Permutation Group \(S_n\) &#40;What Graph Networks Use&#41;</a></h3>
+<p><strong>The transformations</strong>: All ways to shuffle/reorder a list</p>
+<ul>
+<li><p>Swap item 1 and item 3</p>
+</li>
+<li><p>Reverse the entire list</p>
+</li>
+<li><p>Leave it alone &#40;identity&#41;</p>
+</li>
+<li><p>etc.</p>
+</li>
+</ul>
+<p><strong>Combining them</strong>: First swap positions 1↔2, then swap 2↔3</p>
+<blockquote>
+<p><strong>Do Transformers use group equivariance?</strong></p>
+<p><strong>Yes&#33;</strong> Transformers &#40;without positional encodings&#41; are <strong>permutation equivariant</strong> - they use the permutation group \(S_n\).</p>
+<p><strong>What this means</strong>: If you shuffle the input tokens, the output features shuffle in exactly the same way. Self-attention operations are:</p>
+<ul>
+<li><p><code>Attention&#40;Q, K, V&#41;</code> treats the input as a <strong>set</strong> of tokens</p>
+</li>
+<li><p>The operation doesn&#39;t depend on the order of tokens</p>
+</li>
+<li><p>Shuffling inputs → shuffled outputs in the same way</p>
+</li>
+</ul>
+<p><strong>Why add positional encodings then?</strong> </p>
+<ul>
+<li><p>Pure permutation equivariance means the model is <strong>blind to order</strong></p>
+</li>
+<li><p>For language, order matters&#33; &quot;Dog bites man&quot; ≠ &quot;Man bites dog&quot;</p>
+</li>
+<li><p>Positional encodings <strong>break</strong> the permutation symmetry intentionally</p>
+</li>
+<li><p>This trades the inductive bias for expressiveness when order matters</p>
+</li>
+</ul>
+<p><strong>So Transformers vs CNNs:</strong></p>
+<ul>
+<li><p><strong>CNNs</strong>: Strong spatial inductive bias &#40;translation equivariance&#41;</p>
+</li>
+<li><p><strong>Transformers</strong>: Weak/no spatial bias &#40;permutation equivariance, broken by positional encoding&#41;</p>
+</li>
+<li><p><strong>Vision Transformers</strong>: Sacrifice spatial bias for flexibility, need more data but can be more expressive</p>
+</li>
+</ul>
+</blockquote>
+<hr />
+<h2 id="the_action_concept_made_simple"><a href="#the_action_concept_made_simple" class="header-anchor">The &quot;Action&quot; Concept Made Simple</a></h2>
+<p>An <strong>action</strong> is just: &quot;how does this group of transformations actually change my data?&quot;</p>
+<p><strong>For images and translations</strong>:</p>
+<ul>
+<li><p>Transformation: &quot;slide right 5 pixels&quot;</p>
+</li>
+<li><p>Action: Take every pixel and move it 5 spots to the right</p>
+</li>
+<li><p>Mathematically: \(T_5(\text{image})[x, y] = \text{image}[x-5, y]\)</p>
+</li>
+</ul>
+<p><strong>For lists and permutations</strong>:</p>
+<ul>
+<li><p>Transformation: &quot;swap positions 1 and 3&quot;  </p>
+</li>
+<li><p>Action: Take the list and swap those elements</p>
+</li>
+<li><p>Mathematically: \(\pi(\text{list})[1] = \text{list}[3]\), \(\pi(\text{list})[3] = \text{list}[1]\)</p>
+</li>
+</ul>
+<hr />
+<h2 id="what_equivariance_really_means_visually"><a href="#what_equivariance_really_means_visually" class="header-anchor">What Equivariance Really Means &#40;Visually&#41;</a></h2>
+<p>Let me trace through an example:</p>
+<pre><code class="language-julia">INPUT IMAGE:        🐱 at position &#40;10, 10&#41;
+                    |
+                    | Pass through CNN
+                    ↓
+OUTPUT:             &quot;Cat detected&quot; at position &#40;10, 10&#41;
+
+Now slide input right 5 pixels:
+
+INPUT IMAGE:        🐱 at position &#40;15, 10&#41;  
+                    |
+                    | Pass through SAME CNN
+                    ↓
+OUTPUT:             &quot;Cat detected&quot; at position &#40;15, 10&#41;</code></pre>
+<p><strong>Equivariance</strong> &#61; the &quot;cat detected&quot; signal <strong>moved exactly like the cat moved</strong>.</p>
+<p>Compare to <strong>invariance</strong>:</p>
+<pre><code class="language-julia">INPUT:  🐱 anywhere  →  OUTPUT: &quot;Cat: YES&quot;</code></pre>
+<p>You lose the position info entirely.</p>
+<hr />
+<h2 id="what_does_the_group_formalization_give_you"><a href="#what_does_the_group_formalization_give_you" class="header-anchor">What Does the Group Formalization Give You?</a></h2>
+<p>Here&#39;s the magic: once you say &quot;my transformations form a group,&quot; you get a <strong>systematic way to build neural networks</strong> that respect those transformations.</p>
+<h3 id="example_building_a_cnn"><a href="#example_building_a_cnn" class="header-anchor">Example: Building a CNN</a></h3>
+<p><strong>Problem</strong>: I want a network where if I slide the input, the output slides the same way.</p>
+<p><strong>Old way</strong> &#40;before group theory&#41;: </p>
+<ul>
+<li><p>Try a bunch of architectures</p>
+</li>
+<li><p>Test if they have this property</p>
+</li>
+<li><p>Hope for the best</p>
+</li>
+</ul>
+<p><strong>Group theory way</strong>:</p>
+<ol>
+<li><p>Say &quot;I care about the translation group&quot;</p>
+</li>
+<li><p>The math <strong>tells you exactly</strong> what operations preserve this: <strong>convolution</strong>&#33;</p>
+</li>
+<li><p>The proof shows convolution is basically the <strong>only</strong> linear operation that works</p>
+</li>
+</ol>
+<p>The group formalization doesn&#39;t just describe what CNNs do - it <strong>derives</strong> why convolution is the right operation, from first principles.</p>
+<hr />
+<h2 id="why_groups_make_this_powerful"><a href="#why_groups_make_this_powerful" class="header-anchor">Why Groups Make This Powerful</a></h2>
+<p>Once you know your transformations form a group, you can:</p>
+<ol>
+<li><p><strong>Build architectures systematically</strong>: Group theory tells you what operations to use &#40;convolution for translations, special filters for rotations, etc.&#41;</p>
+</li>
+<li><p><strong>Guarantee the property</strong>: If each layer is equivariant and you stack them, the whole network is equivariant &#40;because equivariant functions compose&#41;</p>
+</li>
+<li><p><strong>Quantify the benefit</strong>: If your group has size \(|G|\), you need roughly \(|G|\) times less data, because seeing one example is like seeing \(|G|\) examples &#40;one for each transformation&#41;</p>
+</li>
+<li><p><strong>Generalize beyond images</strong>: Want permutation equivariance for graphs? The same group theory framework tells you how to build it &#40;that&#39;s how Graph Neural Networks were derived&#33;&#41;</p>
+</li>
+</ol>
+<hr />
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p><strong>Without group theory</strong>: &quot;CNNs work well on images, we figured out convolution is good, not sure why&quot;</p>
+<p><strong>With group theory</strong>: &quot;Images have translation symmetry &#40;they form a group under sliding&#41;. Group theory proves convolution is the correct operation for translation equivariance. We can quantify the sample efficiency gains and extend this principle to other symmetries.&quot;</p>
+<p>It&#39;s not just abstract math - it&#39;s a <strong>design principle</strong> that tells you how to build networks for different kinds of data based on what symmetries that data has.</p>
+<hr />
+<h1 id="mathematical_foundations"><a href="#mathematical_foundations" class="header-anchor">Mathematical Foundations</a></h1>
+<h2 id="groups_formal_definition"><a href="#groups_formal_definition" class="header-anchor">Groups: Formal Definition</a></h2>
+<p>A <strong>group</strong> \(G\) is a set with a binary operation \(\cdot\) satisfying:</p>
+<ul>
+<li><p><strong>Closure</strong>: \(g_1 \cdot g_2 \in G\) for all \(g_1, g_2 \in G\)</p>
+</li>
+<li><p><strong>Associativity</strong>: \((g_1 \cdot g_2) \cdot g_3 = g_1 \cdot (g_2 \cdot g_3)\)</p>
+</li>
+<li><p><strong>Identity</strong>: \(\exists e \in G\) such that \(g \cdot e = e \cdot g = g\) for all \(g \in G\)</p>
+</li>
+<li><p><strong>Inverse</strong>: For all \(g \in G\), \(\exists g^{-1} \in G\) such that \(g \cdot g^{-1} = g^{-1} \cdot g = e\)</p>
+</li>
+</ul>
+<h2 id="group_actions"><a href="#group_actions" class="header-anchor">Group Actions</a></h2>
+<p>A group \(G\)<strong>acts</strong> on a set \(X\) if there exists a mapping:</p>
+\[\rho: G \times X \rightarrow X\]
+<p>written as \(g \cdot x\), satisfying:</p>
+<ol>
+<li><p><strong>Identity acts trivially</strong>: \(e \cdot x = x\) for all \(x \in X\)</p>
+</li>
+<li><p><strong>Compatibility</strong>: \(g_1 \cdot (g_2 \cdot x) = (g_1 \cdot g_2) \cdot x\) for all \(g_1, g_2 \in G, x \in X\)</p>
+</li>
+</ol>
+<p><strong>Example: Translation Group</strong></p>
+<p>The translation group \(G = (\mathbb{R}^2, +)\) acts on images \(X = \mathbb{R}^{H \times W \times C}\) by:</p>
+\[T_v(x)[i,j] = x[i-v_1, j-v_2]\]
+<p>where \(v = (v_1, v_2)\) is a translation vector.</p>
+<hr />
+<h2 id="equivariance_formal_definition"><a href="#equivariance_formal_definition" class="header-anchor">Equivariance: Formal Definition</a></h2>
+<p>A function \(f: X \rightarrow Y\) is <strong>equivariant</strong> with respect to group actions \(\rho_X\) on \(X\) and \(\rho_Y\) on \(Y\) if:</p>
+\[f(\rho_X(g, x)) = \rho_Y(g, f(x)) \quad \forall g \in G, \forall x \in X\]
+<p>Or more compactly:</p>
+\[f \circ \rho_X(g) = \rho_Y(g) \circ f\]
+<p>This says: <strong>&quot;transforming then processing&quot; equals &quot;processing then transforming&quot;</strong>.</p>
+<blockquote>
+<p><strong>Intuitions for the math:</strong></p>
+<p><strong>Reading the equation</strong> \(f(\rho_X(g, x)) = \rho_Y(g, f(x))\):</p>
+<p><strong>Left side</strong>: \(f(\rho_X(g, x))\)</p>
+<ul>
+<li><p>First, apply transformation \(g\) to input \(x\) &#40;using action \(\rho_X\)&#41;</p>
+</li>
+<li><p>Then, apply function \(f\) to the transformed input</p>
+</li>
+<li><p>Path: \(x \xrightarrow{\text{transform}} \rho_X(g,x) \xrightarrow{f} f(\rho_X(g,x))\)</p>
+</li>
+</ul>
+<p><strong>Right side</strong>: \(\rho_Y(g, f(x))\)</p>
+<ul>
+<li><p>First, apply function \(f\) to the original input \(x\)</p>
+</li>
+<li><p>Then, apply the same transformation \(g\) to the output &#40;using action \(\rho_Y\)&#41;</p>
+</li>
+<li><p>Path: \(x \xrightarrow{f} f(x) \xrightarrow{\text{transform}} \rho_Y(g, f(x))\)</p>
+</li>
+</ul>
+<p><strong>Equivariance means</strong>: Both paths give the same result&#33; The order doesn&#39;t matter.</p>
+<p><strong>Concrete example with images:</strong></p>
+<ul>
+<li><p>\(g\) &#61; &quot;shift right 5 pixels&quot;</p>
+</li>
+<li><p>\(f\) &#61; &quot;detect edges&quot; &#40;convolution&#41;</p>
+</li>
+<li><p>\(x\) &#61; original image</p>
+</li>
+</ul>
+<p>Left side: Shift image right 5 pixels, then detect edges</p>
+<p>Right side: Detect edges first, then shift the edge map right 5 pixels</p>
+<p>Equivariance says: <strong>you get the same edge map either way&#33;</strong></p>
+<p><strong>Why the compact form</strong> \(f \circ \rho_X(g) = \rho_Y(g) \circ f\):</p>
+<ul>
+<li><p>This is function composition notation</p>
+</li>
+<li><p>\(\circ\) means &quot;compose&quot; &#40;do one operation after another&#41;</p>
+</li>
+<li><p>Reading right to left: \((f \circ \rho_X(g))(x) = f(\rho_X(g, x))\)</p>
+</li>
+<li><p>It emphasizes that <strong>\(f\) commutes with the group action</strong></p>
+</li>
+<li><p>The transformation \(g\) &quot;passes through&quot; \(f\) unchanged</p>
+</li>
+</ul>
+</blockquote>
+<blockquote>
+<p><strong>Important clarification: Is the operation itself a group?</strong></p>
+<p><strong>No&#33;</strong> This is a common point of confusion. Let&#39;s be clear:</p>
+<ul>
+<li><p><strong>The GROUP</strong> &#40;\(G\)&#41;: The transformations of your data &#40;e.g., all possible translations/shifts&#41;</p>
+</li>
+<li><p><strong>The OPERATION</strong> &#40;\(f\)&#41;: The function that respects those transformations &#40;e.g., convolution&#41;</p>
+</li>
+<li><p><strong>These are different things&#33;</strong></p>
+</li>
+</ul>
+<p><strong>Equivariance is a PROPERTY of a function</strong>, not a requirement that the function forms a group.</p>
+<p><strong>Example:</strong></p>
+<ul>
+<li><p><strong>Group \(G\)</strong>: All translations \(\{T_v : v \in \mathbb{R}^2\}\) - this IS a group ✓</p>
+</li>
+<li><p><strong>Operation \(f\)</strong>: Convolution \(f(x) = w * x\) - this is NOT a group ✗</p>
+</li>
+<li><p><strong>But \(f\) IS equivariant to \(G\)</strong> ✓</p>
+</li>
+</ul>
+<p><strong>Why convolution isn&#39;t a group:</strong></p>
+<ul>
+<li><p>Most convolutions are <strong>not invertible</strong> &#40;they lose information&#41;</p>
+</li>
+<li><p>You can&#39;t &quot;undo&quot; a convolution in general</p>
+</li>
+<li><p>Lack of inverses means no group</p>
+</li>
+</ul>
+<p><strong>Why convolution is equivariant:</strong></p>
+<ul>
+<li><p>It <strong>commutes with translations</strong>: \(f(T_v(x)) = T_v(f(x))\)</p>
+</li>
+<li><p>Shifting then convolving &#61; convolving then shifting</p>
+</li>
+<li><p>This is all we need for equivariance&#33;</p>
+</li>
+</ul>
+<p><strong>Analogy</strong>: Think of rotations of a sphere &#40;a group&#41; and projection onto a plane &#40;equivariant operation&#41;. The projection isn&#39;t a rotation itself, but it respects rotations: rotate-then-project &#61; project-then-rotate.</p>
+</blockquote>
+<h3 id="commutative_diagram"><a href="#commutative_diagram" class="header-anchor">Commutative Diagram</a></h3>
+<pre><code class="language-julia">X  ----f----&gt;  Y
+    |              |
+ ρ_X&#40;g&#41;         ρ_Y&#40;g&#41;
+    |              |
+    ↓              ↓
+    X  ----f----&gt;  Y</code></pre>
+<p>The diagram commutes: both paths from top-left to bottom-right give the same result.</p>
+<hr />
+<h2 id="cnn_example_translation_equivariance"><a href="#cnn_example_translation_equivariance" class="header-anchor">CNN Example: Translation Equivariance</a></h2>
+<p>For 2D convolution with kernel \(w\):</p>
+\[(w * x)[i,j] = \sum_k \sum_l w[k,l] \cdot x[i-k, j-l]\]
+<p><strong>Claim</strong>: Convolution is translation-equivariant.</p>
+<p><strong>Proof:</strong></p>
+<p>Let \(T_v\) denote translation by vector \(v = (v_1, v_2)\).</p>
+\[\begin{align}
+(w * T_v(x))[i,j] &= \sum_{k,l} w[k,l] \cdot (T_v(x))[i-k, j-l] \\
+&= \sum_{k,l} w[k,l] \cdot x[i-k-v_1, j-l-v_2] \quad \text{[by def of } T_v\text{]} \\
+&= (w * x)[i-v_1, j-v_2] \quad \text{[shift indices]} \\
+&= T_v(w * x)[i,j] \quad \text{[by def of } T_v\text{]}
+\end{align}\]
+<p>Therefore: \(w * T_v(x) = T_v(w * x)\) ✓</p>
+<hr />
+<h2 id="invariance_vs_equivariance"><a href="#invariance_vs_equivariance" class="header-anchor">Invariance vs Equivariance</a></h2>
+<p><strong>Invariance</strong> means the output doesn&#39;t change under transformations:</p>
+\[f(\rho_X(g, x)) = f(x) \quad \forall g \in G\]
+<p>Invariance is a special case of equivariance where \(\rho_Y\) is the <strong>trivial action</strong>: \(\rho_Y(g, y) = y\) for all \(g, y\).</p>
+<p><strong>Example</strong>: Global average pooling creates translation invariance from translation equivariance.</p>
+<hr />
+<h2 id="composability_of_equivariant_functions"><a href="#composability_of_equivariant_functions" class="header-anchor">Composability of Equivariant Functions</a></h2>
+<p><strong>Theorem</strong>: If \(f\) and \(g\) are both \(G\)-equivariant, then \(f \circ g\) is \(G\)-equivariant.</p>
+<p><strong>Proof</strong>: </p>
+\[(f \circ g)(\rho_X(g, x)) = f(g(\rho_X(g, x))) = f(\rho_Y(g, g(x))) = \rho_Z(g, f(g(x))) = \rho_Z(g, (f \circ g)(x))\]
+<p>This is why stacking convolutional layers maintains translation equivariance throughout the network.</p>
+<hr />
+<h2 id="sample_efficiency_through_symmetry"><a href="#sample_efficiency_through_symmetry" class="header-anchor">Sample Efficiency Through Symmetry</a></h2>
+<p>If your function is equivariant and your data has that symmetry:</p>
+\[\text{Training examples needed} \approx \frac{\text{Examples without symmetry}}{|G|}\]
+<p>where \(|G|\) is the group size &#40;infinite for continuous groups like translations and rotations&#33;&#41;.</p>
+<blockquote>
+<p><strong>What does &quot;your data has that symmetry&quot; mean?</strong></p>
+<p>This means your data is <strong>unchanged &#40;or predictably changed&#41; under certain transformations</strong>. More precisely, it means there exist <strong>symmetry-preserving transformations</strong> where the meaningful content or label doesn&#39;t change.</p>
+<p><strong>Examples of symmetric transformations:</strong></p>
+<ul>
+<li><p><strong>Translation/shifting for images</strong>: A cat shifted 40 pixels right is still the same cat. Translation is a symmetry of image classification.</p>
+</li>
+<li><p><strong>Rotation</strong>: A rotated photo of a dog is still a dog. Rotation is a symmetry for many vision tasks.</p>
+</li>
+<li><p><strong>Permutation for sets</strong>: A set &#123;apple, banana, orange&#125; is the same set regardless of order. Permutation is a symmetry of set operations.</p>
+</li>
+</ul>
+<p><strong>Counter-example &#40;transformation breaks symmetry&#41;:</strong></p>
+<ul>
+<li><p><strong>Translation for chess</strong>: Moving all pieces 2 squares right creates a completely different position. Translation is NOT a symmetry of chess - position matters absolutely. &quot;Pawn on e4&quot; ≠ &quot;pawn on g4&quot; strategically.</p>
+</li>
+</ul>
+<p><strong>Better terminology</strong>: We could say &quot;the data has translation symmetry&quot; or &quot;translation is a symmetry-preserving transformation for this data.&quot; The symmetry isn&#39;t in the data itself, but in how certain transformations preserve the data&#39;s meaningful properties.</p>
+<p>When your task has these symmetry-preserving transformations, equivariant architectures can exploit them for huge efficiency gains&#33;</p>
+</blockquote>
+<p><strong>Intuition</strong>: Learning a cat detector with translation equivariance means that one image of a cat teaches you about cats at <em>all</em> positions simultaneously.</p>
+<hr />
+<h2 id="the_fundamental_trade-off"><a href="#the_fundamental_trade-off" class="header-anchor">The Fundamental Trade-off</a></h2>
+<p>Strong inductive bias &#61; strong assumptions:</p>
+<ul>
+<li><p><strong>When the bias matches the data</strong>: Massive efficiency gains, better generalization with less data</p>
+</li>
+<li><p><strong>When the bias doesn&#39;t match</strong>: Fundamental limitation, reduced expressiveness</p>
+</li>
+</ul>
+<p><strong>Example</strong>: CNNs assume translation symmetry.</p>
+<ul>
+<li><p><strong>Natural images</strong>: Excellent&#33; A cat is a cat regardless of position.</p>
+</li>
+<li><p><strong>Chess boards</strong>: Terrible&#33; Position matters absolutely &#40;a1 vs h8 have different strategic meanings&#41;.</p>
+</li>
+</ul>
+<p>This is one reason Vision Transformers work—they sacrifice the global translation bias for more flexibility, which helps when you have enough data that you don&#39;t need that strong inductive bias anymore.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 01, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
