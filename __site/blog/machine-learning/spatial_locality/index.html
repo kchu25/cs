@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Spatial Locality as Inductive Bias</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="spatial_locality_as_inductive_bias"><a href="#spatial_locality_as_inductive_bias" class="header-anchor">Spatial Locality as Inductive Bias</a></h1>
+<h2 id="the_central_question_what_makes_cnns_special"><a href="#the_central_question_what_makes_cnns_special" class="header-anchor">The Central Question: What Makes CNNs Special?</a></h2>
+<p>When we talk about convolutional neural networks, we&#39;re really talking about a specific architectural choice that encodes a fundamental assumption: <strong>nearby things matter more than distant things</strong>. This is <strong>spatial locality</strong>, and it&#39;s one of the most powerful inductive biases in deep learning.</p>
+<h2 id="what_is_inductive_bias"><a href="#what_is_inductive_bias" class="header-anchor">What is Inductive Bias?</a></h2>
+<p><strong>Inductive bias</strong> refers to the assumptions a learning algorithm makes about the structure of the problem. These assumptions restrict the hypothesis space—they tell the model &quot;look for solutions of this kind, not that kind.&quot;</p>
+<p>Without inductive bias, learning from limited data is nearly impossible. The bias guides the model toward solutions that match our understanding of the problem domain.</p>
+<h2 id="translation_equivariance_a_global_structural_constraint"><a href="#translation_equivariance_a_global_structural_constraint" class="header-anchor">Translation Equivariance: A Global Structural Constraint</a></h2>
+<p>Translation equivariance is indeed an inductive bias. Mathematically, a function \(f\) is <strong>translation equivariant</strong> if:</p>
+\[f(T_\delta(x)) = T_\delta(f(x))\]
+<p>where \(T_\delta\) is a spatial translation operation.</p>
+<p>What&#39;s interesting here is that while translation equivariance operates on local features &#40;edges, textures&#41;, it represents a <strong>global constraint</strong> on the model&#39;s behavior. It says: &quot;the rules are the same everywhere in space.&quot;</p>
+<h3 id="comparing_degrees_of_globalness"><a href="#comparing_degrees_of_globalness" class="header-anchor">Comparing Degrees of &quot;Globalness&quot;</a></h3>
+<p>There&#39;s actually a spectrum:</p>
+<ol>
+<li><p><strong>Feedforward/fully-connected layers</strong>: Most local &#40;position-specific&#41;</p>
+<ul>
+<li><p>Each position gets its own independent parameters</p>
+</li>
+<li><p>No spatial structure at all</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Convolutional layers</strong>: Spatially consistent &#40;translation equivariant&#41;</p>
+<ul>
+<li><p>Same rules applied everywhere via parameter sharing</p>
+</li>
+<li><p>Encodes global symmetry assumption</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Global pooling/full attention</strong>: Truly global</p>
+<ul>
+<li><p>Aggregates information from all positions</p>
+</li>
+<li><p>Position-independent operations</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>So yes, translation equivariance captures something &quot;more global&quot; than feedforward—it&#39;s a global constraint about spatial homogeneity.</p>
+<hr />
+<h2 id="the_mechanisms_how_cnns_encode_spatial_locality"><a href="#the_mechanisms_how_cnns_encode_spatial_locality" class="header-anchor">The Mechanisms: How CNNs Encode Spatial Locality</a></h2>
+<h3 id="parameter_sharing"><a href="#parameter_sharing" class="header-anchor"><ol>
+<li><p>Parameter Sharing</p>
+</li>
+</ol>
+</a></h3>
+<p>This is the key mechanism that implements translation equivariance. Instead of learning different weights for each spatial position &#40;like fully-connected layers&#41;, CNNs use the same filter weights at every location.</p>
+<p><strong>Example:</strong></p>
+<ul>
+<li><p><strong>Fully-connected</strong>: processing a 100×100 image means different weights for position &#40;1,1&#41;, &#40;1,2&#41;, &#40;50,50&#41;—each unique</p>
+</li>
+<li><p><strong>Convolutional</strong>: one 3×3 filter with 9 weights applied everywhere</p>
+</li>
+</ul>
+<p>Parameter sharing is a global architectural constraint that dramatically reduces parameters and enforces: &quot;whatever patterns are important here are also important there.&quot;</p>
+<h3 id="ol_start2_local_receptive_fields"><a href="#ol_start2_local_receptive_fields" class="header-anchor"><ol start="2">
+<li><p>Local Receptive Fields</p>
+</li>
+</ol>
+</a></h3>
+<p>The <strong>receptive field</strong> is the region of input that influences a particular output. This is absent in standard feedforward layers applied position-wise.</p>
+<ul>
+<li><p>Single conv layer: small receptive field &#40;e.g., 3×3&#41;</p>
+</li>
+<li><p>Stacked conv layers: receptive field grows hierarchically</p>
+</li>
+<li><p>Deep networks: can span entire input</p>
+</li>
+</ul>
+<p>This captures spatial locality bias: nearby pixels tend to form meaningful patterns.</p>
+<h3 id="ol_start3_hierarchical_composition"><a href="#ol_start3_hierarchical_composition" class="header-anchor"><ol start="3">
+<li><p>Hierarchical Composition</p>
+</li>
+</ol>
+</a></h3>
+<p>By stacking layers:</p>
+<ul>
+<li><p><strong>Low levels</strong> capture simple local patterns &#40;edges, colors&#41;</p>
+</li>
+<li><p><strong>Middle levels</strong> combine into textures, parts</p>
+</li>
+<li><p><strong>High levels</strong> form objects, scenes</p>
+</li>
+</ul>
+<hr />
+<h2 id="mathematical_deep_dive_receptive_field_calculation"><a href="#mathematical_deep_dive_receptive_field_calculation" class="header-anchor">Mathematical Deep Dive: Receptive Field Calculation</a></h2>
+<h3 id="definition"><a href="#definition" class="header-anchor">Definition</a></h3>
+<p>The <strong>receptive field</strong> of a neuron at layer \(l\) is the spatial region in the input image that can influence its activation. Mathematically, for a neuron at position \((i, j)\) in layer \(l\), the receptive field \(RF_l\) defines the set of input positions:</p>
+\[RF_l = \{(x, y) \in \text{Input} \mid \text{Input}(x,y) \text{ affects Output}_l(i,j)\}\]
+<h3 id="recursive_formula_for_receptive_field_size"><a href="#recursive_formula_for_receptive_field_size" class="header-anchor">Recursive Formula for Receptive Field Size</a></h3>
+<p>For a sequence of convolutional layers, we can calculate the receptive field size recursively. Let:</p>
+<ul>
+<li><p>\(r_l\) &#61; receptive field size at layer \(l\)</p>
+</li>
+<li><p>\(k_l\) &#61; kernel size at layer \(l\)</p>
+</li>
+<li><p>\(s_l\) &#61; stride at layer \(l\)</p>
+</li>
+<li><p>\(d_l\) &#61; dilation at layer \(l\)</p>
+</li>
+</ul>
+<p>The <strong>effective kernel size</strong> with dilation is:</p>
+\[k_l^{\text{eff}} = k_l + (k_l - 1)(d_l - 1) = d_l(k_l - 1) + 1\]
+<p>The recursive formula for receptive field size:</p>
+\[r_l = r_{l-1} + (k_l^{\text{eff}} - 1) \cdot \prod_{i=1}^{l-1} s_i\]
+<p>With base case: \(r_0 = 1\) &#40;the input itself has receptive field of 1 pixel&#41;</p>
+<p><strong>Simplified form</strong> when all strides are \(s\):</p>
+\[r_l = r_{l-1} + (k_l^{\text{eff}} - 1) \cdot s^{l-1}\]
+<h3 id="jump_stride_product"><a href="#jump_stride_product" class="header-anchor">Jump &#40;Stride Product&#41;</a></h3>
+<p>The <strong>jump</strong> \(j_l\) represents the spacing between adjacent receptive field centers in the input space:</p>
+\[j_l = \prod_{i=1}^{l} s_i\]
+<p>This tells us how much we move in the input when we move 1 position in the feature map.</p>
+<h3 id="receptive_field_center_position"><a href="#receptive_field_center_position" class="header-anchor">Receptive Field Center Position</a></h3>
+<p>For a neuron at position \((i, j)\) in layer \(l\), its receptive field center in the input is at:</p>
+\[\text{center}_x = \frac{r_l - 1}{2} + i \cdot j_l\]
+\[\text{center}_y = \frac{r_l - 1}{2} + j \cdot j_l\]
+<h3 id="detailed_example_3-layer_cnn"><a href="#detailed_example_3-layer_cnn" class="header-anchor">Detailed Example: 3-Layer CNN</a></h3>
+<p>Consider a network with:</p>
+<ul>
+<li><p>Layer 1: \(k_1 = 3\), \(s_1 = 1\), \(d_1 = 1\)</p>
+</li>
+<li><p>Layer 2: \(k_2 = 3\), \(s_2 = 2\), \(d_2 = 1\)</p>
+</li>
+<li><p>Layer 3: \(k_3 = 3\), \(s_3 = 1\), \(d_3 = 1\)</p>
+</li>
+</ul>
+<p><strong>Layer 0 &#40;input&#41;:</strong></p>
+\[r_0 = 1, \quad j_0 = 1\]
+<p><strong>Layer 1:</strong></p>
+\[k_1^{\text{eff}} = 1(3-1) + 1 = 3\]
+\[r_1 = 1 + (3-1) \cdot 1 = 3\]
+\[j_1 = 1\]
+<p><strong>Layer 2:</strong></p>
+\[k_2^{\text{eff}} = 3\]
+\[r_2 = 3 + (3-1) \cdot 1 = 5\]
+\[j_2 = 1 \cdot 2 = 2\]
+<p><strong>Layer 3:</strong></p>
+\[k_3^{\text{eff}} = 3\]
+\[r_3 = 5 + (3-1) \cdot 2 = 9\]
+\[j_3 = 2 \cdot 1 = 2\]
+<p>So a neuron in layer 3 sees a <strong>9×9 region</strong> of the input.</p>
+<h3 id="impact_of_dilation"><a href="#impact_of_dilation" class="header-anchor">Impact of Dilation</a></h3>
+<p>Dilation increases the receptive field without adding parameters. For a single layer with dilation \(d\):</p>
+\[r_{\text{dilated}} = 1 + (k-1) \cdot d\]
+<p><strong>Example</strong>: \(k=3\), \(d=2\)</p>
+\[r = 1 + (3-1) \cdot 2 = 5\]
+<p>The 3×3 kernel now covers 5×5 input pixels with gaps.</p>
+<h3 id="closed_form_for_uniform_architecture"><a href="#closed_form_for_uniform_architecture" class="header-anchor">Closed Form for Uniform Architecture</a></h3>
+<p>For \(L\) layers with identical kernel size \(k\) and stride \(s\):</p>
+\[r_L = 1 + (k-1) \sum_{i=0}^{L-1} s^i = 1 + (k-1) \cdot \frac{s^L - 1}{s - 1}\]
+<p>When \(s=1\) &#40;no striding&#41;:</p>
+\[r_L = 1 + (k-1) \cdot L\]
+<p><strong>Example</strong>: 10 layers of 3×3, stride 1</p>
+\[r_{10} = 1 + (3-1) \cdot 10 = 21\]
+<h3 id="effective_receptive_field"><a href="#effective_receptive_field" class="header-anchor">Effective Receptive Field</a></h3>
+<p>The <strong>theoretical receptive field</strong> assumes all pixels contribute equally. In practice, the <strong>effective receptive field</strong> &#40;ERF&#41; follows a Gaussian-like distribution—central pixels matter much more.</p>
+<p>Empirically, the ERF is approximately:</p>
+\[\text{ERF} \approx \sqrt{\frac{2r_L}{L}}\]
+<p>This is much smaller than the theoretical RF, especially in deep networks. It explains why:</p>
+<ul>
+<li><p>Distant pixels contribute negligibly</p>
+</li>
+<li><p>Locality bias is stronger than theoretical RF suggests</p>
+</li>
+<li><p>Skip connections &#40;ResNets&#41; expand ERF significantly</p>
+</li>
+</ul>
+<h3 id="padding_considerations"><a href="#padding_considerations" class="header-anchor">Padding Considerations</a></h3>
+<p>Padding affects output dimensions but not the receptive field size. With padding \(p\):</p>
+\[\text{Output size} = \left\lfloor \frac{\text{Input size} + 2p - k}{s} \right\rfloor + 1\]
+<p>But the receptive field calculation remains unchanged—it&#39;s determined by kernel size, stride, and dilation only.</p>
+<h3 id="practical_formula_summary"><a href="#practical_formula_summary" class="header-anchor">Practical Formula Summary</a></h3>
+<p>For quick calculation in standard CNNs &#40;no dilation&#41;:</p>
+\[r_l = r_{l-1} + (k_l - 1) \cdot j_{l-1}\]
+\[j_l = j_{l-1} \cdot s_l\]
+<p>Initialize with \(r_0 = 1\), \(j_0 = 1\).</p>
+<p><strong>Python implementation:</strong></p>
+<pre><code class="language-python">def receptive_field&#40;layers&#41;:
+    r, j &#61; 1, 1
+    for k, s in layers:  # &#40;kernel_size, stride&#41; pairs
+        r &#61; r &#43; &#40;k - 1&#41; * j
+        j &#61; j * s
+    return r, j
+
+# Example: &#91;&#40;3,1&#41;, &#40;3,2&#41;, &#40;3,1&#41;&#93;
+rf, jump &#61; receptive_field&#40;&#91;&#40;3,1&#41;, &#40;3,2&#41;, &#40;3,1&#41;&#93;&#41;
+print&#40;f&quot;Receptive field: &#123;rf&#125;, Jump: &#123;jump&#125;&quot;&#41;  # 9, 2</code></pre>
+<hr />
+<h2 id="the_quantitative_justification_why_spatial_locality"><a href="#the_quantitative_justification_why_spatial_locality" class="header-anchor">The Quantitative Justification: Why Spatial Locality?</a></h2>
+<p>Why do local receptive fields work? Because natural images have quantifiable local structure:</p>
+<h3 id="statistical_correlation"><a href="#statistical_correlation" class="header-anchor">Statistical Correlation</a></h3>
+<p>Nearby pixels are highly correlated:</p>
+\[\text{Cov}(I(x), I(x+\delta)) \text{ is high when } |\delta| \text{ is small}\]
+<p>Empirically, adjacent pixels often have correlation &gt;0.8, while distant pixels approach independence.</p>
+<h3 id="mutual_information"><a href="#mutual_information" class="header-anchor">Mutual Information</a></h3>
+<p>\(I(X;Y)\) between pixels decays with spatial distance. Local windows capture most of the information.</p>
+<h3 id="structural_scales"><a href="#structural_scales" class="header-anchor">Structural Scales</a></h3>
+<p>Natural features &#40;edges, textures&#41; have characteristic spatial scales matched by small receptive fields &#40;3×3, 5×5&#41;.</p>
+<p><strong>The inductive bias:</strong> the function we&#39;re learning has <strong>locality of influence</strong>—outputs at position \(i\) depend strongly on inputs near \(i\), weakly on distant inputs.</p>
+<hr />
+<h2 id="transformers_a_different_philosophy"><a href="#transformers_a_different_philosophy" class="header-anchor">Transformers: A Different Philosophy</a></h2>
+<p>Standard Transformers lack translation equivariance for a key reason: <strong>positional encodings</strong>.</p>
+<p>Without positional encodings, self-attention is actually <strong>permutation invariant</strong>—it can&#39;t distinguish token orderings at all. Positional encodings break this symmetry, making position 1 fundamentally different from position 100.</p>
+<h3 id="the_trade-off"><a href="#the_trade-off" class="header-anchor">The Trade-off</a></h3>
+<ul>
+<li><p><strong>CNNs</strong>: Strong inductive bias &#40;spatial locality, translation equivariance&#41; → data-efficient for spatial data</p>
+</li>
+<li><p><strong>Transformers</strong>: Weaker inductive bias → need more data but more flexible, can learn long-range dependencies directly</p>
+</li>
+</ul>
+<p>This is why Vision Transformers originally needed much more training data than CNNs. They lack the built-in spatial locality bias, but with enough data, they can learn approximately equivariant representations if useful.</p>
+<hr />
+<h2 id="beyond_convolutions_other_operations_encoding_locality"><a href="#beyond_convolutions_other_operations_encoding_locality" class="header-anchor">Beyond Convolutions: Other Operations Encoding Locality</a></h2>
+<p>Spatial locality isn&#39;t unique to convolutions. Other operations encode similar assumptions:</p>
+<h3 id="recurrent_networks_rnns_lstms"><a href="#recurrent_networks_rnns_lstms" class="header-anchor">Recurrent Networks &#40;RNNs, LSTMs&#41;</a></h3>
+<ul>
+<li><p>Temporal locality: current state depends on recent past</p>
+</li>
+<li><p>Markovian assumption: limited temporal receptive field</p>
+</li>
+<li><p>Same principle, different domain &#40;time vs space&#41;</p>
+</li>
+</ul>
+<h3 id="graph_neural_networks_gnns"><a href="#graph_neural_networks_gnns" class="header-anchor">Graph Neural Networks &#40;GNNs&#41;</a></h3>
+<ul>
+<li><p>Locality defined by graph structure, not Euclidean distance</p>
+</li>
+<li><p>Message passing from immediate neighbors</p>
+</li>
+<li><p>Stacking layers expands to k-hop neighborhoods</p>
+</li>
+</ul>
+<h3 id="localwindowed_attention"><a href="#localwindowed_attention" class="header-anchor">Local/Windowed Attention</a></h3>
+<ul>
+<li><p>Swin Transformers: attention within spatial windows</p>
+</li>
+<li><p>Longformer, BigBird: sparse attention patterns</p>
+</li>
+<li><p>Hybrid approach: some locality bias &#43; attention flexibility</p>
+</li>
+</ul>
+<h3 id="locally_connected_layers"><a href="#locally_connected_layers" class="header-anchor">Locally Connected Layers</a></h3>
+<ul>
+<li><p>Local receptive fields WITHOUT parameter sharing</p>
+</li>
+<li><p>Spatial locality but no translation equivariance</p>
+</li>
+<li><p>Each position learns its own local filter</p>
+</li>
+</ul>
+<h3 id="the_common_thread"><a href="#the_common_thread" class="header-anchor">The Common Thread</a></h3>
+<p>All these operations restrict the computational graph so each output depends on a limited neighborhood of inputs. The definition of &quot;neighborhood&quot; varies:</p>
+<ul>
+<li><p><strong>CNNs</strong>: Euclidean spatial distance</p>
+</li>
+<li><p><strong>RNNs</strong>: Temporal proximity</p>
+</li>
+<li><p><strong>GNNs</strong>: Graph connectivity</p>
+</li>
+<li><p><strong>Windowed attention</strong>: Constrained receptive field</p>
+</li>
+</ul>
+<p>The alternative—fully-connected layers or full attention—assumes every input is equally relevant to every output. No locality bias.</p>
+<hr />
+<h2 id="key_takeaway"><a href="#key_takeaway" class="header-anchor">Key Takeaway</a></h2>
+<p><strong>Spatial locality</strong> is a powerful inductive bias that says: the world has local structure, and nearby things influence each other more than distant things.</p>
+<p>CNNs encode this through:</p>
+<ol>
+<li><p><strong>Parameter sharing</strong> &#40;global constraint: same rules everywhere&#41;</p>
+</li>
+<li><p><strong>Local receptive fields</strong> &#40;local processing of neighborhoods&#41;</p>
+</li>
+<li><p><strong>Hierarchical composition</strong> &#40;simple → complex features&#41;</p>
+</li>
+</ol>
+<p>This bias makes CNNs incredibly data-efficient for spatial data, but it&#39;s also a constraint. Transformers show us the alternative: weaker assumptions, more data needed, but potentially more flexibility.</p>
+<p><strong>The art of architecture design is choosing the right inductive biases for your problem domain.</strong></p>
+<hr />
+<blockquote>
+<h2>Controversial and Underappreciated Aspects of CNNs</h2>
+<h3>1. Texture Bias vs Shape Bias - The Uncomfortable Truth</h3>
+<p>CNNs are heavily <strong>texture-biased</strong>, not shape-biased like humans:</p>
+<ul>
+<li><p>ImageNet-trained CNNs often classify based on texture, not object shape</p>
+</li>
+<li><p>A cat-shaped object with elephant texture gets classified as elephant</p>
+</li>
+<li><p>Humans use shape primarily; CNNs learned a &quot;wrong&quot; solution that still works</p>
+</li>
+<li><p><strong>Why it matters</strong>: Adversarial vulnerability, poor generalization to stylized images</p>
+</li>
+<li><p><strong>The debate</strong>: Is texture bias a bug or feature? Maybe textures ARE more informative statistically?</p>
+</li>
+</ul>
+<h3>2. Aliasing and the Strided Convolution Problem</h3>
+<p>This is getting more attention recently but still underappreciated:</p>
+<ul>
+<li><p><strong>Stride &gt; 1 causes aliasing</strong> - violates Nyquist sampling theorem</p>
+</li>
+<li><p>Downsampling without proper anti-aliasing loses high-frequency information incorrectly</p>
+</li>
+<li><p><strong>The fix</strong>: Blur before downsampling &#40;BlurPool, Lipschitz constraints&#41;</p>
+</li>
+<li><p><strong>Controversial</strong>: Most architectures ignore this, yet it improves shift-equivariance significantly</p>
+</li>
+<li><p>Papers like &quot;Making Convolutional Networks Shift-Invariant Again&quot; show huge gains from proper anti-aliasing</p>
+</li>
+</ul>
+<h3>3. The Effective Receptive Field Scandal</h3>
+<p>The ERF revelation is actually shocking:</p>
+<ul>
+<li><p>Theoretical RF of ResNet-50 final layer: <strong>427×427 pixels</strong></p>
+</li>
+<li><p>Effective RF &#40;where gradients actually flow&#41;: <strong>~70×70 pixels</strong></p>
+</li>
+<li><p><strong>The controversy</strong>: Deep networks don&#39;t actually use their theoretical receptive fields&#33;</p>
+</li>
+<li><p>Central pixels dominate; peripheral pixels contribute almost nothing</p>
+</li>
+<li><p>Skip connections help but don&#39;t solve this completely</p>
+</li>
+<li><p><strong>Implication</strong>: Maybe we don&#39;t need such deep networks? Or we&#39;re not training them optimally?</p>
+</li>
+</ul>
+<h3>4. Border Effects and Padding - The Silent Performance Killer</h3>
+<p>Zero-padding creates <strong>boundary artifacts</strong> that propagate through networks:</p>
+<ul>
+<li><p>Edges of feature maps have different statistics than centers</p>
+</li>
+<li><p>Networks learn to &quot;know&quot; where borders are, breaking true translation equivariance</p>
+</li>
+<li><p><strong>Controversial solution</strong>: Circular/reflection padding, or crop away borders</p>
+</li>
+<li><p>Most papers ignore this; some claim 10&#37;&#43; accuracy gains from proper padding strategies</p>
+</li>
+</ul>
+<h3>5. Weight Standardization vs Batch Normalization</h3>
+<p>BatchNorm is everywhere, but:</p>
+<ul>
+<li><p><strong>Weight Standardization</strong> &#40;normalizing weights, not activations&#41; can be better</p>
+</li>
+<li><p>Less sensitive to batch size, more stable training</p>
+</li>
+<li><p><strong>Controversial</strong>: Challenges the BatchNorm hegemony</p>
+</li>
+<li><p>GroupNorm &#43; Weight Standardization often outperforms BatchNorm in small-batch regimes</p>
+</li>
+</ul>
+<h3>6. The Lottery Ticket Hypothesis - Implications</h3>
+<p>Finding that <strong>sparse subnetworks</strong> exist from initialization that train to full accuracy:</p>
+<ul>
+<li><p>Suggests over-parameterization might be about finding good initialization paths</p>
+</li>
+<li><p><strong>Controversial view</strong>: Maybe we don&#39;t understand what training does at all</p>
+</li>
+<li><p>Are we learning, or searching through random features?</p>
+</li>
+<li><p>Connections to neural tangent kernels and lazy training</p>
+</li>
+</ul>
+<h3>7. Checkerboard Artifacts from Transposed Convolutions</h3>
+<p>When doing upsampling &#40;GANs, segmentation&#41;:</p>
+<ul>
+<li><p>Transposed convolutions with stride create <strong>checkerboard patterns</strong></p>
+</li>
+<li><p>Caused by uneven pixel overlap</p>
+</li>
+<li><p><strong>The fix</strong>: Resize &#43; convolution, or careful kernel/stride choices</p>
+</li>
+<li><p>Many papers still use naive transposed convs and get artifacts</p>
+</li>
+</ul>
+<h3>8. Data Augmentation as Regularization - It&#39;s Doing More Than You Think</h3>
+<p>Modern training relies heavily on augmentation, but:</p>
+<ul>
+<li><p>Augmentation changes the <strong>implicit prior</strong> of the model</p>
+</li>
+<li><p>You&#39;re not just preventing overfitting; you&#39;re encoding invariances</p>
+</li>
+<li><p><strong>Controversial</strong>: Different augmentations create fundamentally different learned representations</p>
+</li>
+<li><p>MixUp, CutMix change the loss landscape itself - are we still solving the same problem?</p>
+</li>
+</ul>
+<h3>9. The Fourier Bias of Neural Networks</h3>
+<p>Networks learn <strong>low-frequency functions first</strong> &#40;spectral bias&#41;:</p>
+<ul>
+<li><p>High-frequency details are learned slowly or not at all</p>
+</li>
+<li><p>Explains why CNNs struggle with fine-grained textures</p>
+</li>
+<li><p><strong>Implication</strong>: Maybe explicit frequency representations &#40;Fourier features&#41; should be standard</p>
+</li>
+<li><p>Used in NeRF and other coordinate-based networks, but rare in vision</p>
+</li>
+</ul>
+<h3>10. Group Equivariance - The Obvious Generalization Nobody Uses</h3>
+<p>Translation equivariance is just one type of symmetry:</p>
+<ul>
+<li><p><strong>Rotation equivariance</strong>: Objects look the same rotated</p>
+</li>
+<li><p><strong>Scale equivariance</strong>: Should be resolution-independent</p>
+</li>
+<li><p><strong>Group Convolutional Networks</strong> exist but are rarely used in practice</p>
+</li>
+<li><p><strong>The controversy</strong>: Why don&#39;t we use stronger geometric priors?</p>
+</li>
+<li><p>Counter-argument: Data augmentation achieves approximate equivariance cheaper</p>
+</li>
+</ul>
+<h3>11. Implicit vs Explicit Bias</h3>
+<p>The distinction between:</p>
+<ul>
+<li><p><strong>Explicit bias</strong>: Architecture &#40;convolutions, pooling&#41;</p>
+</li>
+<li><p><strong>Implicit bias</strong>: What optimization finds &#40;gradient descent&#39;s inductive bias&#41;</p>
+</li>
+<li><p><strong>Controversial finding</strong>: SGD has its own biases independent of architecture</p>
+</li>
+<li><p>Flat minima, margin maximization, feature learning order</p>
+</li>
+<li><p>We might be attributing to architecture what&#39;s actually from optimization</p>
+</li>
+</ul>
+<h3>12. The Death of Pooling?</h3>
+<p>Max pooling was standard, now:</p>
+<ul>
+<li><p>Strided convolutions often work better</p>
+</li>
+<li><p><strong>Stochastic pooling</strong> was promising but died out</p>
+</li>
+<li><p><strong>Learnable pooling</strong> &#40;soft attention&#41; rarely used</p>
+</li>
+<li><p><strong>The debate</strong>: Is pooling a form of lossy compression we shouldn&#39;t do?</p>
+</li>
+<li><p>Or does its discrete nature help with robustness?</p>
+</li>
+</ul>
+<h3>13. Coordinate Convolutions - Adding Back Position Information</h3>
+<p>CNNs lose absolute position through translation equivariance, but:</p>
+<ul>
+<li><p>Adding <strong>coordinate channels</strong> &#40;x, y pixel positions&#41; as extra inputs helps</p>
+</li>
+<li><p>Seems to contradict the equivariance principle</p>
+</li>
+<li><p><strong>Useful for</strong>: Segmentation, detection, anything needing spatial reasoning</p>
+</li>
+<li><p><strong>Controversial</strong>: Are we admitting CNNs are missing something fundamental?</p>
+</li>
+</ul>
+<h3>14. The Batch Size - Learning Rate Scaling Mystery</h3>
+<p>Linear scaling rule: <code>lr ∝ batch_size</code> but:</p>
+<ul>
+<li><p>Only works up to a point &#40;critical batch size&#41;</p>
+</li>
+<li><p>Large batch training requires careful warmup, different optimization</p>
+</li>
+<li><p><strong>Controversial</strong>: Is there a fundamental limit to parallelization?</p>
+</li>
+<li><p>Connects to generalization - large batches reach &quot;sharper&quot; minima</p>
+</li>
+</ul>
+<h3>15. Neural ODEs and Continuous Depth</h3>
+<p>Viewing ResNets as discrete ODE solvers:</p>
+<ul>
+<li><p>\(h_{t+1} = h_t + f(h_t)\) is Euler discretization</p>
+</li>
+<li><p><strong>Neural ODEs</strong>: Make depth continuous</p>
+</li>
+<li><p><strong>Controversial</strong>: Changes how we think about depth vs width</p>
+</li>
+<li><p>Adaptive computation depth based on input difficulty</p>
+</li>
+</ul>
+<hr />
+<h3>Most Practically Useful but Overlooked:</h3>
+<ol>
+<li><p><strong>Proper anti-aliasing</strong> &#40;BlurPool&#41; - easy implementation win</p>
+</li>
+<li><p><strong>Reflection/circular padding</strong> - fixes boundary artifacts  </p>
+</li>
+<li><p><strong>Weight standardization</strong> - better than BatchNorm in some regimes</p>
+</li>
+<li><p><strong>Coordinate convolutions</strong> - helps spatial tasks significantly</p>
+</li>
+<li><p><strong>Careful upsampling</strong> - eliminates checkerboard artifacts</p>
+</li>
+</ol>
+<h3>Most Theoretically Important but Ignored:</h3>
+<ol>
+<li><p><strong>Effective receptive field</strong> being tiny - questions depth benefits</p>
+</li>
+<li><p><strong>Texture bias</strong> - CNNs solve problems differently than humans</p>
+</li>
+<li><p><strong>Implicit bias of optimization</strong> - it&#39;s not just architecture</p>
+</li>
+<li><p><strong>Spectral bias</strong> - explains many failure modes</p>
+</li>
+</ol>
+</blockquote>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 02, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
