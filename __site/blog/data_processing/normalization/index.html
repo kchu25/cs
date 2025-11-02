@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Neural Network Output Activations for Normalized Labels</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="neural_network_output_activations_for_normalized_labels"><a href="#neural_network_output_activations_for_normalized_labels" class="header-anchor">Neural Network Output Activations for Normalized Labels</a></h1>
+<h2 id="summary_table"><a href="#summary_table" class="header-anchor">Summary Table</a></h2>
+<table><tr><th align="right">Normalization Type</th><th align="right">Output Activation</th><th align="right">Output Range</th><th align="right">Inverse Transform</th></tr><tr><td align="right"><strong>Log</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \exp(\hat{y})\)</td></tr><tr><td align="right"><strong>Z-score</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot \sigma + \mu\)</td></tr><tr><td align="right"><strong>Min-Max</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\) or \(\mathbb{R}\)</td><td align="right">\(y_{orig} = \hat{y} \cdot (y_{max} - y_{min}) + y_{min}\)</td></tr><tr><td align="right"><strong>Box-Cox</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">Inverse Box-Cox with \(\lambda\)</td></tr><tr><td align="right"><strong>Robust &#40;IQR&#41;</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot IQR + \text{median}\)</td></tr><tr><td align="right"><strong>Quantile/Rank</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\)</td><td align="right">Inverse quantile mapping</td></tr></table>
+<hr />
+<h2 id="log_normalization"><a href="#log_normalization" class="header-anchor"><ol>
+<li><p>Log Normalization</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \log(y)\)</p>
+<p><strong>Output Activation:</strong> Linear &#40;identity function&#41;</p>
+<p><strong>Reasoning:</strong> Log-transformed values span the entire real line \((-\infty, \infty)\), so a linear output handles this naturally.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \exp(\hat{y})\)</p>
+<p><strong>Loss Function:</strong> Standard regression losses &#40;MSE, MAE&#41; on log-space values</p>
+<blockquote>
+<p><strong>When to use:</strong> Data spans multiple orders of magnitude &#40;e.g., prices, populations, income&#41;. Converts multiplicative relationships to additive ones. Reduces impact of large outliers. Good when errors should be proportional to magnitude &#40;percentage errors&#41;. Requires strictly positive values.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start2_z-score_normalization"><a href="#ol_start2_z-score_normalization" class="header-anchor"><ol start="2">
+<li><p>Z-Score Normalization</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \frac{y - \mu}{\sigma}\)</p>
+<p>where \(\mu\) is the mean and \(\sigma\) is the standard deviation.</p>
+<p><strong>Output Activation:</strong> Linear &#40;identity function&#41;</p>
+<p><strong>Reasoning:</strong> Z-score normalized values also span \((-\infty, \infty)\) with mean 0 and standard deviation 1.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \hat{y} \cdot \sigma + \mu\)</p>
+<p><strong>Loss Function:</strong> Standard regression losses &#40;MSE, MAE&#41; on normalized values</p>
+<blockquote>
+<p><strong>When to use:</strong> General-purpose normalization. Makes features comparable in scale. Helps with gradient descent convergence. Assumes data is roughly Gaussian or symmetric. Simple and reversible. Good default choice when data doesn&#39;t have extreme skew or outliers.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start3_min-max_normalization"><a href="#ol_start3_min-max_normalization" class="header-anchor"><ol start="3">
+<li><p>Min-Max Normalization</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \frac{y - y_{min}}{y_{max} - y_{min}}\)</p>
+<p><strong>Output Activation:</strong> </p>
+<ul>
+<li><p><strong>Sigmoid</strong> &#40;\(\sigma(x) = \frac{1}{1 + e^{-x}}\)&#41; - <strong>Recommended</strong></p>
+</li>
+<li><p><strong>Linear</strong> - Also works but less constrained</p>
+</li>
+</ul>
+<p><strong>Reasoning:</strong> Min-max normalization bounds values to \([0, 1]\). Using a sigmoid ensures network outputs respect these bounds naturally.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \hat{y} \cdot (y_{max} - y_{min}) + y_{min}\)</p>
+<p><strong>Loss Function:</strong> MSE or MAE on normalized \([0,1]\) values</p>
+<p><strong>Note:</strong> Sigmoid is preferred because it naturally constrains outputs to \([0,1]\), preventing predictions outside the valid range. However, a linear activation with appropriate loss clipping also works.</p>
+<blockquote>
+<p><strong>When to use:</strong> Need bounded predictions in a known range. Preserves exact relationships between values &#40;unlike rank-based methods&#41;. Works well with neural networks that benefit from bounded activations. Sensitive to outliers in training data &#40;they define min/max&#41;. Use when you know the true min/max of the phenomenon.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start4_box-cox_transformation_unconventional"><a href="#ol_start4_box-cox_transformation_unconventional" class="header-anchor"><ol start="4">
+<li><p>Box-Cox Transformation &#40;Unconventional&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \begin{cases} 
+\frac{y^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0 \\
+\log(y) & \text{if } \lambda = 0
+\end{cases}\)</p>
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Reasoning:</strong> Box-Cox is a power transformation that makes data more Gaussian-like. The parameter \(\lambda\) is typically fitted to the data. Output range is unbounded.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \begin{cases} 
+(\lambda \cdot \hat{y} + 1)^{1/\lambda} & \text{if } \lambda \neq 0 \\
+\exp(\hat{y}) & \text{if } \lambda = 0
+\end{cases}\)</p>
+<p><strong>Use Case:</strong> When dealing with skewed distributions that need stabilization beyond simple log transform.</p>
+<blockquote>
+<p><strong>When to use:</strong> Data is heavily skewed &#40;left or right&#41;. Want to make residuals more normally distributed for better model assumptions. More flexible than simple log &#40;includes log as special case when λ&#61;0&#41;. Requires strictly positive values. Optimal λ can be found via maximum likelihood. Common in econometrics and statistical modeling.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start5_robust_scaling_iqr-based"><a href="#ol_start5_robust_scaling_iqr-based" class="header-anchor"><ol start="5">
+<li><p>Robust Scaling &#40;IQR-based&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \frac{y - \text{median}(y)}{IQR}\)</p>
+<p>where \(IQR = Q_3 - Q_1\) &#40;interquartile range&#41;</p>
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Reasoning:</strong> Similar to z-score but robust to outliers. Values typically centered around 0 but unbounded.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \hat{y} \cdot IQR + \text{median}\)</p>
+<p><strong>Use Case:</strong> When your labels contain outliers that would distort mean/std in z-score normalization.</p>
+<blockquote>
+<p><strong>When to use:</strong> Data contains outliers that shouldn&#39;t dominate the scaling. More robust than z-score since median and IQR are resistant to extreme values. Good for data with long tails or contamination. Medical data, sensor readings, or real-world measurements with anomalies. Preserves outlier information while not letting them define the scale.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start6_quantilerank_transformation"><a href="#ol_start6_quantilerank_transformation" class="header-anchor"><ol start="6">
+<li><p>Quantile/Rank Transformation</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> Map each value to its quantile rank in \([0, 1]\)</p>
+\(y_{norm} = \frac{\text{rank}(y)}{n}\)
+<p><strong>Output Activation:</strong> </p>
+<ul>
+<li><p><strong>Sigmoid</strong> - Recommended for strict \([0,1]\) bounds</p>
+</li>
+<li><p><strong>Linear</strong> - With careful training</p>
+</li>
+</ul>
+<p><strong>Reasoning:</strong> Non-parametric transformation that maps to uniform distribution. Highly robust to outliers.</p>
+<p><strong>Inverse Transform:</strong> Use stored quantile mapping &#40;e.g., via interpolation of the empirical CDF&#41;</p>
+<p><strong>Use Case:</strong> When you want to be completely robust to outliers and don&#39;t care about preserving exact distances between values.</p>
+<blockquote>
+<p><strong>When to use:</strong> Maximally robust to outliers - only ordinal relationships matter. Makes data uniformly distributed regardless of original distribution. Non-parametric &#40;no assumptions about data distribution&#41;. Good when relative rankings are more important than absolute values. Common in feature engineering, less common for target variables. Loses information about distances between values.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start7_specialized_logarithmic_min-max"><a href="#ol_start7_specialized_logarithmic_min-max" class="header-anchor"><ol start="7">
+<li><p>Specialized: Logarithmic Min-Max</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \frac{\log(y) - \log(y_{min})}{\log(y_{max}) - \log(y_{min})}\)</p>
+<p><strong>Output Activation:</strong> Sigmoid</p>
+<p><strong>Reasoning:</strong> Combines benefits of log transform &#40;for multiplicative relationships&#41; with min-max scaling. Outputs in \([0,1]\).</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \exp\left(\hat{y} \cdot (\log(y_{max}) - \log(y_{min})) + \log(y_{min})\right)\)</p>
+<p><strong>Use Case:</strong> Data spanning multiple orders of magnitude &#40;e.g., prices, populations&#41; where you want bounded outputs.</p>
+<blockquote>
+<p><strong>When to use:</strong> Data spans many orders of magnitude AND you want bounded outputs. Best of both worlds: handles multiplicative relationships &#40;log&#41; while constraining predictions &#40;min-max&#41;. Useful for prices, populations, counts that can range from tiny to huge. Network benefits from bounded gradients while respecting exponential nature of data. Requires strictly positive values.</p>
+<blockquote>
+<p><strong>Note:</strong> Plain log is usually sufficient&#33; Add min-max only when: &#40;1&#41; you need guaranteed bounds for production safety, &#40;2&#41; training stability issues with unbounded outputs, or &#40;3&#41; you&#39;re confident test data won&#39;t exceed training range. The added complexity is rarely worth it—use plain log in most cases.</p>
+</blockquote>
+</blockquote>
+<hr />
+<h2 id="ol_start8_arcsinh_transformation_for_data_including_zeros"><a href="#ol_start8_arcsinh_transformation_for_data_including_zeros" class="header-anchor"><ol start="8">
+<li><p>Arcsinh Transformation &#40;For Data Including Zeros&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \text{arcsinh}(y) = \log(y + \sqrt{y^2 + 1})\)</p>
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Reasoning:</strong> Similar to log but handles zero and negative values gracefully. Approximately linear near zero, logarithmic for large values.</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \sinh(\hat{y}) = \frac{e^{\hat{y}} - e^{-\hat{y}}}{2}\)</p>
+<p><strong>Use Case:</strong> When you want log-like behavior but your data includes zeros or negative values &#40;common in finance, social sciences&#41;.</p>
+<blockquote>
+<p><strong>When to use:</strong> Data contains zeros or negative values &#40;log won&#39;t work&#41;. Want log-like compression of large values. Smooth transition from linear &#40;near zero&#41; to logarithmic &#40;large magnitudes&#41;. Common in finance &#40;returns can be negative&#41;, astronomy &#40;flux measurements&#41;, social sciences. More robust than log&#40;y&#43;c&#41; tricks. Symmetric for positive and negative values.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start9_yeo-johnson_transformation"><a href="#ol_start9_yeo-johnson_transformation" class="header-anchor"><ol start="9">
+<li><p>Yeo-Johnson Transformation</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Transform:</strong> \(y_{norm} = \begin{cases} 
+\frac{(y+1)^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0, y \geq 0 \\
+\log(y+1) & \text{if } \lambda = 0, y \geq 0 \\
+-\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \text{if } \lambda \neq 2, y < 0 \\
+-\log(-y+1) & \text{if } \lambda = 2, y < 0
+\end{cases}\)</p>
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Reasoning:</strong> Extension of Box-Cox that works with negative values and zeros.</p>
+<p><strong>Inverse Transform:</strong> Piecewise inverse based on sign and \(\lambda\) value</p>
+<p><strong>Use Case:</strong> More flexible than Box-Cox when data contains negative values.</p>
+<blockquote>
+<p><strong>When to use:</strong> Need Box-Cox flexibility but data includes zeros or negatives. Want to normalize skewed data without pre-processing to remove negatives. Handles both positive and negative skew in same framework. Optimal λ found via maximum likelihood. More general than Box-Cox but slightly more complex. Good for economic data, changes/differences, or centered measurements.</p>
+</blockquote>
+<hr />
+<h2 id="ol_start10_target_encoding_with_monotonic_constraint"><a href="#ol_start10_target_encoding_with_monotonic_constraint" class="header-anchor"><ol start="10">
+<li><p>Target Encoding with Monotonic Constraint</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Approach:</strong> Instead of choosing activation, use a monotonic neural network layer</p>
+<p><strong>Implementation:</strong> </p>
+<ul>
+<li><p>Use positive weights in final layer: \(\text{weight} = \text{softplus}(w_{raw})\)</p>
+</li>
+<li><p>Or use cumulative sum of squared weights</p>
+</li>
+</ul>
+<p><strong>Output Activation:</strong> Depends on desired range &#40;Linear, Sigmoid, etc.&#41;</p>
+<p><strong>Use Case:</strong> When you know the relationship between features and target should be monotonic &#40;e.g., price increases with size&#41;.</p>
+<blockquote>
+<p><strong>When to use:</strong> Domain knowledge indicates monotonic relationships &#40;e.g., larger houses cost more, higher education correlates with higher income&#41;. Want interpretable models with guaranteed monotonicity. Prevent unphysical predictions &#40;e.g., negative prices with positive size&#41;. Common in economics, pricing models, risk assessment. Can be partial &#40;only some features monotonic&#41;. Helps with extrapolation beyond training data.</p>
+</blockquote>
+<hr />
+<h2 id="advanced_consideration_learning_the_inverse_transform"><a href="#advanced_consideration_learning_the_inverse_transform" class="header-anchor">Advanced Consideration: Learning the Inverse Transform</a></h2>
+<p><strong>Approach:</strong> Train the network to output in original space while using normalized labels</p>
+<p><strong>Method:</strong></p>
+<ol>
+<li><p>Use a differentiable inverse transform as the output activation</p>
+</li>
+<li><p>Compare output to normalized labels in loss</p>
+</li>
+</ol>
+<p><strong>Example for log normalization:</strong></p>
+<pre><code class="language-python"># Network outputs log-space predictions
+output &#61; model&#40;x&#41;  # Linear activation
+# Loss in original space
+loss &#61; MSE&#40;exp&#40;output&#41;, y_true&#41;</code></pre>
+<p><strong>Pros:</strong> Network learns in normalized space &#40;stable gradients&#41; but predicts in original space &#40;no post-processing&#41;</p>
+<p><strong>Cons:</strong> More complex, can be numerically unstable</p>
+<blockquote>
+<p><strong>When to use:</strong> Want predictions directly in original scale without post-processing. Can afford extra implementation complexity. Need to be careful with numerical stability &#40;especially with exp&#41;. Useful in production systems where inverse transform is costly or error-prone. Can help when loss should be computed in original scale &#40;e.g., MAPE on prices, not log-prices&#41;.</p>
+</blockquote>
+<hr />
+<h2 id="general_recommendation"><a href="#general_recommendation" class="header-anchor">General Recommendation</a></h2>
+<p><strong>For most cases: Use linear activation</strong></p>
+<ul>
+<li><p>Simpler and more stable</p>
+</li>
+<li><p>Works for log, z-score, Box-Cox, robust scaling, arcsinh, Yeo-Johnson</p>
+</li>
+<li><p>Let the network learn the appropriate output range</p>
+</li>
+<li><p>Apply inverse transform during inference</p>
+</li>
+</ul>
+<p><strong>Exception:</strong> Bounded normalizations &#40;min-max, quantile&#41; benefit from sigmoid to enforce bounds, especially if extrapolation beyond training range is possible.</p>
+<p><strong>Pro tip:</strong> For heavily skewed or multi-scale data, consider arcsinh or quantile transformations over simple log or z-score.</p>
+<hr />
+<h2 id="exotic_controversial_approaches"><a href="#exotic_controversial_approaches" class="header-anchor">Exotic &amp; Controversial Approaches</a></h2>
+<h3 id="ol_start11_no_normalization_controversial"><a href="#ol_start11_no_normalization_controversial" class="header-anchor"><ol start="11">
+<li><p>No Normalization &#40;Controversial&#33;&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Transform:</strong> None - use raw targets</p>
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Reasoning:</strong> Let the network figure it out through adaptive learning rates and proper initialization.</p>
+<blockquote>
+<p><strong>When to use:</strong> Modern optimizers &#40;Adam, AdamW&#41; with learning rate scheduling can sometimes handle unnormalized targets. Batch normalization in hidden layers helps. Avoid if targets span orders of magnitude. Works surprisingly well with large models and lots of data. Controversial because it breaks conventional wisdom but increasingly seen in large-scale deep learning.</p>
+<blockquote>
+<p><strong>Controversy:</strong> Violates traditional ML wisdom. Can work with: &#40;1&#41; very large models with residual connections, &#40;2&#41; layer normalization, &#40;3&#41; adaptive optimizers, &#40;4&#41; proper weight initialization. Still risky—normalize if unsure&#33;</p>
+</blockquote>
+</blockquote>
+<hr />
+<h3 id="ol_start12_learned_normalization_parameters"><a href="#ol_start12_learned_normalization_parameters" class="header-anchor"><ol start="12">
+<li><p>Learned Normalization Parameters</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Treat normalization parameters as learnable</p>
+<p><strong>Implementation:</strong></p>
+<pre><code class="language-python"># Learn the scaling and shift
+scale &#61; nn.Parameter&#40;torch.ones&#40;1&#41;&#41;
+shift &#61; nn.Parameter&#40;torch.zeros&#40;1&#41;&#41;
+output &#61; model&#40;x&#41; * scale &#43; shift</code></pre>
+<p><strong>Output Activation:</strong> Linear</p>
+<blockquote>
+<p><strong>When to use:</strong> When you&#39;re not sure about the right normalization. Let the model learn optimal scaling during training. Can adapt to distribution shift. Used in some meta-learning and continual learning settings. Risk of overfitting to training statistics. Controversial because it adds parameters for something that could be solved analytically.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start13_mixture_density_networks_mdn"><a href="#ol_start13_mixture_density_networks_mdn" class="header-anchor"><ol start="13">
+<li><p>Mixture Density Networks &#40;MDN&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Predict distribution parameters instead of point estimates</p>
+<p><strong>Transform:</strong> Can use any normalization for the raw data</p>
+<p><strong>Output:</strong> Predict mean&#40;s&#41;, variance&#40;s&#41;, and mixture weights</p>
+<p><strong>Output Activation:</strong> </p>
+<ul>
+<li><p>Means: depends on normalization</p>
+</li>
+<li><p>Variances: Softplus or exp &#40;must be positive&#41;</p>
+</li>
+<li><p>Weights: Softmax &#40;must sum to 1&#41;</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>When to use:</strong> Target has multimodal distribution or heteroscedastic noise &#40;variance depends on input&#41;. Want to quantify uncertainty. Can predict multiple plausible outputs. Common in robotics, autonomous driving. More complex than point estimation—overkill for simple regression.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start14_quantile_regression_outputs"><a href="#ol_start14_quantile_regression_outputs" class="header-anchor"><ol start="14">
+<li><p>Quantile Regression Outputs</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Predict multiple quantiles &#40;e.g., 10th, 50th, 90th percentile&#41;</p>
+<p><strong>Transform:</strong> Use same normalization for all quantiles</p>
+<p><strong>Output Activation:</strong> </p>
+<ul>
+<li><p>Linear for unbounded</p>
+</li>
+<li><p>Sigmoid for bounded</p>
+</li>
+<li><p>Must enforce quantile ordering: q10 ≤ q50 ≤ q90</p>
+</li>
+</ul>
+<p><strong>Implementation:</strong> Use quantile loss or ensure ordering via cumulative structure</p>
+<blockquote>
+<p><strong>When to use:</strong> Want confidence intervals, not just point predictions. Robust to outliers &#40;median &#61; 50th percentile&#41;. Popular in forecasting, risk assessment. Can reveal heteroscedasticity. More outputs than standard regression but very interpretable.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start15_copula-based_normalization_very_exotic"><a href="#ol_start15_copula-based_normalization_very_exotic" class="header-anchor"><ol start="15">
+<li><p>Copula-Based Normalization &#40;Very Exotic&#33;&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Transform:</strong> </p>
+<ol>
+<li><p>Transform to uniform via empirical CDF</p>
+</li>
+<li><p>Transform uniform to Gaussian via inverse normal CDF &#40;Φ⁻¹&#41;</p>
+</li>
+</ol>
+\(y_{norm} = \Phi^{-1}\left(\frac{\text{rank}(y)}{n+1}\right)\)
+<p><strong>Output Activation:</strong> Linear</p>
+<p><strong>Inverse Transform:</strong> Φ&#40;y_pred&#41; → empirical quantile mapping</p>
+<blockquote>
+<p><strong>When to use:</strong> Want normality without parametric assumptions. Preserves rank order perfectly. More robust than Box-Cox &#40;no λ to tune&#41;. Handles any distribution shape. Used in quantitative finance, geostatistics. Very exotic—rarely seen in ML but theoretically appealing. Requires storing training quantiles for inverse.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start16_truncatedcensored_outputs_domain-specific"><a href="#ol_start16_truncatedcensored_outputs_domain-specific" class="header-anchor"><ol start="16">
+<li><p>Truncated/Censored Outputs &#40;Domain-Specific&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> For targets with known bounds but censored data</p>
+<p><strong>Example:</strong> Income data where high earners reported as &quot;&#36;250K&#43;&quot;</p>
+<p><strong>Output Activation:</strong> </p>
+<ul>
+<li><p>Sigmoid &#43; scaling for bounded</p>
+</li>
+<li><p>Custom loss for censored values</p>
+</li>
+</ul>
+<p><strong>Implementation:</strong> Use survival analysis techniques or Tobit models</p>
+<blockquote>
+<p><strong>When to use:</strong> Data has natural bounds with censoring &#40;test scores, income, survival times&#41;. Some observations are intervals rather than points. Need to handle &quot;greater than X&quot; properly. Common in econometrics, medical research. Requires specialized loss functions.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start17_physics-informed_constraints"><a href="#ol_start17_physics-informed_constraints" class="header-anchor"><ol start="17">
+<li><p>Physics-Informed Constraints</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Output must satisfy physical laws</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li><p>Positive definiteness &#40;covariance matrices&#41;</p>
+</li>
+<li><p>Conservation laws &#40;mass, energy&#41;</p>
+</li>
+<li><p>Symmetries &#40;equivariance&#41;</p>
+</li>
+</ul>
+<p><strong>Output Activation:</strong> Custom, domain-specific</p>
+<p><strong>Implementation:</strong> </p>
+<ul>
+<li><p>Project outputs to valid manifold</p>
+</li>
+<li><p>Use specialized architectures &#40;e.g., Hamiltonian NNs&#41;</p>
+</li>
+<li><p>Constrained optimization in loss</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>When to use:</strong> Modeling physical systems where violations are meaningless. Want guaranteed physical plausibility. Common in computational physics, molecular dynamics, climate modeling. Requires deep domain knowledge. Can significantly reduce data requirements.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start18_hierarchicalcompositional_outputs_cutting_edge"><a href="#ol_start18_hierarchicalcompositional_outputs_cutting_edge" class="header-anchor"><ol start="18">
+<li><p>Hierarchical/Compositional Outputs &#40;Cutting Edge&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Output is compositional &#40;e.g., predict log-ratios that sum to 1&#41;</p>
+<p><strong>Example:</strong> Compositional data &#40;proportions, market shares&#41;</p>
+<p><strong>Transform:</strong> Additive log-ratio &#40;ALR&#41; or centered log-ratio &#40;CLR&#41; transform</p>
+\(y_{ALR,i} = \log\left(\frac{y_i}{y_D}\right)\)
+<p><strong>Output Activation:</strong> Linear, then softmax to recover proportions</p>
+<blockquote>
+<p><strong>When to use:</strong> Targets are compositions &#40;proportions, percentages that sum to 100&#37;&#41;. Common in ecology &#40;species abundance&#41;, geology &#40;mineral composition&#41;, economics &#40;budget shares&#41;. Specialized field—see Aitchison geometry. Preserves simplex structure.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start19_adversarialgan-style_output_matching_very_controversial"><a href="#ol_start19_adversarialgan-style_output_matching_very_controversial" class="header-anchor"><ol start="19">
+<li><p>Adversarial/GAN-Style Output Matching &#40;Very Controversial&#33;&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Train discriminator to match output distribution to target distribution</p>
+<p><strong>Transform:</strong> Minimal or none</p>
+<p><strong>Output Activation:</strong> Whatever produces realistic samples</p>
+<p><strong>Training:</strong> Minimax game between generator &#40;your regression model&#41; and discriminator</p>
+<blockquote>
+<p><strong>When to use:</strong> When you care about distribution matching more than point accuracy. Want realistic predictions even if MSE is slightly higher. Controversial for regression—more common in generation tasks. Can produce more diverse predictions. Risk of mode collapse. Computationally expensive and unstable.</p>
+</blockquote>
+<hr />
+<h3 id="ol_start20_temperature_scaling_for_output_calibration"><a href="#ol_start20_temperature_scaling_for_output_calibration" class="header-anchor"><ol start="20">
+<li><p>Temperature Scaling for Output Calibration</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Approach:</strong> Add temperature parameter to output layer</p>
+<p><strong>Implementation:</strong></p>
+<pre><code class="language-python">output &#61; model&#40;x&#41; / temperature
+# Train temperature on validation set after main training</code></pre>
+<p><strong>Output Activation:</strong> Depends on base normalization, temperature applied after</p>
+<blockquote>
+<p><strong>When to use:</strong> Model is trained but predictions are poorly calibrated &#40;too confident/uncertain&#41;. Common after transfer learning or model compression. Helps with uncertainty quantification. Single parameter tuned post-hoc. Popular in Bayesian deep learning and uncertainty estimation.</p>
+</blockquote>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 02, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

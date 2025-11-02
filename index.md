@@ -12,3 +12,4 @@
 - [probabilistic-models](tag/probabilistic-models)
 - [sparsity](tag/sparsity)
 - [deep-generative-models](tag/deep-generative-models)
+- [data-processing](tag/data-processing)
