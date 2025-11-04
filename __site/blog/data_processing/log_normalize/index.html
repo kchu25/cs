@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Log Min-Max Normalization</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="log_min-max_normalization"><a href="#log_min-max_normalization" class="header-anchor">Log Min-Max Normalization</a></h1>
+<p>A specialized normalization that combines logarithmic transformation with min-max scaling, useful for data spanning multiple orders of magnitude.</p>
+<h2 id="range_0_1"><a href="#range_0_1" class="header-anchor">Range: &#91;0, 1&#93;</a></h2>
+<h3 id="forward_transform"><a href="#forward_transform" class="header-anchor">Forward Transform</a></h3>
+\[y_{\text{norm}} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\]
+<h3 id="inverse_transform"><a href="#inverse_transform" class="header-anchor">Inverse Transform</a></h3>
+\[y = \exp\left(y_{\text{norm}} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+<h3 id="neural_network_settings"><a href="#neural_network_settings" class="header-anchor">Neural Network Settings</a></h3>
+<ul>
+<li><p><strong>Output Activation:</strong> Sigmoid</p>
+</li>
+<li><p><strong>Output Range:</strong> &#91;0, 1&#93;</p>
+</li>
+<li><p><strong>Loss Function:</strong> MSE or MAE on normalized values</p>
+</li>
+</ul>
+<hr />
+<h2 id="range_-1_1"><a href="#range_-1_1" class="header-anchor">Range: &#91;-1, 1&#93;</a></h2>
+<h3 id="forward_transform__2"><a href="#forward_transform__2" class="header-anchor">Forward Transform</a></h3>
+\[y_{\text{norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
+<h3 id="inverse_transform__2"><a href="#inverse_transform__2" class="header-anchor">Inverse Transform</a></h3>
+\[y = \exp\left(\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+<h3 id="neural_network_settings__2"><a href="#neural_network_settings__2" class="header-anchor">Neural Network Settings</a></h3>
+<ul>
+<li><p><strong>Output Activation:</strong> Tanh</p>
+</li>
+<li><p><strong>Output Range:</strong> &#91;-1, 1&#93;</p>
+</li>
+<li><p><strong>Loss Function:</strong> MSE or MAE on normalized values</p>
+</li>
+</ul>
+<hr />
+<h2 id="when_to_use"><a href="#when_to_use" class="header-anchor">When to Use</a></h2>
+<p>✅ <strong>Good for:</strong></p>
+<ul>
+<li><p>Data spanning many orders of magnitude &#40;prices, populations, counts&#41;</p>
+</li>
+<li><p>Multiplicative relationships that need bounded outputs</p>
+</li>
+<li><p>Need guaranteed output bounds for production safety</p>
+</li>
+<li><p>Requires strictly positive values</p>
+</li>
+</ul>
+<p>⚠️ <strong>Note:</strong> Plain log transform is usually sufficient&#33; Add min-max only when you need guaranteed bounds. The added complexity is rarely worth it in most cases.</p>
+<hr />
+<h2 id="caveats_limitations"><a href="#caveats_limitations" class="header-anchor">Caveats &amp; Limitations</a></h2>
+<p>🚨 <strong>Critical Issues:</strong></p>
+<ul>
+<li><p><strong>Requires strictly positive values:</strong> Cannot handle y ≤ 0 &#40;log undefined&#41;</p>
+</li>
+<li><p><strong>Sensitive to min/max from training data:</strong> If test data has values outside &#91;y<em>min, y</em>max&#93;, the normalization breaks</p>
+</li>
+<li><p><strong>Extrapolation problems:</strong> Neural network can&#39;t predict beyond training bounds even if real data extends further</p>
+</li>
+<li><p><strong>Zero-crossing issues:</strong> If your data can be zero or negative, this method fails entirely</p>
+</li>
+</ul>
+<p>⚠️ <strong>Practical Concerns:</strong></p>
+<ul>
+<li><p><strong>Outliers define the scale:</strong> A single extreme value in training sets y_max, compressing all other values</p>
+</li>
+<li><p><strong>Non-robust:</strong> Unlike quantile/IQR methods, sensitive to extreme values</p>
+</li>
+<li><p><strong>Compression at extremes:</strong> Values near y<em>min or y</em>max get compressed into small regions of &#91;0,1&#93; or &#91;-1,1&#93;</p>
+</li>
+<li><p><strong>Sigmoid/tanh saturation:</strong> Network outputs at boundaries have vanishing gradients, making learning harder</p>
+</li>
+</ul>
+<p>🔧 <strong>Implementation Pitfalls:</strong></p>
+<ul>
+<li><p>Must store y<em>min and y</em>max from training for inference</p>
+</li>
+<li><p>Numerical instability: log of values close to zero can be very negative</p>
+</li>
+<li><p>If y<em>min ≈ y</em>max, division by near-zero causes numerical issues</p>
+</li>
+</ul>
+<hr />
+<h2 id="log_transforms_sensitivity_near_zero_vs_large_values"><a href="#log_transforms_sensitivity_near_zero_vs_large_values" class="header-anchor">Log Transforms: Sensitivity Near Zero vs Large Values</a></h2>
+<p><strong>Problem:</strong> Standard log is extremely sensitive near zero &#40;log&#40;0.001&#41; &#61; -6.9, log&#40;0.0001&#41; &#61; -9.2&#41; but less sensitive for large values.</p>
+<h3 id="solution_1_arcsinh_transform"><a href="#solution_1_arcsinh_transform" class="header-anchor">Solution 1: Arcsinh Transform</a></h3>
+\[y_{\text{norm}} = \sinh^{-1}(y) = \log(y + \sqrt{y^2 + 1})\]
+<p><strong>Inverse:</strong></p>
+\[y = \sinh(y_{\text{norm}}) = \frac{e^{y_{\text{norm}}} - e^{-y_{\text{norm}}}}{2}\]
+<p><strong>Behavior:</strong></p>
+<ul>
+<li><p><strong>Near zero:</strong> Linear with derivative &#61; 1 &#40;standard sensitivity, like identity&#41;</p>
+</li>
+<li><p><strong>Large values:</strong> Approximately logarithmic &#40;≈ log&#40;2y&#41;&#41;</p>
+</li>
+<li><p><strong>Works with:</strong> Zero, positive, and negative values</p>
+</li>
+</ul>
+<p><strong>Use when:</strong> You want a smooth transition from linear to logarithmic, without arbitrary constants</p>
+<h3 id="solution_2_log1_y_transform"><a href="#solution_2_log1_y_transform" class="header-anchor">Solution 2: Log&#40;1 &#43; y&#41; Transform</a></h3>
+\[y_{\text{norm}} = \log(1 + y)\]
+<p><strong>Inverse:</strong></p>
+\[y = e^{y_{\text{norm}}} - 1\]
+<p><strong>Behavior:</strong></p>
+<ul>
+<li><p><strong>Near zero:</strong> More linear than log&#40;y&#41;, derivative ≈ 1 at y&#61;0</p>
+</li>
+<li><p><strong>Large values:</strong> Logarithmic &#40;offset by 1&#41;</p>
+</li>
+<li><p><strong>Requires:</strong> y ≥ 0 &#40;but handles zero&#33;&#41;</p>
+</li>
+</ul>
+<h3 id="solution_3_logy_c_with_large_constant"><a href="#solution_3_logy_c_with_large_constant" class="header-anchor">Solution 3: Log&#40;y &#43; c&#41; with Large Constant</a></h3>
+\[y_{\text{norm}} = \log(y + c)\]
+<p><strong>Inverse:</strong></p>
+\[y = e^{y_{\text{norm}}} - c\]
+<p><strong>Behavior:</strong></p>
+<ul>
+<li><p><strong>At y&#61;0:</strong> Derivative &#61; 1/c &#40;less sensitive with larger c&#41;</p>
+</li>
+<li><p><strong>At y&#61;50:</strong> Derivative &#61; 1/&#40;50&#43;c&#41;</p>
+</li>
+<li><p><strong>Sensitivity ratio:</strong> &#40;50&#43;c&#41;/c &#61; 1 &#43; 50/c</p>
+</li>
+</ul>
+<table><tr><th align="right">Constant c</th><th align="right">Derivative at y&#61;0</th><th align="right">Sensitivity Ratio</th></tr><tr><td align="right">3</td><td align="right">0.333</td><td align="right">17.7x</td></tr><tr><td align="right">10</td><td align="right">0.100</td><td align="right">6.0x</td></tr><tr><td align="right">50</td><td align="right">0.020</td><td align="right">2.0x</td></tr><tr><td align="right">100</td><td align="right">0.010</td><td align="right">1.5x</td></tr></table>
+<p><strong>Use when:</strong> You want to reduce sensitivity near zero by making the function flatter. Larger c &#61; less sensitive near zero, but also reduces compression of large values.</p>
+<h3 id="solution_4_shifted_log_with_threshold"><a href="#solution_4_shifted_log_with_threshold" class="header-anchor">Solution 4: Shifted Log with Threshold</a></h3>
+\[y_{\text{norm}} = \begin{cases}
+y & \text{if } y < \theta \\
+\theta + \log(1 + y - \theta) & \text{if } y \geq \theta
+\end{cases}\]
+<p><strong>Behavior:</strong></p>
+<ul>
+<li><p><strong>Below threshold θ:</strong> Identity &#40;standard sensitivity&#41;</p>
+</li>
+<li><p><strong>Above threshold θ:</strong> Logarithmic compression</p>
+</li>
+<li><p><strong>Sharp transition</strong> at θ</p>
+</li>
+</ul>
+<h3 id="solution_5_log-modulus_transform"><a href="#solution_5_log-modulus_transform" class="header-anchor">Solution 5: Log-Modulus Transform</a></h3>
+\[y_{\text{norm}} = \text{sign}(y) \cdot \log(1 + |y|)\]
+<p><strong>Inverse:</strong></p>
+\[y = \text{sign}(y_{\text{norm}}) \cdot (e^{|y_{\text{norm}}|} - 1)\]
+<p><strong>Behavior:</strong></p>
+<ul>
+<li><p>Symmetric for positive and negative</p>
+</li>
+<li><p>Linear near zero, logarithmic for large magnitudes</p>
+</li>
+<li><p>Handles negatives naturally</p>
+</li>
+</ul>
+<h3 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h3>
+<table><tr><th align="right">Transform</th><th align="right">Derivative at y&#61;0</th><th align="right">Derivative at y&#61;50</th><th align="right">Sensitivity Ratio</th><th align="right">Good for</th></tr><tr><td align="right">log&#40;y&#41;</td><td align="right">∞</td><td align="right">0.020</td><td align="right">∞</td><td align="right">Never use for y≈0</td></tr><tr><td align="right">arcsinh&#40;y&#41;</td><td align="right">1.000</td><td align="right">0.020</td><td align="right"><strong>50x</strong></td><td align="right">Smooth linear→log transition</td></tr><tr><td align="right">log&#40;1&#43;y&#41;</td><td align="right">1.000</td><td align="right">0.020</td><td align="right"><strong>50x</strong></td><td align="right">Similar to arcsinh, simpler</td></tr><tr><td align="right">log&#40;y&#43;3&#41;</td><td align="right">0.333</td><td align="right">0.019</td><td align="right"><strong>17x</strong></td><td align="right">Medium clustering</td></tr><tr><td align="right">log&#40;y&#43;10&#41;</td><td align="right">0.100</td><td align="right">0.017</td><td align="right"><strong>6x</strong></td><td align="right">More clustering</td></tr><tr><td align="right">log&#40;y&#43;50&#41;</td><td align="right">0.020</td><td align="right">0.010</td><td align="right"><strong>2x</strong></td><td align="right">Heavy clustering</td></tr><tr><td align="right">log&#40;y&#43;100&#41;</td><td align="right">0.010</td><td align="right">0.007</td><td align="right"><strong>1.5x</strong></td><td align="right">Extreme clustering</td></tr></table>
+<p><strong>Key insight:</strong> Higher sensitivity ratio means more sensitive at zero relative to large values.</p>
+<hr />
+<h2 id="real_example_heavily_skewed_data_240k_values_mostly_near_zero"><a href="#real_example_heavily_skewed_data_240k_values_mostly_near_zero" class="header-anchor">Real Example: Heavily Skewed Data &#40;240k values, mostly near zero&#41;</a></h2>
+<p><strong>Scenario:</strong> 240k values, ~237k near zero &#40;fractional&#41;, only ~3k above 50</p>
+<h3 id="quantifying_different_transforms"><a href="#quantifying_different_transforms" class="header-anchor">Quantifying Different Transforms</a></h3>
+<p>Let&#39;s compare transforms for small values:</p>
+<table><tr><th align="right">y value</th><th align="right">log&#40;y&#43;3&#41;</th><th align="right">log&#40;y&#43;10&#41;</th><th align="right">log&#40;y&#43;50&#41;</th><th align="right">arcsinh&#40;y&#41;</th></tr><tr><td align="right">0.001</td><td align="right">1.099</td><td align="right">2.303</td><td align="right">3.912</td><td align="right">0.001</td></tr><tr><td align="right">0.01</td><td align="right">1.101</td><td align="right">2.304</td><td align="right">3.913</td><td align="right">0.010</td></tr><tr><td align="right">0.1</td><td align="right">1.131</td><td align="right">2.332</td><td align="right">3.932</td><td align="right">0.100</td></tr><tr><td align="right">1.0</td><td align="right">1.386</td><td align="right">2.398</td><td align="right">3.932</td><td align="right">0.881</td></tr><tr><td align="right">10.0</td><td align="right">2.565</td><td align="right">2.996</td><td align="right">4.094</td><td align="right">2.998</td></tr><tr><td align="right">50.0</td><td align="right">3.970</td><td align="right">4.094</td><td align="right">4.605</td><td align="right">4.605</td></tr><tr><td align="right">100.0</td><td align="right">4.635</td><td align="right">4.700</td><td align="right">5.011</td><td align="right">5.298</td></tr></table>
+<p><strong>Key insight:</strong> </p>
+<ul>
+<li><p>log&#40;y&#43;50&#41; and log&#40;y&#43;100&#41;: Fractional values &#40;0.001 to 1.0&#41; are tightly clustered</p>
+</li>
+<li><p>arcsinh&#40;y&#41;: Fractional values spread out more, maintains distinctions</p>
+</li>
+</ul>
+<h3 id="recommended_strategy_for_your_data"><a href="#recommended_strategy_for_your_data" class="header-anchor">Recommended Strategy for Your Data</a></h3>
+<p><strong>Option 1: Log&#40;y &#43; 50&#41; or Log&#40;y &#43; 100&#41;</strong> ⭐ <strong>Best for your case</strong></p>
+<pre><code class="language-julia"># Forward
+y_norm &#61; log.&#40;y .&#43; 50&#41;
+
+# Inverse
+y &#61; exp.&#40;y_norm&#41; .- 50</code></pre>
+<p><strong>Why this works for you:</strong></p>
+<ul>
+<li><p>Makes 237k near-zero values cluster tightly together</p>
+</li>
+<li><p>Still compresses 3k large values logarithmically</p>
+</li>
+<li><p>Sensitivity ratio only 2x &#40;very flat near zero&#41;</p>
+</li>
+<li><p>Simple and interpretable</p>
+</li>
+</ul>
+<p><strong>Option 2: Two-Regime Transform &#40;Custom threshold&#41;</strong></p>
+<pre><code class="language-julia">threshold &#61; 1.0  # tune based on your data
+
+# Forward
+y_norm &#61; ifelse.&#40;y .&lt; threshold, 
+                 y ./ threshold,  # linear for small values
+                 1 .&#43; log.&#40;y ./ threshold&#41;&#41;  # log for large values
+
+# Inverse  
+y &#61; ifelse.&#40;y_norm .&lt; 1,
+            y_norm .* threshold,  # linear region
+            threshold .* exp.&#40;y_norm .- 1&#41;&#41;  # log region</code></pre>
+<p><strong>Why this works:</strong></p>
+<ul>
+<li><p>Explicitly treats small values as &quot;approximately zero&quot;</p>
+</li>
+<li><p>Only applies log compression above threshold</p>
+</li>
+<li><p>You control the transition point</p>
+</li>
+</ul>
+<p><strong>Option 3: Quantile Transform &#40;Nuclear option&#41;</strong></p>
+<pre><code class="language-julia">using Statistics
+
+# Fit on training data - store quantiles
+function fit_quantile_transform&#40;y&#41;
+    sorted_y &#61; sort&#40;y&#41;
+    n &#61; length&#40;y&#41;
+    quantiles &#61; &#91;&#40;i-0.5&#41;/n for i in 1:n&#93;
+    return sorted_y, quantiles
+end
+
+function transform_quantile&#40;y, sorted_y, quantiles&#41;
+    # Map each value to its quantile rank
+    ranks &#61; &#91;searchsortedlast&#40;sorted_y, val&#41; for val in y&#93;
+    return &#91;quantiles&#91;max&#40;1, min&#40;r, length&#40;quantiles&#41;&#41;&#41;&#93; for r in ranks&#93;
+end</code></pre>
+<p><strong>Why this works:</strong></p>
+<ul>
+<li><p>Completely distribution-agnostic</p>
+</li>
+<li><p>237k near-zero values spread evenly across output range</p>
+</li>
+<li><p>Most robust to your extreme skew</p>
+</li>
+</ul>
+<h3 id="what_not_to_use_for_your_data"><a href="#what_not_to_use_for_your_data" class="header-anchor">What NOT to Use for Your Data</a></h3>
+<p>❌ <strong>arcsinh&#40;y&#41;</strong> or <strong>log&#40;1&#43;y&#41;</strong>: These have derivative &#61; 1 at y&#61;0, making them <strong>more sensitive</strong> to fractional differences than log&#40;y&#43;3&#41;. Your 237k near-zero values won&#39;t cluster together enough.</p>
+<p>❌ <strong>Plain log&#40;y&#41;</strong>: Explodes at zero, unusable.</p>
+<h3 id="recommendation_summary"><a href="#recommendation_summary" class="header-anchor">Recommendation Summary</a></h3>
+<p>Given 98.75&#37; of data is near zero:</p>
+<ol>
+<li><p><strong>Best choice:</strong> <code>log.&#40;y .&#43; 50&#41;</code> or <code>log.&#40;y .&#43; 100&#41;</code> → tight clustering of near-zero values</p>
+</li>
+<li><p><strong>Custom control:</strong> Two-regime transform with threshold → explicit transition point</p>
+</li>
+<li><p><strong>Maximum robustness:</strong> Quantile transform → if only ordinal relationships matter</p>
+</li>
+</ol>
+<hr />
+<h2 id="why_logy_c_sensitivity_depends_on_c"><a href="#why_logy_c_sensitivity_depends_on_c" class="header-anchor">Why log&#40;y &#43; c&#41; Sensitivity Depends on c</a></h2>
+<p><strong>Common approach:</strong> Add constant to handle zeros: <code>log&#40;y &#43; c&#41;</code></p>
+<h3 id="numerical_example_with_logy_3"><a href="#numerical_example_with_logy_3" class="header-anchor">Numerical Example with log&#40;y &#43; 3&#41;</a></h3>
+<table><tr><th align="right">Original y</th><th align="right">log&#40;y &#43; 3&#41;</th><th align="right">Δ from previous</th></tr><tr><td align="right">0.0</td><td align="right">1.099</td><td align="right">-</td></tr><tr><td align="right">0.1</td><td align="right">1.131</td><td align="right"><strong>0.032</strong></td></tr><tr><td align="right">0.5</td><td align="right">1.253</td><td align="right"><strong>0.122</strong></td></tr><tr><td align="right">1.0</td><td align="right">1.386</td><td align="right"><strong>0.133</strong></td></tr><tr><td align="right">5.0</td><td align="right">2.079</td><td align="right"><strong>0.693</strong></td></tr><tr><td align="right">10.0</td><td align="right">2.565</td><td align="right"><strong>0.486</strong></td></tr><tr><td align="right">50.0</td><td align="right">3.970</td><td align="right"><strong>1.405</strong></td></tr><tr><td align="right">100.0</td><td align="right">4.635</td><td align="right"><strong>0.665</strong></td></tr></table>
+<p><strong>Key issue:</strong> The derivative of log&#40;y &#43; c&#41; is:</p>
+\[\frac{d}{dy}\log(y + c) = \frac{1}{y + c}\]
+<p>At y &#61; 0: derivative &#61; 1/3 &#61; 0.333   At y &#61; 50: derivative &#61; 1/53 &#61; 0.019</p>
+<p><strong>Sensitivity ratio: 17.5x more sensitive at zero than at 50&#33;</strong> 🚨</p>
+<blockquote>
+<p><strong>What does &quot;17x more sensitive&quot; mean?</strong></p>
+<p>Sensitivity &#61; how much the transformed value changes for a small input change.</p>
+<ul>
+<li><p>At y&#61;0: increasing by 0.1 → log changes by ~0.033</p>
+</li>
+<li><p>At y&#61;50: increasing by 0.1 → log changes by ~0.0019</p>
+</li>
+<li><p>Ratio: 0.033 / 0.0019 &#61; <strong>17.5x</strong></p>
+</li>
+</ul>
+<p>So the <strong>same &#43;0.1 change</strong> creates <strong>17x bigger change</strong> in log-space at y&#61;0 vs y&#61;50.</p>
+<p><strong>Why this matters:</strong> Your 237k fractional values have noise/differences that create large changes in log-space, dominating the loss function. Meanwhile, meaningful differences in large values &#40;50→60&#41; create smaller changes. You might want the opposite&#33;</p>
+</blockquote>
+<h3 id="how_to_reduce_sensitivity_at_zero"><a href="#how_to_reduce_sensitivity_at_zero" class="header-anchor">How to Reduce Sensitivity at Zero</a></h3>
+<p><strong>Option: Use larger constant</strong></p>
+<pre><code class="language-julia">y_norm &#61; log.&#40;y .&#43; 100&#41;  # Much flatter near zero</code></pre>
+<ul>
+<li><p>At y&#61;0: derivative &#61; 1/100 &#61; 0.01</p>
+</li>
+<li><p>At y&#61;50: derivative &#61; 1/150 &#61; 0.0067</p>
+</li>
+<li><p>Now only 1.5x more sensitive &#40;much better&#33;&#41;</p>
+</li>
+<li><p>Trade-off: Also reduces compression of large values</p>
+</li>
+</ul>
+<h3 id="comparison_sensitivity_at_y0"><a href="#comparison_sensitivity_at_y0" class="header-anchor">Comparison: Sensitivity at y&#61;0</a></h3>
+<table><tr><th align="right">Transform</th><th align="right">Derivative at y&#61;0</th><th align="right">Sensitivity Ratio</th><th align="right">Use Case</th></tr><tr><td align="right">log&#40;y&#41;</td><td align="right"><strong>undefined</strong></td><td align="right">∞</td><td align="right">Never near zero</td></tr><tr><td align="right">log&#40;y &#43; 3&#41;</td><td align="right"><strong>0.333</strong></td><td align="right">17x</td><td align="right">Medium sensitivity</td></tr><tr><td align="right">log&#40;y &#43; 10&#41;</td><td align="right"><strong>0.100</strong></td><td align="right">6x</td><td align="right">Lower sensitivity</td></tr><tr><td align="right">log&#40;y &#43; 50&#41;</td><td align="right"><strong>0.020</strong></td><td align="right">2x</td><td align="right">Very flat near zero</td></tr><tr><td align="right">log&#40;y &#43; 100&#41;</td><td align="right"><strong>0.010</strong></td><td align="right">1.5x</td><td align="right">Extremely flat</td></tr><tr><td align="right">arcsinh&#40;y&#41;</td><td align="right"><strong>1.000</strong></td><td align="right">50x</td><td align="right">More sensitive at zero&#33;</td></tr></table>
+<hr />
+<h2 id="power_transforms_box-cox_and_yeo-johnson"><a href="#power_transforms_box-cox_and_yeo-johnson" class="header-anchor">Power Transforms: Box-Cox and Yeo-Johnson</a></h2>
+<h3 id="box-cox_transform_y_0_only"><a href="#box-cox_transform_y_0_only" class="header-anchor">Box-Cox Transform &#40;y &gt; 0 only&#41;</a></h3>
+\(y_{\text{norm}} = \begin{cases}
+\frac{y^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0 \\
+\log(y) & \text{if } \lambda = 0
+\end{cases}\)
+<p><strong>Inverse:</strong> \(y = \begin{cases}
+(\lambda \cdot y_{\text{norm}} + 1)^{1/\lambda} & \text{if } \lambda \neq 0 \\
+e^{y_{\text{norm}}} & \text{if } \lambda = 0
+\end{cases}\)</p>
+<p><strong>Derivative at y &#40;for λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\text{BoxCox}(y) = y^{\lambda - 1}\)</p>
+<p><strong>Sensitivity Analysis:</strong></p>
+<table><tr><th align="right">λ value</th><th align="right">Name</th><th align="right">Deriv at y&#61;0.1</th><th align="right">Deriv at y&#61;50</th><th align="right">Ratio &#40;0.1:50&#41;</th><th align="right">Effect</th></tr><tr><td align="right"><strong>2.0</strong></td><td align="right">Square</td><td align="right">0.2</td><td align="right">100</td><td align="right"><strong>0.002x</strong></td><td align="right">Very insensitive at zero</td></tr><tr><td align="right"><strong>1.0</strong></td><td align="right">Identity</td><td align="right">1.0</td><td align="right">1.0</td><td align="right"><strong>1x</strong></td><td align="right">Uniform sensitivity</td></tr><tr><td align="right"><strong>0.5</strong></td><td align="right">Square root</td><td align="right">3.16</td><td align="right">0.141</td><td align="right"><strong>22.4x</strong></td><td align="right">Sensitive at zero</td></tr><tr><td align="right"><strong>0.0</strong></td><td align="right">Log</td><td align="right">∞</td><td align="right">0.02</td><td align="right"><strong>∞</strong></td><td align="right">Explodes at zero</td></tr><tr><td align="right"><strong>-0.5</strong></td><td align="right">Inverse sqrt</td><td align="right">31.6</td><td align="right">0.0028</td><td align="right"><strong>11,300x</strong></td><td align="right">Extremely sensitive at zero</td></tr><tr><td align="right"><strong>-1.0</strong></td><td align="right">Inverse</td><td align="right">100</td><td align="right">0.0004</td><td align="right"><strong>250,000x</strong></td><td align="right">Wildly sensitive at zero</td></tr></table>
+<p><strong>Key insights:</strong></p>
+<ul>
+<li><p><strong>λ &gt; 1</strong>: Makes function MORE sensitive to large values, LESS sensitive to small values &#40;compresses near zero&#41;</p>
+</li>
+<li><p><strong>λ &#61; 1</strong>: Identity transform, uniform sensitivity</p>
+</li>
+<li><p><strong>0 &lt; λ &lt; 1</strong>: Makes function MORE sensitive to small values &#40;like square root&#41;</p>
+</li>
+<li><p><strong>λ &#61; 0</strong>: Log transform &#40;special case&#41;</p>
+</li>
+<li><p><strong>λ &lt; 0</strong>: Extremely sensitive to small values, unstable near zero</p>
+</li>
+</ul>
+<p><strong>For your data &#40;237k near zero&#41;:</strong> Use <strong>λ &#61; 2 or λ &#61; 3</strong> to compress small values&#33;</p>
+<pre><code class="language-julia"># Forward &#40;λ &#61; 2&#41;
+lambda &#61; 2.0
+y_norm &#61; &#40;y.^lambda .- 1&#41; ./ lambda
+
+# Inverse
+y &#61; &#40;lambda .* y_norm .&#43; 1&#41;.^&#40;1/lambda&#41;</code></pre>
+<h3 id="yeo-johnson_transform_handles_negatives_and_zero"><a href="#yeo-johnson_transform_handles_negatives_and_zero" class="header-anchor">Yeo-Johnson Transform &#40;handles negatives and zero&#41;</a></h3>
+\(y_{\text{norm}} = \begin{cases}
+\frac{(y+1)^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0, y \geq 0 \\
+\log(y+1) & \text{if } \lambda = 0, y \geq 0 \\
+-\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \text{if } \lambda \neq 2, y < 0 \\
+-\log(-y+1) & \text{if } \lambda = 2, y < 0
+\end{cases}\)
+<p><strong>Derivative at y&#61;0.1 &#40;for positive values, λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\text{YeoJohnson}(y) = (y+1)^{\lambda - 1}\)</p>
+<p><strong>Sensitivity Analysis &#40;positive values only&#41;:</strong></p>
+<table><tr><th align="right">λ value</th><th align="right">Deriv at y&#61;0.1</th><th align="right">Deriv at y&#61;50</th><th align="right">Ratio &#40;0.1:50&#41;</th><th align="right">Effect</th></tr><tr><td align="right"><strong>2.0</strong></td><td align="right">0.289</td><td align="right">2601</td><td align="right"><strong>0.0001x</strong></td><td align="right">Very insensitive at zero</td></tr><tr><td align="right"><strong>1.0</strong></td><td align="right">1.0</td><td align="right">51</td><td align="right"><strong>0.02x</strong></td><td align="right">Like log&#40;y&#43;1&#41;</td></tr><tr><td align="right"><strong>0.5</strong></td><td align="right">3.02</td><td align="right">7.14</td><td align="right"><strong>0.42x</strong></td><td align="right">Moderate</td></tr><tr><td align="right"><strong>0.0</strong></td><td align="right">∞ &#40;≈9.1&#41;</td><td align="right">0.0196</td><td align="right"><strong>≈500x</strong></td><td align="right">Like log&#40;y&#43;1&#41;</td></tr><tr><td align="right"><strong>-0.5</strong></td><td align="right">27.5</td><td align="right">0.0014</td><td align="right"><strong>19,600x</strong></td><td align="right">Very sensitive at zero</td></tr></table>
+<p><strong>Key difference from Box-Cox:</strong> Yeo-Johnson uses <code>&#40;y&#43;1&#41;</code> instead of <code>y</code>, so it handles zero naturally&#33;</p>
+<p><strong>For your data:</strong> Use <strong>λ &#61; 1.5 or λ &#61; 2.0</strong> to reduce sensitivity near zero while handling zeros.</p>
+<pre><code class="language-julia"># Forward &#40;λ &#61; 2, for y ≥ 0&#41;
+lambda &#61; 2.0
+y_norm &#61; &#40;&#40;y .&#43; 1&#41;.^lambda .- 1&#41; ./ lambda
+
+# Inverse
+y &#61; &#40;lambda .* y_norm .&#43; 1&#41;.^&#40;1/lambda&#41; .- 1</code></pre>
+<h3 id="comprehensive_sensitivity_comparison"><a href="#comprehensive_sensitivity_comparison" class="header-anchor">Comprehensive Sensitivity Comparison</a></h3>
+<p>For your dataset &#40;0.001 to 100, mostly near zero&#41;:</p>
+<table><tr><th align="right">Transform</th><th align="right">Deriv at 0.1</th><th align="right">Deriv at 50</th><th align="right">Ratio</th><th align="right">Clusters near-zero?</th></tr><tr><td align="right"><strong>Box-Cox λ&#61;3</strong></td><td align="right">0.01</td><td align="right">2500</td><td align="right">0.000004x</td><td align="right">✅✅✅ Best clustering</td></tr><tr><td align="right"><strong>Box-Cox λ&#61;2</strong></td><td align="right">0.1</td><td align="right">100</td><td align="right">0.001x</td><td align="right">✅✅ Excellent</td></tr><tr><td align="right"><strong>Yeo-Johnson λ&#61;2</strong></td><td align="right">0.29</td><td align="right">2601</td><td align="right">0.0001x</td><td align="right">✅✅ Excellent</td></tr><tr><td align="right"><strong>log&#40;y&#43;100&#41;</strong></td><td align="right">0.010</td><td align="right">0.0067</td><td align="right">1.5x</td><td align="right">✅ Good</td></tr><tr><td align="right"><strong>log&#40;y&#43;50&#41;</strong></td><td align="right">0.020</td><td align="right">0.010</td><td align="right">2x</td><td align="right">✅ Good</td></tr><tr><td align="right"><strong>log&#40;y&#43;10&#41;</strong></td><td align="right">0.100</td><td align="right">0.017</td><td align="right">6x</td><td align="right">⚠️ Moderate</td></tr><tr><td align="right"><strong>log&#40;y&#43;3&#41;</strong></td><td align="right">0.333</td><td align="right">0.019</td><td align="right">17x</td><td align="right">⚠️ Some sensitivity</td></tr><tr><td align="right"><strong>Box-Cox λ&#61;1</strong></td><td align="right">1.0</td><td align="right">1.0</td><td align="right">1x</td><td align="right">❌ Identity</td></tr><tr><td align="right"><strong>arcsinh&#40;y&#41;</strong></td><td align="right">1.0</td><td align="right">0.02</td><td align="right">50x</td><td align="right">❌ Too sensitive</td></tr><tr><td align="right"><strong>Box-Cox λ&#61;0.5</strong></td><td align="right">3.16</td><td align="right">0.141</td><td align="right">22x</td><td align="right">❌ Too sensitive</td></tr><tr><td align="right"><strong>log&#40;y&#41;</strong></td><td align="right">∞</td><td align="right">0.02</td><td align="right">∞</td><td align="right">❌ Explodes</td></tr></table>
+<h3 id="recommendation_for_your_data_237k_near_zero"><a href="#recommendation_for_your_data_237k_near_zero" class="header-anchor">Recommendation for Your Data &#40;237k near zero&#41;</a></h3>
+<p><strong>Best options ranked:</strong></p>
+<ol>
+<li><p><strong>Box-Cox with λ &#61; 2 or λ &#61; 3</strong> ⭐⭐⭐ </p>
+<ul>
+<li><p>Extreme compression of small values</p>
+</li>
+<li><p>Sensitivity ratio &lt; 0.001x means near-zero values cluster extremely tightly</p>
+</li>
+<li><p>Large values still get expanded/emphasized</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Yeo-Johnson with λ &#61; 2</strong> ⭐⭐</p>
+<ul>
+<li><p>Similar to Box-Cox but handles exact zeros</p>
+</li>
+<li><p>Good if your data might have zeros</p>
+</li>
+</ul>
+</li>
+<li><p><strong>log&#40;y &#43; 100&#41;</strong> ⭐</p>
+<ul>
+<li><p>Simpler, no λ to tune</p>
+</li>
+<li><p>Good clustering but not as extreme as Box-Cox</p>
+</li>
+</ul>
+</li>
+</ol>
+<p><strong>How to find optimal λ:</strong></p>
+<pre><code class="language-julia">using Optim
+
+# Find λ that maximizes log-likelihood &#40;makes data most Gaussian&#41;
+function box_cox_loglik&#40;lambda, y&#41;
+    if lambda &#61;&#61; 0
+        return sum&#40;log.&#40;y&#41;&#41;
+    else
+        y_trans &#61; &#40;y.^lambda .- 1&#41; ./ lambda
+        return -&#40;length&#40;y&#41;/2&#41; * log&#40;var&#40;y_trans&#41;&#41; &#43; &#40;lambda - 1&#41; * sum&#40;log.&#40;y&#41;&#41;
+    end
+end
+
+# Optimize
+result &#61; optimize&#40;lambda -&gt; -box_cox_loglik&#40;lambda&#91;1&#93;, y&#41;, &#91;0.5&#93;&#41;
+optimal_lambda &#61; result.minimizer&#91;1&#93;</code></pre>
+<p>Or simply try λ &#61; 2 as a starting point for heavy compression of small values&#33;</p>
+<hr />
+<h2 id="how_is_λ_typically_determined"><a href="#how_is_λ_typically_determined" class="header-anchor">How is λ Typically Determined?</a></h2>
+<h3 id="method_1_maximum_likelihood_estimation_mle_standard_approach"><a href="#method_1_maximum_likelihood_estimation_mle_standard_approach" class="header-anchor">Method 1: Maximum Likelihood Estimation &#40;MLE&#41; ⭐ <strong>Standard approach</strong></a></h3>
+<p><strong>Goal:</strong> Find λ that makes the transformed data most &quot;Gaussian-like&quot;</p>
+<p><strong>Box-Cox Log-Likelihood:</strong> \(\ell(\lambda) = -\frac{n}{2}\log(\sigma^2_\lambda) + (\lambda - 1)\sum_{i=1}^n \log(y_i)\)</p>
+<p>where \(\sigma^2_\lambda\) is the variance of the transformed data.</p>
+<p><strong>Implementation:</strong></p>
+<pre><code class="language-julia">using Optim, Statistics
+
+function box_cox_mle&#40;y; lambda_range&#61;&#40;-2.0, 3.0&#41;&#41;
+    # Objective: negative log-likelihood
+    function neg_loglik&#40;lambda&#41;
+        if abs&#40;lambda&#41; &lt; 1e-10
+            y_trans &#61; log.&#40;y&#41;
+        else
+            y_trans &#61; &#40;y.^lambda .- 1&#41; ./ lambda
+        end
+        
+        n &#61; length&#40;y&#41;
+        sigma2 &#61; var&#40;y_trans&#41;
+        
+        # Log-likelihood
+        ll &#61; -n/2 * log&#40;sigma2&#41; &#43; &#40;lambda - 1&#41; * sum&#40;log.&#40;y&#41;&#41;
+        
+        return -ll  # Return negative for minimization
+    end
+    
+    # Optimize
+    result &#61; optimize&#40;neg_loglik, lambda_range&#91;1&#93;, lambda_range&#91;2&#93;&#41;
+    return result.minimizer
+end
+
+# Use it
+optimal_lambda &#61; box_cox_mle&#40;y&#41;
+println&#40;&quot;Optimal λ &#61; &#36;optimal_lambda&quot;&#41;</code></pre>
+<p><strong>Pros:</strong> </p>
+<ul>
+<li><p>Mathematically principled</p>
+</li>
+<li><p>Widely used in statistics</p>
+</li>
+<li><p>Works well when goal is normality</p>
+</li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul>
+<li><p>Assumes you want Gaussian output &#40;may not be your goal&#33;&#41;</p>
+</li>
+<li><p>Can give unexpected λ values</p>
+</li>
+<li><p>For your data &#40;237k near zero&#41;, might give λ &lt; 1 which increases sensitivity at zero</p>
+</li>
+</ul>
+<h3 id="method_2_cross-validation_on_downstream_task_best_for_ml"><a href="#method_2_cross-validation_on_downstream_task_best_for_ml" class="header-anchor">Method 2: Cross-Validation on Downstream Task ⭐⭐ <strong>Best for ML</strong></a></h3>
+<p><strong>Goal:</strong> Find λ that gives best performance on your actual prediction task</p>
+<pre><code class="language-julia">using Statistics
+
+function cross_validate_lambda&#40;X, y, lambdas; n_folds&#61;5&#41;
+    n &#61; length&#40;y&#41;
+    fold_size &#61; div&#40;n, n_folds&#41;
+    
+    best_lambda &#61; nothing
+    best_score &#61; Inf
+    
+    for lambda in lambdas
+        scores &#61; &#91;&#93;
+        
+        for fold in 1:n_folds
+            # Split data
+            val_idx &#61; &#40;fold-1&#41;*fold_size&#43;1 : min&#40;fold*fold_size, n&#41;
+            train_idx &#61; setdiff&#40;1:n, val_idx&#41;
+            
+            # Transform with current lambda
+            if abs&#40;lambda&#41; &lt; 1e-10
+                y_train_trans &#61; log.&#40;y&#91;train_idx&#93;&#41;
+                y_val_trans &#61; log.&#40;y&#91;val_idx&#93;&#41;
+            else
+                y_train_trans &#61; &#40;y&#91;train_idx&#93;.^lambda .- 1&#41; ./ lambda
+                y_val_trans &#61; &#40;y&#91;val_idx&#93;.^lambda .- 1&#41; ./ lambda
+            end
+            
+            # Train model &#40;placeholder - use your actual model&#41;
+            # model &#61; train_your_model&#40;X&#91;train_idx&#93;, y_train_trans&#41;
+            # predictions &#61; predict&#40;model, X&#91;val_idx&#93;&#41;
+            # score &#61; mean&#40;&#40;predictions - y_val_trans&#41;.^2&#41;
+            
+            # For now, just measure variance &#40;lower &#61; more compressed&#41;
+            score &#61; var&#40;y_val_trans&#41;
+            push&#33;&#40;scores, score&#41;
+        end
+        
+        avg_score &#61; mean&#40;scores&#41;
+        if avg_score &lt; best_score
+            best_score &#61; avg_score
+            best_lambda &#61; lambda
+        end
+        
+        println&#40;&quot;λ &#61; &#36;lambda, avg score &#61; &#36;avg_score&quot;&#41;
+    end
+    
+    return best_lambda
+end
+
+# Try a grid of lambdas
+lambdas &#61; &#91;0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0&#93;
+best_lambda &#61; cross_validate_lambda&#40;X, y, lambdas&#41;</code></pre>
+<p><strong>Pros:</strong></p>
+<ul>
+<li><p>Optimizes for your actual task</p>
+</li>
+<li><p>Directly measures what you care about</p>
+</li>
+<li><p>Works even if you don&#39;t want Gaussian output</p>
+</li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul>
+<li><p>Computationally expensive</p>
+</li>
+<li><p>Need enough data for meaningful CV</p>
+</li>
+<li><p>Can overfit to validation set</p>
+</li>
+</ul>
+<h3 id="method_3_grid_search_with_visual_inspection_practical"><a href="#method_3_grid_search_with_visual_inspection_practical" class="header-anchor">Method 3: Grid Search with Visual Inspection ⭐ <strong>Practical</strong></a></h3>
+<p><strong>Goal:</strong> Try common values and look at histograms</p>
+<pre><code class="language-julia">using Plots
+
+function visualize_transforms&#40;y, lambdas&#41;
+    n_lambdas &#61; length&#40;lambdas&#41;
+    plots &#61; &#91;&#93;
+    
+    for lambda in lambdas
+        if abs&#40;lambda&#41; &lt; 1e-10
+            y_trans &#61; log.&#40;y&#41;
+            title_str &#61; &quot;λ &#61; 0 &#40;log&#41;&quot;
+        else
+            y_trans &#61; &#40;y.^lambda .- 1&#41; ./ lambda
+            title_str &#61; &quot;λ &#61; &#36;lambda&quot;
+        end
+        
+        p &#61; histogram&#40;y_trans, bins&#61;50, title&#61;title_str, 
+                     xlabel&#61;&quot;Transformed value&quot;, ylabel&#61;&quot;Frequency&quot;,
+                     legend&#61;false&#41;
+        push&#33;&#40;plots, p&#41;
+    end
+    
+    plot&#40;plots..., layout&#61;&#40;2, div&#40;n_lambdas&#43;1, 2&#41;&#41;, size&#61;&#40;1200, 800&#41;&#41;
+end
+
+# Visualize
+lambdas &#61; &#91;-1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 3.0&#93;
+visualize_transforms&#40;y, lambdas&#41;</code></pre>
+<p><strong>Common λ values to try:</strong></p>
+<ul>
+<li><p><strong>λ &#61; -1</strong>: Reciprocal &#40;1/y&#41; - extreme sensitivity at zero</p>
+</li>
+<li><p><strong>λ &#61; -0.5</strong>: Inverse sqrt - very sensitive at zero</p>
+</li>
+<li><p><strong>λ &#61; 0</strong>: Log transform</p>
+</li>
+<li><p><strong>λ &#61; 0.5</strong>: Square root - common for count data</p>
+</li>
+<li><p><strong>λ &#61; 1</strong>: Identity &#40;no transform&#41;</p>
+</li>
+<li><p><strong>λ &#61; 2</strong>: Square - compresses small values</p>
+</li>
+<li><p><strong>λ &#61; 3</strong>: Cube - extreme compression of small values</p>
+</li>
+</ul>
+<p><strong>Pros:</strong></p>
+<ul>
+<li><p>Simple and intuitive</p>
+</li>
+<li><p>Can see effect immediately</p>
+</li>
+<li><p>Easy to understand what each λ does</p>
+</li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul>
+<li><p>Subjective</p>
+</li>
+<li><p>Not automated</p>
+</li>
+<li><p>May miss optimal value between grid points</p>
+</li>
+</ul>
+<h3 id="method_4_domain_knowledge_often_overlooked"><a href="#method_4_domain_knowledge_often_overlooked" class="header-anchor">Method 4: Domain Knowledge 🎯 <strong>Often overlooked</strong></a></h3>
+<p><strong>Common guidelines:</strong></p>
+<table><tr><th align="right">Data Type</th><th align="right">Typical λ</th><th align="right">Reasoning</th></tr><tr><td align="right">Count data &#40;e.g., number of events&#41;</td><td align="right">0.5 &#40;sqrt&#41;</td><td align="right">Variance often proportional to mean</td></tr><tr><td align="right">Right-skewed continuous</td><td align="right">0 to 0.5</td><td align="right">Compress large values</td></tr><tr><td align="right">Percentage/proportion data</td><td align="right">Use logit instead</td><td align="right">Box-Cox not ideal</td></tr><tr><td align="right">Income, prices &#40;multiplicative&#41;</td><td align="right">0 &#40;log&#41;</td><td align="right">Multiplicative relationships</td></tr><tr><td align="right">Already normalized</td><td align="right">1 &#40;identity&#41;</td><td align="right">No transform needed</td></tr><tr><td align="right">Heavy tail on small values</td><td align="right">2 to 3</td><td align="right">Compress small values</td></tr></table>
+<p><strong>For your data &#40;237k near zero, 3k large&#41;:</strong></p>
+<ul>
+<li><p>λ &#61; 2 or λ &#61; 3 makes sense if you want to cluster near-zero values</p>
+</li>
+<li><p>λ &#61; 0 &#40;log&#41; if you want traditional log transform of large values</p>
+</li>
+<li><p><strong>Don&#39;t use λ &lt; 1</strong> - will make sensitivity at zero worse&#33;</p>
+</li>
+</ul>
+<h3 id="method_5_profile_likelihood_statistical_rigor_most_rigorous"><a href="#method_5_profile_likelihood_statistical_rigor_most_rigorous" class="header-anchor">Method 5: Profile Likelihood &#40;Statistical Rigor&#41; ⭐⭐⭐ <strong>Most rigorous</strong></a></h3>
+<p><strong>Goal:</strong> Find λ and confidence interval using likelihood ratio</p>
+<pre><code class="language-julia">using Optim, Distributions, Statistics
+
+function profile_likelihood&#40;y; alpha&#61;0.05&#41;
+    # Find MLE
+    lambda_mle &#61; box_cox_mle&#40;y&#41;
+    
+    # Compute log-likelihood at MLE
+    function loglik&#40;lambda&#41;
+        if abs&#40;lambda&#41; &lt; 1e-10
+            y_trans &#61; log.&#40;y&#41;
+        else
+            y_trans &#61; &#40;y.^lambda .- 1&#41; ./ lambda
+        end
+        n &#61; length&#40;y&#41;
+        sigma2 &#61; var&#40;y_trans&#41;
+        return -n/2 * log&#40;sigma2&#41; &#43; &#40;lambda - 1&#41; * sum&#40;log.&#40;y&#41;&#41;
+    end
+    
+    ll_mle &#61; loglik&#40;lambda_mle&#41;
+    
+    # Find confidence interval
+    # Using likelihood ratio test: 2&#40;ll_mle - ll&#40;λ&#41;&#41; ~ χ²&#40;1&#41;
+    chi2_critical &#61; quantile&#40;Chisq&#40;1&#41;, 1 - alpha&#41;
+    
+    function ll_diff&#40;lambda&#41;
+        return abs&#40;2 * &#40;ll_mle - loglik&#40;lambda&#41;&#41; - chi2_critical&#41;
+    end
+    
+    # Find lower bound
+    lambda_lower &#61; optimize&#40;ll_diff, -2.0, lambda_mle&#41;.minimizer
+    # Find upper bound
+    lambda_upper &#61; optimize&#40;ll_diff, lambda_mle, 3.0&#41;.minimizer
+    
+    return &#40;mle&#61;lambda_mle, ci&#61;&#40;lambda_lower, lambda_upper&#41;&#41;
+end
+
+result &#61; profile_likelihood&#40;y&#41;
+println&#40;&quot;MLE: λ &#61; &#36;&#40;result.mle&#41;&quot;&#41;
+println&#40;&quot;95&#37; CI: &#91;&#36;&#40;result.ci&#91;1&#93;&#41;, &#36;&#40;result.ci&#91;2&#93;&#41;&#93;&quot;&#41;</code></pre>
+<p><strong>Pros:</strong></p>
+<ul>
+<li><p>Gives confidence intervals</p>
+</li>
+<li><p>Statistically principled</p>
+</li>
+<li><p>Can test if specific λ values &#40;like 0, 0.5, 1&#41; are plausible</p>
+</li>
+</ul>
+<p><strong>Cons:</strong></p>
+<ul>
+<li><p>Assumes Gaussian goal</p>
+</li>
+<li><p>More complex</p>
+</li>
+<li><p>May be overkill for ML applications</p>
+</li>
+</ul>
+<hr />
+<h3 id="practical_recommendation_for_your_data"><a href="#practical_recommendation_for_your_data" class="header-anchor">Practical Recommendation for Your Data</a></h3>
+<p><strong>Step 1:</strong> Start with domain knowledge</p>
+<ul>
+<li><p>You have 237k near-zero, want them clustered → try λ &#61; 2 or λ &#61; 3</p>
+</li>
+</ul>
+<p><strong>Step 2:</strong> Quick visual check</p>
+<pre><code class="language-julia">lambdas &#61; &#91;0.0, 1.0, 2.0, 3.0&#93;
+visualize_transforms&#40;y, lambdas&#41;</code></pre>
+<p><strong>Step 3:</strong> If building ML model, use cross-validation</p>
+<ul>
+<li><p>Try λ ∈ &#91;0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0&#93;</p>
+</li>
+<li><p>Pick λ that gives best validation performance</p>
+</li>
+</ul>
+<p><strong>Step 4:</strong> &#40;Optional&#41; Compute MLE for comparison</p>
+<ul>
+<li><p>See if MLE agrees with your choice</p>
+</li>
+<li><p>If MLE gives λ &lt; 1, be skeptical &#40;it&#39;s optimizing for Gaussianity, not your goal&#41;</p>
+</li>
+</ul>
+<p><strong>Don&#39;t overthink it:</strong> For your specific case, λ &#61; 2 is a very reasonable starting point based on the sensitivity analysis&#33;</p>
+<hr />
+<h2 id="proof_of_correctness_-1_1_version"><a href="#proof_of_correctness_-1_1_version" class="header-anchor">Proof of Correctness &#40;&#91;-1, 1&#93; version&#41;</a></h2>
+<p>Starting from forward transform:</p>
+\[y_{\text{norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
+<ol>
+<li><p>Add 1: \(y_{\text{norm}} + 1 = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
+</li>
+<li><p>Divide by 2: \(\frac{y_{\text{norm}} + 1}{2} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
+</li>
+<li><p>Multiply by \((\log(y_{\max}) - \log(y_{\min}))\):</p>
+</li>
+</ol>
+\[\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) = \log(y) - \log(y_{\min})\]
+<ol start="4">
+<li><p>Add \(\log(y_{\min})\):</p>
+</li>
+</ol>
+\[\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min}) = \log(y)\]
+<ol start="5">
+<li><p>Exponentiate:</p>
+</li>
+</ol>
+\[y = \exp\left(\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+<p>∎ <strong>Verified:</strong> The inverse correctly recovers the original value.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 04, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

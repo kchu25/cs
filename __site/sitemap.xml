@@ -2,6 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
+    <loc>https://kchu25.github.io/blog/data_processing/log_normalize/index.html</loc>
+    <lastmod>2025-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/machine-learning/spatial_locality/index.html</loc>
+    <lastmod>2025-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/blog/probabilistic_models/bayesian_net/index.html</loc>
     <lastmod>2025-10-10</lastmod>
     <changefreq>monthly</changefreq>
@@ -10,12 +22,6 @@
 <url>
     <loc>https://kchu25.github.io/index.html</loc>
     <lastmod>2025-11-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-</url>
-<url>
-    <loc>https://kchu25.github.io/blog/machine-learning/spatial_locality/index.html</loc>
-    <lastmod>2025-11-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
