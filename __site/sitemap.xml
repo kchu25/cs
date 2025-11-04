@@ -2,7 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
-    <loc>https://kchu25.github.io/blog/data_processing/log_normalize/index.html</loc>
+    <loc>https://kchu25.github.io/blog/probabilistic_models/bayesian_net/index.html</loc>
+    <lastmod>2025-10-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/index.html</loc>
     <lastmod>2025-11-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -14,26 +20,20 @@
     <priority>0.5</priority>
 </url>
 <url>
-    <loc>https://kchu25.github.io/blog/probabilistic_models/bayesian_net/index.html</loc>
-    <lastmod>2025-10-10</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-</url>
-<url>
-    <loc>https://kchu25.github.io/index.html</loc>
-    <lastmod>2025-11-03</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-</url>
-<url>
     <loc>https://kchu25.github.io/blog/machine-learning/gating_activation/index.html</loc>
     <lastmod>2025-10-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
 <url>
-    <loc>https://kchu25.github.io/blog/index.html</loc>
+    <loc>https://kchu25.github.io/blog/machine-learning/loss_log_scale/index.html</loc>
     <lastmod>2025-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/index.html</loc>
+    <lastmod>2025-10-06</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
@@ -56,8 +56,20 @@
     <priority>0.5</priority>
 </url>
 <url>
+    <loc>https://kchu25.github.io/blog/data_processing/log_transform_tradeoffs/index.html</loc>
+    <lastmod>2025-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/blog/sparsity/learn_l0/index.html</loc>
     <lastmod>2025-10-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/data_processing/log_normalize/index.html</loc>
+    <lastmod>2025-11-04</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>

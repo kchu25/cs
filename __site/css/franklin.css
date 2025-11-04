@@ -155,6 +155,7 @@ h6 {
   margin-right: auto;
   border-collapse: collapse;
   text-align: center;
+  border: 1px solid #333;
 }
 
 .franklin-toc ol ol {
@@ -165,7 +166,13 @@ h6 {
 td {
   font-size: var(--small);
   padding: 10px;
-  border: 1px solid black;
+  border: 1px solid #333;
+}
+
+.franklin-content th {
+  background-color: #f0f0f0;
+  font-weight: bold;
+  border-bottom: 2px solid #333;
 }
 
 .franklin-content blockquote {
@@ -237,10 +244,11 @@ td {
 .franklin-content table.fndef {
   margin: 0;
   margin-bottom: 10px;
+  border: 0;
 }
 
 .franklin-content .fndef tr,
-td {
+.franklin-content .fndef td {
   padding: 0;
   border: 0;
   text-align: left;
