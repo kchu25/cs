@@ -198,7 +198,83 @@ end</code></pre>
 <p>✅ Gives you prediction intervals, not just point estimates ✅ Can focus on underestimation risk &#40;τ &gt; 0.5&#41; or overestimation &#40;τ &lt; 0.5&#41; ✅ Very robust</p>
 <h3 id="cons__7"><a href="#cons__7" class="header-anchor">Cons:</a></h3>
 <p>❌ More complex ❌ Need to train separate models for different quantiles ❌ Harder to interpret than mean predictions</p>
-<h2 id="alternative_7_poisson_deviance_loss"><a href="#alternative_7_poisson_deviance_loss" class="header-anchor">Alternative 7: Poisson Deviance Loss</a></h2>
+<h2 id="alternative_7_weighted_loss_in_log_space"><a href="#alternative_7_weighted_loss_in_log_space" class="header-anchor">Alternative 7: Weighted Loss in Log Space</a></h2>
+<p>You can combine log transforms with custom weighting to control priorities in log-space:</p>
+<pre><code class="language-julia"># Weight errors in log-space by original scale
+function weighted_log_mse&#40;y_pred, y_true; weight_power&#61;1, epsilon&#61;1e-6&#41;
+    log_pred &#61; log.&#40;y_pred .&#43; epsilon&#41;
+    log_true &#61; log.&#40;y_true .&#43; epsilon&#41;
+    weights &#61; y_true.^weight_power  # Weight by original scale
+    return mean&#40;weights .* &#40;log_pred .- log_true&#41;.^2&#41;
+end</code></pre>
+<h3 id="what_does_this_do"><a href="#what_does_this_do" class="header-anchor">What does this do?</a></h3>
+<p>With <code>weight_power &#61; 1</code>: \(L = \mathbb{E}[y \cdot (\log(\hat{y}) - \log(y))^2]\)</p>
+<p><strong>Effect:</strong> Errors in log-space on large values matter more</p>
+<ul>
+<li><p>Log error of 0.1 at y&#61;10 → loss &#61; 10 × 0.1² &#61; 0.1</p>
+</li>
+<li><p>Log error of 0.1 at y&#61;1000 → loss &#61; 1000 × 0.1² &#61; 100</p>
+</li>
+</ul>
+<p>Same percentage error &#40;since log difference is the same&#41;, but the large value contributes 1000x more to the loss&#33;</p>
+<h3 id="does_this_make_sense"><a href="#does_this_make_sense" class="header-anchor">Does this make sense?</a></h3>
+<p>It depends on what you want:</p>
+<p><strong>Standard MSLE &#40;no weighting&#41;:</strong></p>
+<ul>
+<li><p>Treats multiplicative errors equally at all scales</p>
+</li>
+<li><p>Log error of 0.1 means ~10&#37; relative error whether at y&#61;10 or y&#61;1000</p>
+</li>
+<li><p>Model focuses equally on all scales in percentage terms</p>
+</li>
+</ul>
+<p><strong>Weighted log MSE &#40;weight &#61; y&#41;:</strong></p>
+<ul>
+<li><p>Combines multiplicative scaling with absolute value importance</p>
+</li>
+<li><p>Model cares about percentage errors BUT weighted by magnitude</p>
+</li>
+<li><p>A 10&#37; error on 1000 is treated as 100x more important than 10&#37; error on 10</p>
+</li>
+</ul>
+<p><strong>When to use weighted log loss:</strong></p>
+<p>✅ <strong>Use it when:</strong> You want relative/multiplicative errors, but large values are more important to get right</p>
+<ul>
+<li><p>Example: Revenue prediction where 10&#37; error on \(1M revenue hurts more than 10% error on \)1k revenue</p>
+</li>
+</ul>
+<p>❌ <strong>Don&#39;t use it when:</strong> You truly care about percentage errors equally &#40;then use standard MSLE&#41;</p>
+<h3 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h3>
+<table><tr><th align="right">Approach</th><th align="right">What it optimizes</th><th align="right">Example &#40;error of 1&#41;</th></tr><tr><td align="right"><strong>Plain MSE</strong></td><td align="right">Absolute errors uniformly</td><td align="right">y&#61;10: loss&#61;1², y&#61;1000: loss&#61;1² &#40;same&#41;</td></tr><tr><td align="right"><strong>MSLE &#40;no weight&#41;</strong></td><td align="right">Relative errors uniformly</td><td align="right">y&#61;10: log error ≈ 0.095², y&#61;1000: log error ≈ 0.001²</td></tr><tr><td align="right"><strong>Weighted MSE &#40;w&#61;1/y²&#41;</strong></td><td align="right">Percentage errors</td><td align="right">y&#61;10: loss&#61;&#40;1/10&#41;²&#61;0.01, y&#61;1000: loss&#61;&#40;1/1000&#41;²&#61;0.000001</td></tr><tr><td align="right"><strong>Weighted MSE &#40;w&#61;y&#41;</strong></td><td align="right">Large values &#40;absolute focus&#41;</td><td align="right">y&#61;10: loss&#61;10×1²&#61;10, y&#61;1000: loss&#61;1000×1²&#61;1000</td></tr><tr><td align="right"><strong>Weighted log MSE &#40;w&#61;y&#41;</strong></td><td align="right">Large values &#40;relative focus&#41;</td><td align="right">y&#61;10: log error × 10, y&#61;1000: log error × 1000</td></tr></table>
+<h3 id="practical_implementation"><a href="#practical_implementation" class="header-anchor">Practical Implementation</a></h3>
+<pre><code class="language-julia"># For Flux.jl or other gradient-based training
+function weighted_log_loss&#40;ŷ, y; weight_power&#61;1, epsilon&#61;1e-6&#41;
+    log_error &#61; log.&#40;ŷ .&#43; epsilon&#41; .- log.&#40;y .&#43; epsilon&#41;
+    weights &#61; y.^weight_power
+    return mean&#40;weights .* log_error.^2&#41;
+end
+
+# Example: prioritize large values moderately
+loss&#40;ŷ, y&#41; &#61; weighted_log_loss&#40;ŷ, y; weight_power&#61;0.5&#41;
+# weight_power &#61; 0: standard MSLE &#40;no prioritization&#41;
+# weight_power &#61; 0.5: moderate prioritization &#40;10x value → 3.16x weight&#41;
+# weight_power &#61; 1.0: linear prioritization &#40;10x value → 10x weight&#41;
+# weight_power &#61; 2.0: strong prioritization &#40;10x value → 100x weight&#41;</code></pre>
+<h3 id="my_take"><a href="#my_take" class="header-anchor">My take:</a></h3>
+<p><strong>Weighted log loss can make sense, but it&#39;s getting complicated.</strong> You&#39;re mixing two different scaling philosophies:</p>
+<ol>
+<li><p>Log transform &#61; multiplicative/relative scaling</p>
+</li>
+<li><p>Weighting by y &#61; absolute value importance</p>
+</li>
+</ol>
+<p>If you care about large values in absolute terms, it&#39;s cleaner to just use:</p>
+<pre><code class="language-julia"># Direct: weight by value in original space
+large_value_mse&#40;y_pred, y_true; power&#61;1&#41;</code></pre>
+<p>If you care about relative errors equally, use:</p>
+<pre><code class="language-julia"># Standard log transform &#40;with bias correction&#41;</code></pre>
+<p><strong>Weighted log loss is for the specific case where:</strong> &quot;I want multiplicative scaling, but I also want large values to contribute more to the loss than small values in proportion to their magnitude.&quot;</p>
+<h2 id="alternative_8_poisson_deviance_loss"><a href="#alternative_8_poisson_deviance_loss" class="header-anchor">Alternative 8: Poisson Deviance Loss</a></h2>
 <p>If your data is count-like &#40;non-negative integers or positive reals&#41;, consider: \(L = \mathbb{E}[y \log(y/\hat{y}) + (\hat{y} - y)]\)</p>
 <p>This is the negative log-likelihood for Poisson distribution.</p>
 <pre><code class="language-julia">function poisson_deviance&#40;y_pred, y_true&#41;
@@ -218,7 +294,7 @@ end</code></pre>
 <p>✅ Natural for count data ✅ Handles zeros properly ✅ Well-studied statistical properties ✅ Predictions are naturally unbiased</p>
 <h3 id="cons__8"><a href="#cons__8" class="header-anchor">Cons:</a></h3>
 <p>❌ Only appropriate for count/rate data ❌ Assumes Poisson variance structure &#40;variance &#61; mean&#41;</p>
-<h2 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h2>
+<h2 id="comparison_table__2"><a href="#comparison_table__2" class="header-anchor">Comparison Table</a></h2>
 <table><tr><th align="right">Loss Function</th><th align="right">Bias?</th><th align="right">Handles Zeros?</th><th align="right">Sensitivity Near Zero</th><th align="right">Prioritizes Large Values?</th><th align="right">Good For</th></tr><tr><td align="right"><strong>MSLE &#40;transform&#41;</strong></td><td align="right">⚠️ Yes, needs correction</td><td align="right">❌ No</td><td align="right">🔥 Very high</td><td align="right">❌ No, relative errors</td><td align="right">Quick &amp; dirty, multiplicative data</td></tr><tr><td align="right"><strong>Direct MSLE</strong></td><td align="right">⚠️ Yes</td><td align="right">❌ No</td><td align="right">🔥 Very high</td><td align="right">❌ No, relative errors</td><td align="right">Custom training loop</td></tr><tr><td align="right"><strong>MALE</strong></td><td align="right">✅ No &#40;for median&#41;</td><td align="right">❌ No</td><td align="right">🔥 High</td><td align="right">❌ No</td><td align="right">Robust outliers, median prediction</td></tr><tr><td align="right"><strong>Relative MSE &#40;1/y²&#41;</strong></td><td align="right">✅ No</td><td align="right">⚠️ Need epsilon</td><td align="right">🔥 High &#40;small values matter more&#33;&#41;</td><td align="right">❌ No, percentage errors</td><td align="right"><strong>Relative/percentage error optimization</strong></td></tr><tr><td align="right"><strong>Large Value MSE &#40;yᵖ&#41;</strong></td><td align="right">✅ No</td><td align="right">✅ Yes</td><td align="right">Low &#40;large values matter more&#33;&#41;</td><td align="right">✅ Yes&#33;</td><td align="right"><strong>When large values are what matters</strong></td></tr><tr><td align="right"><strong>Huber &#40;log&#41;</strong></td><td align="right">⚠️ Yes</td><td align="right">❌ No</td><td align="right">🔥 High</td><td align="right">❌ No</td><td align="right">Outlier-robust MSLE</td></tr><tr><td align="right"><strong>Quantile</strong></td><td align="right">✅ No</td><td align="right">❌ No</td><td align="right">🔥 High</td><td align="right">❌ No</td><td align="right">Uncertainty estimates</td></tr><tr><td align="right"><strong>Poisson</strong></td><td align="right">✅ No</td><td align="right">✅ Yes</td><td align="right">Medium</td><td align="right">⚠️ Somewhat</td><td align="right">Count data specifically</td></tr></table>
 <h2 id="my_recommendations"><a href="#my_recommendations" class="header-anchor">My Recommendations</a></h2>
 <h3 id="for_optimizing_relativepercentage_errors_relative_mse"><a href="#for_optimizing_relativepercentage_errors_relative_mse" class="header-anchor">For optimizing relative/percentage errors: Relative MSE</a></h3>

@@ -288,7 +288,100 @@ Set $\tau = 0.5$ for median, $\tau = 0.75$ for upper quartile, etc.
 ❌ Need to train separate models for different quantiles
 ❌ Harder to interpret than mean predictions
 
-## Alternative 7: Poisson Deviance Loss
+## Alternative 7: Weighted Loss in Log Space
+
+You can combine log transforms with custom weighting to control priorities in log-space:
+
+```julia
+# Weight errors in log-space by original scale
+function weighted_log_mse(y_pred, y_true; weight_power=1, epsilon=1e-6)
+    log_pred = log.(y_pred .+ epsilon)
+    log_true = log.(y_true .+ epsilon)
+    weights = y_true.^weight_power  # Weight by original scale
+    return mean(weights .* (log_pred .- log_true).^2)
+end
+```
+
+### What does this do?
+
+With `weight_power = 1`:
+$L = \mathbb{E}[y \cdot (\log(\hat{y}) - \log(y))^2]$
+
+**Effect:** Errors in log-space on large values matter more
+- Log error of 0.1 at y=10 → loss = 10 × 0.1² = 0.1
+- Log error of 0.1 at y=1000 → loss = 1000 × 0.1² = 100
+
+Same percentage error (since log difference is the same), but the large value contributes 1000x more to the loss!
+
+### Does this make sense?
+
+It depends on what you want:
+
+**Standard MSLE (no weighting):**
+- Treats multiplicative errors equally at all scales
+- Log error of 0.1 means ~10% relative error whether at y=10 or y=1000
+- Model focuses equally on all scales in percentage terms
+
+**Weighted log MSE (weight = y):**
+- Combines multiplicative scaling with absolute value importance
+- Model cares about percentage errors BUT weighted by magnitude
+- A 10% error on 1000 is treated as 100x more important than 10% error on 10
+
+**When to use weighted log loss:**
+
+✅ **Use it when:** You want relative/multiplicative errors, but large values are more important to get right
+- Example: Revenue prediction where 10% error on $1M revenue hurts more than 10% error on $1k revenue
+
+❌ **Don't use it when:** You truly care about percentage errors equally (then use standard MSLE)
+
+### Comparison Table
+
+| Approach | What it optimizes | Example (error of 1) |
+|----------|------------------|---------------------|
+| **Plain MSE** | Absolute errors uniformly | y=10: loss=1², y=1000: loss=1² (same) |
+| **MSLE (no weight)** | Relative errors uniformly | y=10: log error ≈ 0.095², y=1000: log error ≈ 0.001² |
+| **Weighted MSE (w=1/y²)** | Percentage errors | y=10: loss=(1/10)²=0.01, y=1000: loss=(1/1000)²=0.000001 |
+| **Weighted MSE (w=y)** | Large values (absolute focus) | y=10: loss=10×1²=10, y=1000: loss=1000×1²=1000 |
+| **Weighted log MSE (w=y)** | Large values (relative focus) | y=10: log error × 10, y=1000: log error × 1000 |
+
+### Practical Implementation
+
+```julia
+# For Flux.jl or other gradient-based training
+function weighted_log_loss(ŷ, y; weight_power=1, epsilon=1e-6)
+    log_error = log.(ŷ .+ epsilon) .- log.(y .+ epsilon)
+    weights = y.^weight_power
+    return mean(weights .* log_error.^2)
+end
+
+# Example: prioritize large values moderately
+loss(ŷ, y) = weighted_log_loss(ŷ, y; weight_power=0.5)
+# weight_power = 0: standard MSLE (no prioritization)
+# weight_power = 0.5: moderate prioritization (10x value → 3.16x weight)
+# weight_power = 1.0: linear prioritization (10x value → 10x weight)
+# weight_power = 2.0: strong prioritization (10x value → 100x weight)
+```
+
+### My take:
+
+**Weighted log loss can make sense, but it's getting complicated.** You're mixing two different scaling philosophies:
+1. Log transform = multiplicative/relative scaling
+2. Weighting by y = absolute value importance
+
+If you care about large values in absolute terms, it's cleaner to just use:
+```julia
+# Direct: weight by value in original space
+large_value_mse(y_pred, y_true; power=1)
+```
+
+If you care about relative errors equally, use:
+```julia
+# Standard log transform (with bias correction)
+```
+
+**Weighted log loss is for the specific case where:** "I want multiplicative scaling, but I also want large values to contribute more to the loss than small values in proportion to their magnitude."
+
+## Alternative 8: Poisson Deviance Loss
 
 If your data is count-like (non-negative integers or positive reals), consider:
 $L = \mathbb{E}[y \log(y/\hat{y}) + (\hat{y} - y)]$
