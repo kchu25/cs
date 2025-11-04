@@ -2,7 +2,6 @@
 @def published = "4 November 2025"
 @def tags = ["machine-learning", "data-processing", "loss-function"]
 
-
 # Loss Functions for Log-Scale Regression
 
 When dealing with data that spans multiple orders of magnitude, choosing the right loss function is crucial. Let's break down your options and when to use each.
@@ -22,9 +21,262 @@ $$L = \mathbb{E}[(\log(\hat{y}) - \log(y))^2] = \text{MSLE (Mean Squared Log Err
 
 ### Pros:
 ✅ Simple - just transform targets before training
-✅ Multiplicative errors (10% off at 10 same as 10% off at 1000)
+✅ **Multiplicative errors** - treats relative errors equally across scales (explained below)
 ✅ Works with any model (linear regression, neural nets, trees, etc.)
 ✅ Automatically handles heteroscedasticity
+
+## Understanding Multiplicative vs Additive Errors
+
+This is crucial to understanding why log transforms work the way they do!
+
+### Additive (Absolute) Errors
+
+**Plain MSE** optimizes additive errors:
+$L = (\hat{y} - y)^2$
+
+This cares about the **absolute difference**:
+
+| True Value | Prediction | Absolute Error | Loss |
+|------------|-----------|----------------|------|
+| 10 | 11 | 1 | 1 |
+| 10 | 15 | 5 | 25 |
+| 1000 | 1001 | 1 | 1 |
+| 1000 | 1005 | 5 | 25 |
+
+Notice: Being off by 5 has the same loss (25) whether you're at scale 10 or scale 1000.
+
+**Problem:** Being off by 5 when predicting 10 is a **50% error** (terrible!), but being off by 5 when predicting 1000 is only a **0.5% error** (great!). Plain MSE treats them the same!
+
+### Multiplicative (Relative) Errors  
+
+**Log transform** optimizes multiplicative errors. Here's why:
+
+$L = (\log(\hat{y}) - \log(y))^2$
+
+Using the logarithm property: $\log(a) - \log(b) = \log(a/b)$
+
+$L = \left[\log\left(\frac{\hat{y}}{y}\right)\right]^2$
+
+This is a **ratio**! The loss depends on $\frac{\hat{y}}{y}$, not $\hat{y} - y$.
+
+**Examples:**
+
+| True Value | Prediction | Ratio $\frac{\hat{y}}{y}$ | Log Error | Loss |
+|------------|-----------|----------|-----------|------|
+| 10 | 11 | 1.1 | log(1.1) ≈ 0.095 | 0.0091 |
+| 10 | 15 | 1.5 | log(1.5) ≈ 0.405 | 0.164 |
+| 1000 | 1100 | 1.1 | log(1.1) ≈ 0.095 | 0.0091 |
+| 1000 | 1500 | 1.5 | log(1.5) ≈ 0.405 | 0.164 |
+
+**Key insight:** Being off by a **factor of 1.1** (10% too high) has the same loss whether you're at scale 10 or scale 1000!
+
+### Why "Multiplicative"?
+
+Because the model learns to predict **ratios/multipliers** rather than differences:
+
+**Additive thinking:** 
+- "I need to add 500 to my base prediction"
+- Absolute differences matter
+
+**Multiplicative thinking:**
+- "I need to multiply my base prediction by 1.5"  
+- Relative ratios matter
+
+### Concrete Example: House Prices
+
+Imagine predicting house prices in two neighborhoods:
+
+**Neighborhood A:** Houses around \$100,000
+**Neighborhood B:** Houses around \$1,000,000
+
+**Scenario 1: Additive errors (plain MSE)**
+
+Your model makes these predictions:
+- House A: True=\$100k, Pred=\$110k, Error=\$10k, Loss=100M
+- House B: True=\$1M, Pred=\$1.01M, Error=\$10k, Loss=100M
+
+Same loss! But House A is **10% off** (bad!) while House B is **1% off** (great!).
+
+The model treats these equally, so it might sacrifice accuracy on cheap houses to get expensive houses within \$10k.
+
+**Scenario 2: Multiplicative errors (log transform)**
+
+Same predictions:
+- House A: True=\$100k, Pred=\$110k, Ratio=1.1, Log error=0.095, Loss=0.009
+- House B: True=\$1M, Pred=\$1.01M, Ratio=1.01, Log error=0.01, Loss=0.0001
+
+Now House A has **90x more loss** because the percentage error is much worse!
+
+The model learns: "Being 10% off is equally bad whether the house costs \$100k or \$1M."
+
+### Mathematical Relationship
+
+For small errors, we can approximate:
+
+$\log\left(\frac{\hat{y}}{y}\right) \approx \frac{\hat{y} - y}{y}$
+
+So log error ≈ **percentage error**!
+
+That's why:
+- MSLE ≈ Mean Squared Percentage Error (for small errors)
+- The model optimizes relative accuracy, not absolute accuracy
+
+### When to Use Each
+
+| Domain | Example | Type | Reasoning |
+|--------|---------|------|-----------|
+| **Economics & Finance** |
+| Stock prices | \$50 vs \$5000/share | **Multiplicative** | 10% gain/loss matters equally; doubling is doubling |
+| Revenue/Sales | \$1M vs \$100M | **Multiplicative** | Growth rates (%) are what matter, not absolute \$ |
+| Salary | \$50k vs \$500k | **Multiplicative** | 20% raise has similar impact at any level |
+| GDP | \$1T vs \$20T economy | **Multiplicative** | Growth measured in %, not absolute billions |
+| Market cap | \$1B vs \$1T company | **Multiplicative** | Valuation multiples, not absolute differences |
+| Interest/Returns | 5% vs 10% return | **Multiplicative** | Compounding makes ratios matter |
+| Exchange rates | 1 USD = 100 JPY | **Multiplicative** | 10% currency move significant at any scale |
+| Wealth/Assets | \$100k vs \$10M | **Multiplicative** | Lifestyle changes by orders of magnitude |
+| **Demographics** |
+| Population | 1000 vs 1M people | **Multiplicative** | Growth rates (%), doubling time |
+| Population density | 10 vs 10,000 per km² | **Multiplicative** | Urban vs rural by orders of magnitude |
+| Life expectancy | 45 vs 85 years | **Additive** | Each year of life equally valuable |
+| Age | 5 vs 50 years old | **Additive** | 1 year is 1 year regardless |
+| **Science & Nature** |
+| Earthquake magnitude | 5.0 vs 8.0 Richter | **Multiplicative** | Logarithmic scale, each +1 is 10x energy |
+| pH levels | 3 vs 7 (acidity) | **Multiplicative** | Log scale, each unit is 10x H⁺ concentration |
+| Decibels (sound) | 60 vs 90 dB | **Multiplicative** | Log scale, each +10 is 10x intensity |
+| Star brightness | Magnitude 1 vs 6 | **Multiplicative** | Log scale, each magnitude is 2.5x |
+| Species count | 10 vs 10,000 species | **Multiplicative** | Biodiversity measured in orders of magnitude |
+| Viral load | 1000 vs 1M copies/mL | **Multiplicative** | Exponential growth, log-fold changes |
+| Gene expression | 10x vs 1000x baseline | **Multiplicative** | Fold-changes (2x, 10x) standard in biology |
+| Bacterial growth | 1k vs 1M CFU | **Multiplicative** | Exponential growth dynamics |
+| **Web & Tech** |
+| Website traffic | 100 vs 100k visits/day | **Multiplicative** | Growth measured in %, orders of magnitude matter |
+| User base | 1k vs 1B users | **Multiplicative** | Network effects scale multiplicatively |
+| Data storage | 1GB vs 1PB | **Multiplicative** | KB→MB→GB→TB progression |
+| Response time | 10ms vs 1000ms | **Multiplicative** | 2x slower feels similar at any scale |
+| API rate limits | 100 vs 10k req/sec | **Multiplicative** | Order of magnitude determines capacity tier |
+| Follower count | 100 vs 100k followers | **Multiplicative** | Influence grows non-linearly |
+| **Business Metrics** |
+| Customer count | 10 vs 10,000 | **Multiplicative** | Scaling challenges at each order of magnitude |
+| Conversion rate | 1% vs 10% | **Multiplicative** | Doubling conversion = doubling revenue |
+| Customer lifetime value | \$100 vs \$10k | **Multiplicative** | Different customer segments by magnitude |
+| Churn rate | 1% vs 10% monthly | **Multiplicative** | Compound effects over time |
+| **Measurements - Additive** |
+| Temperature (Celsius) | 10°C vs 30°C | **Additive** | 5° difference feels similar anywhere (within range) |
+| Distance | 10m vs 1000m | **Additive** | 1m is 1m, though sometimes multiplicative for navigation |
+| Height/Length | 150cm vs 200cm | **Additive** | 1cm is 1cm regardless of total height |
+| Weight (small range) | 50kg vs 80kg | **Additive** | 1kg is 1kg in normal ranges |
+| Time duration | 10 sec vs 60 sec | **Additive** | Each second equally valuable |
+| Angles/Degrees | 10° vs 90° | **Additive** | Each degree is same angular unit |
+| Percentage points | 10% vs 30% | **Additive** | +5 percentage points is +5 points |
+| Test scores | 70 vs 90 out of 100 | **Additive** | Each point equally valuable |
+| **Sports & Games** |
+| Points scored | 10 vs 100 points | **Additive** | Each point counts the same |
+| Game score | 3-2 vs 103-102 | **Additive** | Win by 1 is win by 1 |
+| Marathon time | 2:30 vs 4:00 hours | **Additive** | Each minute is same effort (roughly) |
+| Golf score | 72 vs 85 strokes | **Additive** | Each stroke matters equally |
+| **Medicine & Health** |
+| Tumor size | 1cm vs 10cm | **Multiplicative** | Doubling time, growth dynamics |
+| Blood cell count | 1k vs 10k per μL | **Multiplicative** | Orders of magnitude indicate different conditions |
+| Drug dosage | 10mg vs 100mg | **Multiplicative** | Half-life, therapeutic windows scale |
+| Heart rate | 60 vs 120 bpm | **Additive** | Each beat per minute similar impact |
+| Blood pressure | 120/80 vs 160/100 | **Additive** | Each mmHg similar risk increment |
+| Body temperature | 36°C vs 40°C | **Additive** | Each degree equally concerning |
+| BMI | 20 vs 30 | **Additive** | Linear scale for health categories |
+| **Real Estate & Geography** |
+| House price | \$100k vs \$1M | **Multiplicative** | Market dynamics by price tier |
+| Square footage | 500 vs 5000 sq ft | **Multiplicative** | Cost per sq ft changes with scale |
+| Land area | 0.1 vs 100 acres | **Multiplicative** | Use cases differ by orders of magnitude |
+| Altitude/Elevation | 100m vs 5000m | **Additive** | Each meter is same vertical distance |
+| Latitude/Longitude | 10° vs 80° | **Additive** | Each degree is same angular distance |
+| **Energy & Physics** |
+| Energy/Power | 1W vs 1MW | **Multiplicative** | Orders of magnitude: device→building→city |
+| Frequency | 10Hz vs 10MHz | **Multiplicative** | Orders of magnitude matter (radio spectrum) |
+| Wavelength | 1nm vs 1m | **Multiplicative** | Different physical phenomena at each scale |
+| Particle count | 10⁶ vs 10²³ (mole) | **Multiplicative** | Chemistry deals with log scales |
+| Half-life | 1 sec vs 1000 years | **Multiplicative** | Decay rates span huge ranges |
+| Speed (relative) | 1 m/s vs 1000 m/s | **Additive** | Each m/s is same increment (non-relativistic) |
+| Electric charge | 1μC vs 1C | **Additive** | Linear superposition |
+| **Computation** |
+| Algorithm complexity | O(n) vs O(n²) | **Multiplicative** | Growth rates by factors |
+| Memory usage | 1KB vs 1GB | **Multiplicative** | KB→MB→GB→TB tiers |
+| CPU cycles | 1k vs 1B | **Multiplicative** | Performance scales |
+| Pixels | 100px vs 1000px | **Additive** | Each pixel is same unit |
+| **Ambiguous Cases** |
+| Income inequality (Gini) | 0.3 vs 0.5 | **Additive** | Scale from 0-1, differences matter linearly |
+| Probability | 0.01 vs 0.5 | **Both** | Small probabilities multiplicative (odds ratios), medium/high additive |
+| Speed (wide range) | 1 km/h vs 300,000 km/s | **Multiplicative** | When spanning orders of magnitude |
+| Weight (wide range) | 1g vs 1000kg | **Multiplicative** | When spanning orders of magnitude |
+
+### Key Patterns to Recognize
+
+**Use Multiplicative (Log Transform) when:**
+- ✅ Data spans **multiple orders of magnitude** (10x, 100x, 1000x differences)
+- ✅ **Growth rates/percentages** are what matter (10% growth is 10% growth)
+- ✅ Physical processes are **exponential** (compound growth, decay)
+- ✅ Measurements use **logarithmic scales** (Richter, decibels, pH)
+- ✅ **Ratios/multiples** are natural way to think (2x bigger, 10x more users)
+- ✅ Phenomena have **threshold effects** at different scales (1k vs 1M users = different product)
+
+**Use Additive (No Transform) when:**
+- ✅ Data in **narrow range** or roughly same order of magnitude
+- ✅ **Absolute differences** are what matter (each unit equally important)
+- ✅ Scale is **human-defined/arbitrary** (test scores, angles, points)
+- ✅ **Physical measurements** with consistent precision
+- ✅ **Linear relationships** expected
+- ✅ **Zero is meaningful** (can't take log of zero)
+
+### Real-World Tip
+
+Ask yourself: **"If I double all the values, does the relationship change?"**
+
+- Stock portfolio: $100k → $200k feels like same % gain = **Multiplicative**
+- Temperature: 10°C → 20°C is NOT double the heat = **Additive** (unless Kelvin!)
+- Website views: 1k → 2k visitors same as 100k → 200k = **Multiplicative**
+- Test score: 50 → 100 is NOT same as 25 → 50 points = **Additive**
+
+### Visual Intuition
+
+**Additive errors:** Think of a number line where each unit of distance is equally important
+```
+0----10----20----30----40----50
+     └─5─┘       └─5─┘
+   Same error, same loss
+```
+
+**Multiplicative errors:** Think of a logarithmic scale where each doubling/halving is equally important
+```
+1----2----4----8----16----32
+     └×2┘      └×2┘
+   Same ratio, same loss
+```
+
+On a log scale:
+- 1 → 2 is the same "distance" as 10 → 20 or 100 → 200 (all are 2x multipliers)
+- Being off by 2x at any scale is equally bad
+
+### Back to Your Original Observation
+
+You said: "log transform makes the model more capable at predicting large values"
+
+Now you can see why! 
+
+**Without log transform:**
+- Error of 100 at y=1000 → loss = 10,000
+- Error of 10 at y=100 → loss = 100
+- Large value errors dominate, but the model might still underfit them to avoid huge losses
+
+**With log transform:**
+- Both are 10% errors → same log error ≈ 0.095
+- Model learns to be 10% accurate everywhere
+- When you transform back, you get good **relative** accuracy at all scales
+- Large values benefit because the model isn't scared of their magnitude
+
+But (as you noticed) this also makes it hypersensitive near zero, because:
+- Error from 0.01 to 0.02 = 2x multiplier = log(2) ≈ 0.69
+- Error from 100 to 200 = 2x multiplier = log(2) ≈ 0.69  
+- Same loss, but 0.01 → 0.02 is probably noise while 100 → 200 is important!
+
+That's the whole sensitivity problem we discussed earlier.
 
 ### Cons:
 ❌ **Biased predictions** when transformed back (systematically underestimates)
@@ -330,7 +582,7 @@ It depends on what you want:
 **When to use weighted log loss:**
 
 ✅ **Use it when:** You want relative/multiplicative errors, but large values are more important to get right
-- Example: Revenue prediction where 10% error on $1M revenue hurts more than 10% error on $1k revenue
+- Example: Revenue prediction where 10% error on \$1M revenue hurts more than 10% error on \$1k revenue
 
 ❌ **Don't use it when:** You truly care about percentage errors equally (then use standard MSLE)
 
