@@ -565,6 +565,140 @@ A narrow espresso cup        A wide bowl
 <li><p><strong>Learning rate</strong>: Same as you&#39;d use for base optimizer</p>
 </li>
 </ul>
+<blockquote>
+<p><strong>🎓 What About Knowledge Distillation? Do I Need SAM for Both Teacher and Student?</strong></p>
+<p>Great question&#33; This gets at practical workflow considerations. Short answer: <strong>It depends on your goals, but usually you don&#39;t need both.</strong></p>
+<h3>Option 1: SAM Teacher Only &#40;Most Common&#41;</h3>
+<p><strong>Workflow:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; 1. Train teacher with SAM &#40;expensive, one-time cost&#41;
+&gt; 2. Distill to student with normal SGD &#40;cheap, fast&#41;
+&gt;</code></pre>
+<blockquote>
+<p><strong>Rationale:</strong></p>
+<ul>
+<li><p><strong>Better teacher → better student</strong>: SAM teacher has flatter representations, more generalizable knowledge</p>
+</li>
+<li><p><strong>Distillation inherits flatness</strong>: Student learns from soft targets that already encode flatness</p>
+</li>
+<li><p><strong>Cost-effective</strong>: Pay 2x compute once for teacher, save on every student</p>
+</li>
+</ul>
+<p><strong>Evidence:</strong> Students trained from SAM teachers often match or exceed students from SGD teachers, even when student uses normal SGD&#33;</p>
+<h3>Option 2: SAM Student Only</h3>
+<p><strong>Workflow:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; 1. Use pre-trained teacher &#40;maybe not yours, e.g., CLIP, DINO&#41;
+&gt; 2. Train student with SAM while distilling
+&gt;</code></pre>
+<blockquote>
+<p><strong>When this makes sense:</strong></p>
+<ul>
+<li><p>Teacher is fixed &#40;public checkpoint you can&#39;t retrain&#41;</p>
+</li>
+<li><p>Student needs extra robustness beyond what teacher provides</p>
+</li>
+<li><p>You care deeply about student&#39;s OOD performance</p>
+</li>
+</ul>
+<p><strong>Trade-off:</strong> Student training takes 2x longer, but you get a more robust compressed model</p>
+<h3>Option 3: SAM for Both &#40;Overkill for Most Cases&#41;</h3>
+<p><strong>When to consider:</strong></p>
+<ul>
+<li><p>Research setting exploring upper bounds</p>
+</li>
+<li><p>Critical deployment where every 0.1&#37; accuracy matters</p>
+</li>
+<li><p>You have compute budget and want maximum robustness</p>
+</li>
+</ul>
+<p><strong>Reality check:</strong> Diminishing returns&#33; SAM teacher already provides most of the benefit.</p>
+<h3>The Tedium Question: &quot;Isn&#39;t This Annoying to Implement?&quot;</h3>
+<p><strong>Good news:</strong> It&#39;s actually quite simple&#33; Here&#39;s why it&#39;s NOT tedious:</p>
+<h4>Modern libraries handle it:</h4>
+</blockquote>
+<pre><code class="language-python">&gt; # Using a SAM wrapper &#40;takes 5 lines&#41;:
+&gt; from sam import SAM
+&gt;
+&gt; base_optimizer &#61; SGD&#40;model.parameters&#40;&#41;, lr&#61;0.1&#41;
+&gt; optimizer &#61; SAM&#40;model.parameters&#40;&#41;, base_optimizer, rho&#61;0.05&#41;
+&gt;
+&gt; # Training loop is identical to normal:
+&gt; for batch in dataloader:
+&gt;     loss &#61; criterion&#40;model&#40;inputs&#41;, targets&#41;
+&gt;     loss.backward&#40;&#41;
+&gt;     optimizer.step&#40;&#41;  # SAM handles the double gradient internally&#33;
+&gt;     optimizer.zero_grad&#40;&#41;
+&gt;</code></pre>
+<blockquote>
+<h4>The wrapper does the heavy lifting:</h4>
+<ul>
+<li><p>Automatically computes perturbation ε</p>
+</li>
+<li><p>Handles weight save/restore</p>
+</li>
+<li><p>Manages the two gradient computations</p>
+</li>
+<li><p><strong>You just call <code>.step&#40;&#41;</code> like normal&#33;</strong></p>
+</li>
+</ul>
+<h4>Popular implementations:</h4>
+<ul>
+<li><p><strong>PyTorch</strong>: <code>torch-sam</code> package</p>
+</li>
+<li><p><strong>Hugging Face</strong>: Built into some trainer classes</p>
+</li>
+<li><p><strong>TensorFlow</strong>: <code>tfa.optimizers.SAM</code></p>
+</li>
+</ul>
+<h3>Distillation &#43; SAM Example</h3>
+</blockquote>
+<pre><code class="language-python">&gt; # Distillation with SAM is barely different from normal distillation:
+&gt;
+&gt; # Option 1: SAM teacher, normal student
+&gt; teacher &#61; train_with_sam&#40;teacher_model, rho&#61;0.05&#41;  # One-time
+&gt; student &#61; distill&#40;student_model, teacher, optimizer&#61;SGD&#41;  # Fast
+&gt;
+&gt; # Option 2: Normal teacher, SAM student  
+&gt; teacher &#61; load_pretrained_teacher&#40;&#41;  # Given
+&gt; student &#61; distill&#40;student_model, teacher, 
+&gt;                   optimizer&#61;SAM&#40;SGD, rho&#61;0.05&#41;&#41;  # Slower but robust
+&gt;
+&gt; # The distillation loss function doesn&#39;t change at all&#33;
+&gt; def distill_loss&#40;student_logits, teacher_logits, labels&#41;:
+&gt;     # Soft targets from teacher
+&gt;     soft_loss &#61; KL_div&#40;student_logits, teacher_logits.detach&#40;&#41;&#41;
+&gt;     # Hard targets from labels  
+&gt;     hard_loss &#61; CrossEntropy&#40;student_logits, labels&#41;
+&gt;     return alpha * soft_loss &#43; &#40;1-alpha&#41; * hard_loss
+&gt;</code></pre>
+<blockquote>
+<h3>Computational Cost Reality Check</h3>
+<table><tr><th align="right">Scenario</th><th align="right">Relative Cost</th><th align="right">Worth It?</th></tr><tr><td align="right">SAM teacher only</td><td align="right">2x teacher training &#40;one-time&#41;</td><td align="right">✅ Usually yes</td></tr><tr><td align="right">SAM student only</td><td align="right">2x every student training</td><td align="right">⚠️ Depends on use case</td></tr><tr><td align="right">SAM both</td><td align="right">2x teacher &#43; 2x student</td><td align="right">❌ Rarely worth it</td></tr><tr><td align="right">Neither</td><td align="right">1x &#40;baseline&#41;</td><td align="right">⚠️ Missing easy gains</td></tr></table>
+<h3>Practical Recommendation</h3>
+<p><strong>For production distillation pipelines:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; 1. Train ONE high-quality SAM teacher
+&gt; 2. Distill many students without SAM &#40;fast iteration&#41;
+&gt; 3. &#40;Optional&#41; Use SAM for final production student if needed
+&gt;</code></pre>
+<blockquote>
+<p><strong>Automation perspective:</strong></p>
+<ul>
+<li><p>Modern ML frameworks make this trivial to automate</p>
+</li>
+<li><p>Add <code>use_sam&#61;True</code> flag to your training script</p>
+</li>
+<li><p>No manual intervention needed</p>
+</li>
+<li><p>The &quot;tedium&quot; is a non-issue with proper tooling&#33;</p>
+</li>
+</ul>
+<h3>Bottom Line</h3>
+<p><strong>Is it tedious?</strong> No&#33; Libraries abstract it away to a simple optimizer swap.</p>
+<p><strong>For distillation?</strong> SAM teacher → normal student is the sweet spot. You get flatness benefits inherited through soft targets without 2x cost on every student.</p>
+<p><strong>Should you automate it?</strong> Yes, but it&#39;s so simple you barely need to - just wrap your optimizer and you&#39;re done&#33;</p>
+</blockquote>
 <h3 id="when_sam_helps_most"><a href="#when_sam_helps_most" class="header-anchor">When SAM Helps Most</a></h3>
 <p>✅ Computer vision &#40;CNNs, ViTs&#41; ✅ Tasks with repeated exposure to training examples ✅ Datasets with label noise ✅ When training to convergence</p>
 <blockquote>
