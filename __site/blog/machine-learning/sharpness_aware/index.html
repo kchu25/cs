@@ -1,0 +1,791 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Sharpness-Aware Minimization (SAM) - A Mathematical & Intuitive Guide</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="sharpness-aware_minimization_sam_-_a_mathematical_intuitive_guide"><a href="#sharpness-aware_minimization_sam_-_a_mathematical_intuitive_guide" class="header-anchor">Sharpness-Aware Minimization &#40;SAM&#41; - A Mathematical &amp; Intuitive Guide</a></h1>
+<p><strong>Paper</strong>: Foret et al. &#40;2020&#41; - &quot;Sharpness-Aware Minimization for Efficiently Improving Generalization&quot;</p>
+<hr />
+<h2 id="the_big_idea"><a href="#the_big_idea" class="header-anchor">🎯 The Big Idea</a></h2>
+<p>Imagine you&#39;re hiking and looking for a valley to camp in. Regular optimization &#40;SGD&#41; finds you <em>any</em> valley, even if it&#39;s a narrow ravine where a small step in any direction takes you back uphill. SAM finds you a <em>wide, flat valley</em> where you can move around comfortably without immediately climbing back up.</p>
+<p><strong>Why does this matter?</strong> Wide valleys &#61; better generalization. Models that sit in flat regions of the loss landscape are less sensitive to small perturbations and generalize better to unseen data.</p>
+<hr />
+<h2 id="the_math_from_intuition_to_formulation"><a href="#the_math_from_intuition_to_formulation" class="header-anchor">🧮 The Math: From Intuition to Formulation</a></h2>
+<h3 id="problem_with_standard_training"><a href="#problem_with_standard_training" class="header-anchor">Problem with Standard Training</a></h3>
+<p>Normal training minimizes:</p>
+\[\min_{w} L_S(w)\]
+<p>Where \(L_S(w)\) is the training loss at parameters \(w\).</p>
+<p><strong>Issue</strong>: Two models can both have \(L_S(w) = 0\) &#40;perfect training accuracy&#41; but vastly different test performance&#33; The geometry around \(w\) matters.</p>
+<h3 id="the_sam_objective"><a href="#the_sam_objective" class="header-anchor">The SAM Objective</a></h3>
+<p>SAM introduces a <strong>sharpness-aware</strong> objective that seeks parameters in neighborhoods with uniformly low loss:</p>
+\[\min_{w} \max_{||\epsilon||_p \leq \rho} L_S(w + \epsilon) + \lambda ||w||_2^2\]
+<p>Let&#39;s break this down:</p>
+<ol>
+<li><p><strong>Inner max</strong>: Find the worst perturbation \(\epsilon\) within a ball of radius \(\rho\) that maximizes loss</p>
+</li>
+<li><p><strong>Outer min</strong>: Minimize this worst-case perturbed loss</p>
+</li>
+<li><p><strong>\(\lambda ||w||_2^2\)</strong>: Standard L2 regularization</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>🎛️ How to Set \(\rho\) and \(\lambda\) in Practice?</strong></p>
+<h3>Setting \(\rho\) &#40;Neighborhood Size&#41; - THE CRITICAL HYPERPARAMETER</h3>
+<p><strong>Rule of thumb:</strong> Start with \(\rho = 0.05\) for most vision tasks, \(\rho = 0.1\) for NLP</p>
+<p><strong>Intuition:</strong> \(\rho\) controls how far you look around the current weights when defining &quot;neighborhood&quot;</p>
+<ul>
+<li><p><strong>Too small &#40;\(\rho < 0.01\)&#41;</strong>: SAM ≈ SGD, barely any flatness seeking</p>
+</li>
+<li><p><strong>Too large &#40;\(\rho > 1.0\)&#41;</strong>: Perturbation too aggressive, optimization becomes unstable</p>
+</li>
+<li><p><strong>Just right &#40;\(\rho \in [0.05, 0.5]\)&#41;</strong>: Meaningful flatness without instability</p>
+</li>
+</ul>
+<p><strong>Practical tuning strategy:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; # Priority order for tuning:
+&gt; 1. Start with ρ &#61; 0.05 &#40;if using standard learning rates&#41;
+&gt; 2. If training is stable but gains are small: increase to 0.1 or 0.2
+&gt; 3. If training becomes unstable: decrease to 0.01 or 0.02
+&gt; 4. Monitor both training loss AND validation accuracy
+&gt;</code></pre>
+<blockquote>
+<p><strong>Relationship with learning rate:</strong></p>
+<ul>
+<li><p>Higher learning rate → can use larger \(\rho\)</p>
+</li>
+<li><p>Lower learning rate → may need smaller \(\rho\)</p>
+</li>
+<li><p>Common values: \(\rho \in \{0.01, 0.05, 0.1, 0.2, 0.5\}\)</p>
+</li>
+</ul>
+<p><strong>Adaptive approaches &#40;advanced&#41;:</strong></p>
+<ul>
+<li><p><strong>ASAM</strong>: Automatically adapts \(\rho\) per layer based on parameter magnitudes</p>
+</li>
+<li><p><strong>Layer-wise \(\rho\)</strong>: Use smaller \(\rho\) for early layers, larger for later layers</p>
+</li>
+</ul>
+<h3>Setting \(\lambda\) &#40;L2 Regularization&#41; - USUALLY IGNORED</h3>
+<p><strong>Surprising fact:</strong> The paper and most implementations <strong>set \(\lambda = 0\)</strong> &#40;no explicit L2 reg&#41;&#33;</p>
+<p><strong>Why?</strong></p>
+<ul>
+<li><p>SAM already provides implicit regularization through flatness seeking</p>
+</li>
+<li><p>Adding explicit L2 is often redundant</p>
+</li>
+<li><p>Modern networks use BatchNorm/LayerNorm which interact complexly with L2</p>
+</li>
+</ul>
+<p><strong>When to use L2 &#40;\(\lambda > 0\)&#41;:</strong></p>
+<ul>
+<li><p>Small datasets &#40;&lt; 10k samples&#41; where overfitting is severe</p>
+</li>
+<li><p>When your base optimizer normally uses weight decay</p>
+</li>
+<li><p>Typical values: \(\lambda \in \{10^{-5}, 10^{-4}, 10^{-3}\}\)</p>
+</li>
+</ul>
+<p><strong>Weight decay vs L2 regularization:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; # If using AdamW, already has weight decay built in:
+&gt; optimizer &#61; AdamW&#40;model.parameters&#40;&#41;, lr&#61;0.001, weight_decay&#61;0.01&#41;
+&gt; # Then set λ &#61; 0 in SAM formulation, as weight decay handles it
+&gt;</code></pre>
+<blockquote>
+<h3>Complete Hyperparameter Recipe</h3>
+<p><strong>For computer vision &#40;CNNs, ResNets, ViTs&#41;:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; base_optimizer &#61; SGD&#40;lr&#61;0.1, momentum&#61;0.9, weight_decay&#61;5e-4&#41;
+&gt; ρ &#61; 0.05  # Start here
+&gt; λ &#61; 0     # Let weight_decay handle regularization
+&gt;</code></pre>
+<blockquote>
+<p><strong>For NLP &#40;Transformers&#41;:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; base_optimizer &#61; AdamW&#40;lr&#61;1e-4, weight_decay&#61;0.01&#41;
+&gt; ρ &#61; 0.1   # Can be more aggressive
+&gt; λ &#61; 0     # AdamW weight_decay is sufficient
+&gt;</code></pre>
+<blockquote>
+<p><strong>For small datasets / heavy overfitting:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; base_optimizer &#61; SGD&#40;lr&#61;0.01, momentum&#61;0.9&#41;
+&gt; ρ &#61; 0.05
+&gt; λ &#61; 1e-4  # Add explicit L2 if needed
+&gt;</code></pre>
+<blockquote>
+<h3>Quick Diagnostic Guide</h3>
+<table><tr><th align="right">Symptom</th><th align="right">Likely Cause</th><th align="right">Solution</th></tr><tr><td align="right">Training loss unstable/diverging</td><td align="right">\(\rho\) too large</td><td align="right">Decrease to 0.01-0.02</td></tr><tr><td align="right">No improvement over SGD</td><td align="right">\(\rho\) too small</td><td align="right">Increase to 0.1-0.2</td></tr><tr><td align="right">Good train, poor validation</td><td align="right">Underfitting</td><td align="right">Increase \(\rho\) OR add more capacity</td></tr><tr><td align="right">Perfect train, poor test</td><td align="right">Overfitting despite SAM</td><td align="right">Check data augmentation, consider \(\lambda > 0\)</td></tr></table>
+<p><strong>Bottom line:</strong> Focus on tuning \(\rho\), ignore \(\lambda\) unless you have specific overfitting issues&#33;</p>
+</blockquote>
+<p><strong>Intuition</strong>: Don&#39;t just find low loss points—find points where even the <em>worst nearby points</em> have low loss&#33;</p>
+<h3 id="sharpness_definition"><a href="#sharpness_definition" class="header-anchor">Sharpness Definition</a></h3>
+<p>The sharpness can be extracted from the formulation:</p>
+\(\text{Sharpness} = \max_{||\epsilon|| \leq \rho} [L_S(w+\epsilon) - L_S(w)]\)
+<p>This measures how quickly the loss can increase when you perturb the weights. Steep landscape &#61; high sharpness &#61; poor generalization.</p>
+<blockquote>
+<p><strong>🔧 Is Sharpness Actually Computable?</strong></p>
+<p><strong>Short answer:</strong> Exactly? No. Approximately? Yes&#33;</p>
+<p><strong>The exact computation</strong> requires: \(\text{Sharpness} = \max_{||\epsilon|| \leq \rho} L_S(w+\epsilon) - L_S(w)\)</p>
+<p>This is a <strong>non-convex optimization problem</strong> in \(\epsilon\)-space. For a network with millions of parameters, finding the true maximum perturbation is intractable.</p>
+<p><strong>SAM&#39;s approximation</strong> &#40;what&#39;s actually used&#41;:</p>
+<ol>
+<li><p>Use first-order Taylor approximation: \(L_S(w+\epsilon) \approx L_S(w) + \epsilon^T \nabla L_S(w)\)</p>
+</li>
+<li><p>The max of this linear approximation has a closed form: \(\epsilon^* = \rho \frac{\nabla L_S(w)}{||\nabla L_S(w)||}\)</p>
+</li>
+<li><p>Compute approximate sharpness: \(\text{Sharpness} \approx \rho ||\nabla L_S(w)||\)</p>
+</li>
+</ol>
+<p>So in practice, <strong>sharpness ≈ gradient norm</strong> &#40;scaled by \(\rho\)&#41;. This is efficiently computable&#33;</p>
+<p><strong>Better approximations:</strong></p>
+<ul>
+<li><p><strong>Power iteration</strong>: Iteratively maximize in \(\epsilon\)-space &#40;more accurate, more expensive&#41;</p>
+</li>
+<li><p><strong>Random perturbations</strong>: Sample many random \(\epsilon\), take max &#40;Monte Carlo estimate&#41;</p>
+</li>
+<li><p><strong>Hessian-based</strong>: Use top eigenvalue of Hessian &#40;most accurate, very expensive&#41;</p>
+</li>
+</ul>
+<p><strong>Practical measurement:</strong></p>
+</blockquote>
+<pre><code class="language-python">&gt; # Quick sharpness estimate during training:
+&gt; loss_at_w &#61; compute_loss&#40;w&#41;
+&gt; grad &#61; compute_gradient&#40;w&#41;
+&gt; sharpness_estimate &#61; rho * torch.norm&#40;grad&#41;
+&gt;
+&gt; # More accurate &#40;but slower&#41;:
+&gt; epsilon &#61; rho * grad / torch.norm&#40;grad&#41;
+&gt; loss_at_perturbed &#61; compute_loss&#40;w &#43; epsilon&#41;
+&gt; sharpness &#61; loss_at_perturbed - loss_at_w
+&gt;</code></pre>
+<blockquote>
+<p><strong>🤔 Why Does High Sharpness &#61; Poor Generalization, Even with Good Validation Loss?</strong></p>
+<p>This is the million-dollar question&#33; Here&#39;s the deep answer:</p>
+<h3>The Core Intuition: Robustness to Distribution Shift</h3>
+<p><strong>Key insight:</strong> Training and test data are <strong>never</strong> from exactly the same distribution, even if validation loss looks good.</p>
+<p>Imagine two models, both with validation loss &#61; 0.1:</p>
+</blockquote>
+<pre><code class="language-julia">&gt; Model A &#40;Sharp&#41;:              Model B &#40;Flat&#41;:
+&gt; 
+&gt;      Train  Valid  Test           Train  Valid  Test
+&gt;       ●------●------?              ●------●------?
+&gt;       
+&gt; Loss changes rapidly         Loss changes slowly
+&gt; with small input shift       with small input shift
+&gt;</code></pre>
+<blockquote>
+<p><strong>Why sharp models fail:</strong></p>
+<ol>
+<li><p><strong>Validation is still &quot;close&quot; to training</strong> - same camera, same lighting conditions, same pre-processing pipeline</p>
+</li>
+<li><p><strong>Real test data has tiny shifts</strong> - slightly different preprocessing, different acquisition conditions, natural distribution drift</p>
+</li>
+<li><p><strong>Sharp models are hypersensitive</strong> - these tiny shifts in input space cause large shifts in parameter effectiveness</p>
+</li>
+</ol>
+<h3>Mathematical Explanation</h3>
+<p>Think about what happens during deployment:</p>
+<ul>
+<li><p>Training distribution: \(\mathcal{D}_{\text{train}}\)</p>
+</li>
+<li><p>Validation distribution: \(\mathcal{D}_{\text{val}} \approx \mathcal{D}_{\text{train}}\) &#40;very similar&#33;&#41;</p>
+</li>
+<li><p>Test/deployment distribution: \(\mathcal{D}_{\text{test}} = \mathcal{D}_{\text{train}} + \delta\) &#40;small shift&#41;</p>
+</li>
+</ul>
+<p><strong>For sharp minima:</strong></p>
+<ul>
+<li><p>Small \(\delta\) in data space → Small \(\epsilon\) in parameter space &#40;implicit perturbation&#41;</p>
+</li>
+<li><p>\(L(w + \epsilon) \gg L(w)\) because of high sharpness</p>
+</li>
+<li><p><strong>Result:</strong> Test loss &gt;&gt; Validation loss &#40;surprise failure&#33;&#41;</p>
+</li>
+</ul>
+<p><strong>For flat minima:</strong></p>
+<ul>
+<li><p>Same small \(\delta\) in data space</p>
+</li>
+<li><p>\(L(w + \epsilon) \approx L(w)\) because of low sharpness  </p>
+</li>
+<li><p><strong>Result:</strong> Test loss ≈ Validation loss &#40;robust&#33;&#41;</p>
+</li>
+</ul>
+<h3>Concrete Example: Image Classification</h3>
+</blockquote>
+<pre><code class="language-python">&gt; # Validation set: Official test split, same camera
+&gt; val_accuracy &#61; 95&#37;  # Both models look great&#33;
+&gt;
+&gt; # Real-world deployment: Different camera, JPEG compression
+&gt; test_accuracy_sharp &#61; 78&#37;   # Yikes&#33; 17&#37; drop
+&gt; test_accuracy_flat &#61; 92&#37;    # Nice&#33; Only 3&#37; drop
+&gt;</code></pre>
+<blockquote>
+<p><strong>What happened?</strong></p>
+<ul>
+<li><p>Validation data: Same acquisition pipeline as training</p>
+</li>
+<li><p>Real data: Slightly different JPEG compression ratios, white balance, sensor noise</p>
+</li>
+<li><p>Sharp model: Learned narrow features that break under tiny perturbations</p>
+</li>
+<li><p>Flat model: Learned robust features that tolerate small variations</p>
+</li>
+</ul>
+<h3>Why Validation Doesn&#39;t Catch This</h3>
+<p><strong>The validation set paradox:</strong></p>
+<ol>
+<li><p>Validation is sampled from the <em>same process</em> as training &#40;just held out&#41;</p>
+</li>
+<li><p>It measures <strong>memorization vs generalization</strong> within that process</p>
+</li>
+<li><p>It does NOT measure <strong>robustness to process variation</strong></p>
+</li>
+</ol>
+<p>Think of it this way:</p>
+<ul>
+<li><p><strong>Low validation loss</strong> &#61; &quot;I generalize across different samples from this exact data collection procedure&quot;</p>
+</li>
+<li><p><strong>Low sharpness</strong> &#61; &quot;I generalize across <em>slightly different</em> data collection procedures&quot;</p>
+</li>
+</ul>
+<h3>The PAC-Bayes Connection</h3>
+<p>From statistical learning theory, the true risk satisfies: \(\mathbb{E}_{\mathcal{D}_{\text{test}}}[L(w)] \leq \mathbb{E}_{\mathcal{D}_{\text{train}}}[L(w)] + \mathcal{O}\left(\sqrt{\frac{\text{Sharpness}}{n}}\right)\)</p>
+<p>Even if \(\mathbb{E}_{\mathcal{D}_{\text{train}}}[L(w)]\) is low &#40;good validation loss&#41;, high sharpness means large generalization gap&#33;</p>
+<h3>Real-World Evidence</h3>
+<p><strong>Empirical observation from the paper:</strong></p>
+<ul>
+<li><p>Take two models with <strong>identical</strong> validation accuracy</p>
+</li>
+<li><p>Measure their sharpness</p>
+</li>
+<li><p>Deploy to out-of-distribution test set</p>
+</li>
+<li><p><strong>Lower sharpness → consistently better OOD performance</strong></p>
+</li>
+</ul>
+<p>This has been verified across:</p>
+<ul>
+<li><p>ImageNet → ImageNet-C &#40;corruptions&#41;</p>
+</li>
+<li><p>CIFAR-10 → CIFAR-10.1 &#40;new test set&#41;</p>
+</li>
+<li><p>Clean speech → Noisy speech</p>
+</li>
+</ul>
+<h3>The Bottom Line</h3>
+<p><strong>Validation loss measures</strong> &#61; &quot;How well did you learn THIS data distribution?&quot; <strong>Sharpness measures</strong> &#61; &quot;How robust are you to NEARBY data distributions?&quot;</p>
+<p>Sharp models are like students who memorize specific exam questions. They ace the practice test &#40;validation&#41;, but fail when the actual exam has slightly different wording &#40;real test data&#41;.</p>
+<p>Flat models are like students who understand concepts deeply. They perform well on practice tests AND adapt to variations in exam format.</p>
+<p><strong>Validation loss alone is not enough&#33;</strong> You need both low loss AND low sharpness for true generalization.</p>
+</blockquote>
+<hr />
+<h2 id="training_procedure_how_sam_actually_works"><a href="#training_procedure_how_sam_actually_works" class="header-anchor">⚙️ Training Procedure: How SAM Actually Works</a></h2>
+<h3 id="the_challenge"><a href="#the_challenge" class="header-anchor">The Challenge</a></h3>
+<p>Solving \(\max_{||\epsilon|| \leq \rho} L_S(w + \epsilon)\) exactly is expensive. SAM uses a clever approximation.</p>
+<h3 id="step_1_find_the_adversarial_perturbation"><a href="#step_1_find_the_adversarial_perturbation" class="header-anchor">Step 1: Find the Adversarial Perturbation</a></h3>
+<p>Use a <strong>first-order Taylor approximation</strong>:</p>
+\[L_S(w + \epsilon) \approx L_S(w) + \epsilon^T \nabla_w L_S(w)\]
+<p>The maximizer of this linear approximation &#40;subject to \(||\epsilon||_2 \leq \rho\)&#41; is:</p>
+\[\epsilon^*(w) = \rho \frac{\nabla_w L_S(w)}{||\nabla_w L_S(w)||_2}\]
+<p><strong>What this means</strong>: Perturb the weights in the direction of the gradient &#40;the direction where loss increases fastest&#41;, scaled to have magnitude \(\rho\).</p>
+<h3 id="step_2_compute_the_sam_gradient"><a href="#step_2_compute_the_sam_gradient" class="header-anchor">Step 2: Compute the SAM Gradient</a></h3>
+<p>Now compute the gradient at the perturbed location:</p>
+\[\nabla_w L_S(w + \epsilon^*(w))\]
+<p>This gradient points toward minimizing the <em>perturbed</em> loss.</p>
+<h3 id="complete_sam_update_per_batch"><a href="#complete_sam_update_per_batch" class="header-anchor">Complete SAM Update &#40;Per Batch&#41;</a></h3>
+<pre><code class="language-julia">For each training batch B:
+
+1. Compute gradient at current weights:
+   g &#61; ∇_w L_B&#40;w&#41;
+
+2. Compute adversarial perturbation:
+   ε&#40;w&#41; &#61; ρ * g / ||g||₂
+
+3. Compute gradient at perturbed weights:
+   g_SAM &#61; ∇_w L_B&#40;w &#43; ε&#40;w&#41;&#41;
+
+4. Update weights using base optimizer:
+   w ← w - η * g_SAM
+   
+   &#40;where η is learning rate&#41;</code></pre>
+<hr />
+<h2 id="sam_vs_normal_training_the_key_differences"><a href="#sam_vs_normal_training_the_key_differences" class="header-anchor">🔄 SAM vs Normal Training: The Key Differences</a></h2>
+<table><tr><th align="right">Aspect</th><th align="right">Normal SGD</th><th align="right">SAM</th></tr><tr><td align="right"><strong>Gradient Computation</strong></td><td align="right">1 forward-backward pass</td><td align="right">2 forward-backward passes</td></tr><tr><td align="right"><strong>Update Location</strong></td><td align="right">Gradient at current \(w\)</td><td align="right">Gradient at perturbed \(w + \epsilon\)</td></tr><tr><td align="right"><strong>Computational Cost</strong></td><td align="right">1x</td><td align="right">~2x</td></tr><tr><td align="right"><strong>Objective</strong></td><td align="right">Minimize loss value</td><td align="right">Minimize worst-case neighborhood loss</td></tr><tr><td align="right"><strong>Loss Landscape</strong></td><td align="right">Converges to sharp minima</td><td align="right">Converges to flat minima</td></tr></table>
+<h3 id="visual_comparison"><a href="#visual_comparison" class="header-anchor">Visual Comparison</a></h3>
+<pre><code class="language-julia">Normal SGD:              SAM:
+    
+    ╱╲                    ___
+   ╱  ╲                  ╱   ╲
+  ╱ w  ╲                ╱  w  ╲
+ ╱______╲              ╱_______╲
+
+Sharp minimum          Flat minimum
+&#40;high sharpness&#41;       &#40;low sharpness&#41;</code></pre>
+<hr />
+<h2 id="sam_training_algorithm_pseudocode"><a href="#sam_training_algorithm_pseudocode" class="header-anchor">📋 SAM Training Algorithm &#40;Pseudocode&#41;</a></h2>
+<pre><code class="language-python"># Initialization
+model &#61; YourNeuralNetwork&#40;&#41;
+base_optimizer &#61; SGD&#40;lr&#61;η, momentum&#61;0.9&#41;  # or Adam, etc.
+ρ &#61; 0.05  # neighborhood size
+
+for batch in training_data:
+    inputs, targets &#61; batch
+    
+    # &#61;&#61;&#61;&#61;&#61; FIRST FORWARD-BACKWARD PASS &#61;&#61;&#61;&#61;&#61;
+    # Compute loss and gradient at current weights
+    loss &#61; loss_function&#40;model&#40;inputs&#41;, targets&#41;
+    loss.backward&#40;&#41;
+    
+    # Store the gradient
+    g &#61; &#91;p.grad.clone&#40;&#41; for p in model.parameters&#40;&#41;&#93;
+    
+    # &#61;&#61;&#61;&#61;&#61; COMPUTE PERTURBATION &#61;&#61;&#61;&#61;&#61;
+    # Calculate ε&#40;w&#41; &#61; ρ * ∇L&#40;w&#41; / ||∇L&#40;w&#41;||
+    grad_norm &#61; sqrt&#40;sum&#40;g_i.norm&#40;&#41;**2 for g_i in g&#41;&#41;
+    epsilon &#61; &#91;ρ * g_i / grad_norm for g_i in g&#93;
+    
+    # &#61;&#61;&#61;&#61;&#61; PERTURB WEIGHTS &#61;&#61;&#61;&#61;&#61;
+    # w ← w &#43; ε&#40;w&#41;
+    for p, ε in zip&#40;model.parameters&#40;&#41;, epsilon&#41;:
+        p.data.add_&#40;ε&#41;
+    
+    # &#61;&#61;&#61;&#61;&#61; SECOND FORWARD-BACKWARD PASS &#61;&#61;&#61;&#61;&#61;
+    # Compute gradient at perturbed location
+    loss &#61; loss_function&#40;model&#40;inputs&#41;, targets&#41;
+    loss.backward&#40;&#41;  # This gives ∇L&#40;w &#43; ε&#41;
+    
+    # &#61;&#61;&#61;&#61;&#61; RESTORE AND UPDATE &#61;&#61;&#61;&#61;&#61;
+    # First, restore original weights: w ← w - ε&#40;w&#41;
+    for p, ε in zip&#40;model.parameters&#40;&#41;, epsilon&#41;:
+        p.data.sub_&#40;ε&#41;
+    
+    # Then update with SAM gradient using base optimizer
+    base_optimizer.step&#40;&#41;
+    base_optimizer.zero_grad&#40;&#41;</code></pre>
+<h3 id="key_implementation_notes"><a href="#key_implementation_notes" class="header-anchor">Key Implementation Notes:</a></h3>
+<ol>
+<li><p><strong>Two gradient computations</strong>: This is why SAM is ~2x slower</p>
+</li>
+<li><p><strong>Weight perturbation is temporary</strong>: Add \(\epsilon\), compute gradient, subtract \(\epsilon\)</p>
+</li>
+<li><p><strong>Batch Normalization caveat</strong>: Running stats should only update during first pass</p>
+</li>
+<li><p><strong>Hyperparameter \(\rho\)</strong>: Typically 0.05 to 0.5, controls neighborhood size</p>
+</li>
+</ol>
+<hr />
+<h2 id="theoretical_results_intuitive_explanation"><a href="#theoretical_results_intuitive_explanation" class="header-anchor">📊 Theoretical Results &#40;Intuitive Explanation&#41;</a></h2>
+<h3 id="generalization_bound_main_theorem"><a href="#generalization_bound_main_theorem" class="header-anchor">Generalization Bound &#40;Main Theorem&#41;</a></h3>
+<p>The paper proves that with high probability:</p>
+\(L_D(w) \leq L_S^{SAM}(w) + h(\text{sharpness}, \text{model complexity}, \text{sample size})\)
+<p>Where:</p>
+<ul>
+<li><p>\(L_D(w)\) &#61; True population loss &#40;test performance&#41;</p>
+</li>
+<li><p>\(L_S^{SAM}(w)\) &#61; SAM training objective &#40;worst-case neighborhood loss&#41;</p>
+</li>
+<li><p>\(h(\cdot)\) &#61; Increasing function of sharpness</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>🤔 Wait, Aren&#39;t You Just Minimizing an Upper Bound? Isn&#39;t That the Same as Minimizing Regular Loss?</strong></p>
+<p><strong>Great question&#33;</strong> This is subtle but crucial. The key insight is <strong>which terms you&#39;re minimizing</strong>:</p>
+<p><strong>Standard training</strong> minimizes \(L_S(w)\), and gets the bound: \(L_D(w) \leq L_S(w) + h_{\text{SGD}}(\text{sharpness}, ...)\)</p>
+<p>But here&#39;s the problem: <strong>you have no control over the sharpness term \(h_{\text{SGD}}\)&#33;</strong> </p>
+<ul>
+<li><p>You minimize \(L_S(w)\) to near zero ✓</p>
+</li>
+<li><p>But sharpness can be arbitrarily large ✗</p>
+</li>
+<li><p>So the bound is loose &#40;huge generalization gap&#41;</p>
+</li>
+</ul>
+<p><strong>SAM training</strong> minimizes \(L_S^{SAM}(w) = \max_{\epsilon} L_S(w+\epsilon)\), and gets: \(L_D(w) \leq L_S^{SAM}(w) + h_{\text{SAM}}(\text{sharpness}, ...)\)</p>
+<p>The magic: <strong>SAM implicitly minimizes BOTH terms simultaneously&#33;</strong></p>
+<ul>
+<li><p>Minimizing \(L_S^{SAM}(w)\) → directly reduces training loss ✓</p>
+</li>
+<li><p>The max operation → implicitly minimizes sharpness ✓</p>
+</li>
+<li><p>So \(h_{\text{SAM}}\) stays small &#40;tight bound, good generalization&#41;</p>
+</li>
+</ul>
+<p><strong>Concrete Example:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; Model A &#40;SGD&#41;:
+&gt;   L_S &#61; 0.01 &#40;great&#33;&#41;
+&gt;   Sharpness &#61; 100 &#40;terrible&#33;&#41;
+&gt;   → L_D ≤ 0.01 &#43; f&#40;100&#41; ≈ 0.01 &#43; 50 &#61; 51 &#40;useless bound&#41;
+&gt;
+&gt; Model B &#40;SAM&#41;:  
+&gt;   L_S^SAM &#61; 0.05 &#40;slightly worse&#41;
+&gt;   Sharpness &#61; 2 &#40;great&#33;&#41;
+&gt;   → L_D ≤ 0.05 &#43; f&#40;2&#41; ≈ 0.05 &#43; 0.1 &#61; 0.15 &#40;useful bound&#33;&#41;
+&gt;</code></pre>
+<blockquote>
+<p><strong>The punchline:</strong> Yes, you&#39;re minimizing an upper bound in both cases. But SAM&#39;s objective <strong>couples</strong> the two terms, so minimizing the objective automatically keeps both terms small. Regular training can minimize one while the other explodes&#33;</p>
+<p>It&#39;s like the difference between:</p>
+<ul>
+<li><p><strong>SGD</strong>: &quot;Minimize altitude&quot; → finds a canyon &#40;sharp, unstable&#41;</p>
+</li>
+<li><p><strong>SAM</strong>: &quot;Minimize max altitude in neighborhood&quot; → finds a plateau &#40;flat, stable&#41;</p>
+</li>
+</ul>
+</blockquote>
+<p><strong>What this means in plain English:</strong></p>
+<ol>
+<li><p><strong>SAM gives you a tighter bound</strong> - The generalization gap \(L_D(w) - L_S^{SAM}(w)\) is smaller because sharpness is controlled</p>
+</li>
+<li><p><strong>Flatter minima &#61; smaller \(h(\cdot)\) term</strong> - The sharpness in \(h(\cdot)\) is provably lower for SAM, making the bound meaningful</p>
+</li>
+<li><p><strong>It&#39;s not just about memorization</strong> - Even if two models both achieve zero training loss, the one in a flatter region will generalize better because \(h(\cdot)\) is smaller</p>
+</li>
+</ol>
+<h3 id="m-sharpness_practical_insight"><a href="#m-sharpness_practical_insight" class="header-anchor">m-Sharpness &#40;Practical Insight&#41;</a></h3>
+<p>The paper shows that measuring sharpness on smaller subsets &#40;m-sharpness with \(m < n\)&#41; actually predicts generalization better than full-batch sharpness. This is counterintuitive but important:</p>
+<ul>
+<li><p>Don&#39;t need the entire dataset to measure sharpness effectively</p>
+</li>
+<li><p>Batch-wise SAM optimization is not just a computational trick—it&#39;s theoretically sound&#33;</p>
+</li>
+</ul>
+<h3 id="connection_to_robustness"><a href="#connection_to_robustness" class="header-anchor">Connection to Robustness</a></h3>
+<p><strong>Surprising finding</strong>: SAM provides robustness to label noise <em>for free</em>, without being explicitly designed for it&#33;</p>
+<ul>
+<li><p>Achieves comparable performance to methods specifically targeting noisy labels</p>
+</li>
+<li><p>Flat minima are inherently more robust to perturbations &#40;including label noise&#41;</p>
+</li>
+</ul>
+<hr />
+<h2 id="intuitive_analogies"><a href="#intuitive_analogies" class="header-anchor">🎨 Intuitive Analogies</a></h2>
+<h3 id="the_camping_analogy"><a href="#the_camping_analogy" class="header-anchor">The Camping Analogy</a></h3>
+<ul>
+<li><p><strong>SGD</strong>: &quot;I found a spot with zero elevation&#33;&quot; &#40;might be a narrow ledge&#41;</p>
+</li>
+<li><p><strong>SAM</strong>: &quot;I found a wide, flat meadow where I can set up camp comfortably&quot;</p>
+</li>
+</ul>
+<h3 id="the_coffee_cup_analogy"><a href="#the_coffee_cup_analogy" class="header-anchor">The Coffee Cup Analogy</a></h3>
+<blockquote>
+<p><strong>📐 What am I looking at?</strong> This is a <strong>cross-section of the loss landscape</strong> - imagine slicing through a 3D surface vertically. The horizontal axis is parameter space &#40;one dimension of \(w\)&#41;, the vertical axis is loss \(L(w)\).</p>
+</blockquote>
+<pre><code class="language-julia">Sharp Minimum &#40;SGD&#41;:        Flat Minimum &#40;SAM&#41;:
+    
+Loss                        Loss
+ ↑   ||                      ↑   ________
+ |   ||                      |  /        \
+ |  &#40;  &#41;                     | &#40;          &#41;
+ |   \/                      |  \________/
+ &#43;────────→ w                &#43;────────────→ w
+
+A narrow espresso cup        A wide bowl
+&#40;easy to spill&#41;              &#40;stable, hard to spill&#41;</code></pre>
+<p><strong>What this shows:</strong></p>
+<ul>
+<li><p><strong>Horizontal spread</strong> &#61; how much you can perturb \(w\) before loss increases significantly</p>
+</li>
+<li><p><strong>Steep walls &#40;left&#41;</strong> &#61; high sharpness → gradient \(||\nabla L||\) is large nearby</p>
+</li>
+<li><p><strong>Gentle walls &#40;right&#41;</strong> &#61; low sharpness → gradient stays small in neighborhood</p>
+</li>
+</ul>
+<p>Small perturbations &#40;like train-test distribution shift&#41; cause big changes in the sharp case, but barely affect the flat case.</p>
+<p><strong>Connection to level curves:</strong> If you looked from above &#40;2D slice of parameter space&#41;, level curves around a sharp minimum would be tightly packed concentric circles, while a flat minimum would have widely-spaced circles - like a topographic map of a spike vs. a plateau&#33;</p>
+<hr />
+<h2 id="why_does_sam_work"><a href="#why_does_sam_work" class="header-anchor">🔬 Why Does SAM Work?</a></h2>
+<blockquote>
+<p><strong>📌 Side Note: Wait, Don&#39;t Overparameterized Networks Already Find Flat Minima?</strong></p>
+<p>Great observation&#33; Yes, overparameterization does bias SGD toward flatter regions &#40;this is part of the &quot;implicit regularization&quot; of deep learning&#41;. However:</p>
+<ol>
+<li><p><strong>SGD finds <em>some</em> flat minimum, but not necessarily the <em>flattest</em> available</strong> - Think of it as finding a valley, but maybe not the widest valley. The loss landscape of overparameterized networks has many flat regions, and SGD will find one, but it&#39;s somewhat random which one.</p>
+</li>
+<li><p><strong>SAM makes you *even flatter*** - It explicitly seeks out the flattest regions among all the flat regions. Empirically, SAM finds minima with **significantly lower sharpness</strong> than SGD, even in highly overparameterized networks.</p>
+</li>
+<li><p><strong>The landscape is more complex than just sharp vs. flat</strong> - Modern networks have a spectrum of flatness. Even within the &quot;flat regime,&quot; there are degrees of flatness, and flatter consistently generalizes better.</p>
+</li>
+<li><p><strong>Overparameterization ≠ guaranteed generalization</strong> - While overparameterized networks <em>can</em> find flat minima, they can also memorize and overfit. SAM provides explicit guidance toward the generalizable flat regions.</p>
+</li>
+</ol>
+<p><strong>Analogy</strong>: Overparameterization gives you a map with many valleys marked on it. SGD randomly wanders until it finds any valley. SAM actively seeks out the widest, most stable valley on that map.</p>
+<p>So yes - SAM takes you from &quot;flat enough&quot; to &quot;maximally flat&quot; within the optimization landscape&#33; The empirical gains &#40;2-3&#37; on ImageNet, for example&#41; show this extra flatness matters.</p>
+</blockquote>
+<p>Three key insights:</p>
+<h3 id="implicit_regularization"><a href="#implicit_regularization" class="header-anchor"><ol>
+<li><p><strong>Implicit Regularization</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>SAM naturally biases the optimization toward flat regions without explicit regularization terms. It&#39;s doing regularization through the optimization process itself.</p>
+<h3 id="ol_start2_adversarial_training_connection"><a href="#ol_start2_adversarial_training_connection" class="header-anchor"><ol start="2">
+<li><p><strong>Adversarial Training Connection</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The perturbation \(\epsilon\) acts like adversarial noise on the parameters. By training to be robust to this noise, the model becomes more robust to distribution shift.</p>
+<h3 id="ol_start3_low-rank_features"><a href="#ol_start3_low-rank_features" class="header-anchor"><ol start="3">
+<li><p><strong>Low-Rank Features</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Recent work shows SAM leads to lower-rank feature representations, which are known to generalize better and avoid overfitting to spurious correlations.</p>
+<hr />
+<h2 id="practical_considerations"><a href="#practical_considerations" class="header-anchor">⚡ Practical Considerations</a></h2>
+<h3 id="hyperparameters"><a href="#hyperparameters" class="header-anchor">Hyperparameters</a></h3>
+<ul>
+<li><p><strong>\(\rho\) &#40;neighborhood size&#41;</strong>: 0.05 for frequent updates &#40;every step&#41;, 0.5 for infrequent &#40;every 10 steps&#41;</p>
+</li>
+<li><p><strong>Base optimizer</strong>: SAM wraps any optimizer &#40;SGD, Adam, AdamW&#41;</p>
+</li>
+<li><p><strong>Learning rate</strong>: Same as you&#39;d use for base optimizer</p>
+</li>
+</ul>
+<h3 id="when_sam_helps_most"><a href="#when_sam_helps_most" class="header-anchor">When SAM Helps Most</a></h3>
+<p>✅ Computer vision &#40;CNNs, ViTs&#41; ✅ Tasks with repeated exposure to training examples ✅ Datasets with label noise ✅ When training to convergence</p>
+<blockquote>
+<p><strong>🤔 Why Does SAM Work Particularly Well for CNNs/Computer Vision?</strong></p>
+<p>Great question&#33; SAM isn&#39;t <em>only</em> for vision, but it shows especially strong gains there. Here&#39;s why:</p>
+<h3>1. <strong>Multiple Epochs &#61; More Benefit from Flatness</strong></h3>
+<p><strong>Vision training</strong>: Typically 100-300 epochs on ImageNet, 200-600 on CIFAR</p>
+<ul>
+<li><p>Models see each image hundreds of times</p>
+</li>
+<li><p>Risk of overfitting to training set specifics is high</p>
+</li>
+<li><p>Flat minima become crucial for generalization</p>
+</li>
+</ul>
+<p><strong>Contrast with LLM training</strong>: Often single-pass over massive corpora</p>
+<ul>
+<li><p>Each sequence seen only once</p>
+</li>
+<li><p>Less risk of overfitting to specific examples</p>
+</li>
+<li><p>Flatness less critical &#40;though still helpful&#41;</p>
+</li>
+</ul>
+<p><strong>Why this matters for SAM:</strong></p>
+<ul>
+<li><p>SAM&#39;s 2x computational cost is amortized over many epochs</p>
+</li>
+<li><p>Multiple exposures to data make sharpness control more valuable</p>
+</li>
+<li><p>Vision models trained longer → more time to converge to sharp minima without SAM</p>
+</li>
+</ul>
+<h3>2. <strong>Vision Models Have Highly Non-Convex Loss Landscapes</strong></h3>
+<p><strong>CNNs/ViTs characteristics:</strong></p>
+<ul>
+<li><p>Deep architectures &#40;50-200&#43; layers&#41;</p>
+</li>
+<li><p>Convolutional structure creates many equivalent solutions &#40;filter symmetries&#41;</p>
+</li>
+<li><p>Loss landscape has MANY local minima with varying sharpness</p>
+</li>
+<li><p>Easy to accidentally find sharp minima</p>
+</li>
+</ul>
+<p><strong>Why SAM helps:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; Without SAM:                    With SAM:
+&gt; Loss landscape has             Explicitly navigates to
+&gt; 1000s of minima     →          the flattest ones
+&gt; SGD finds random one           
+&gt; &#40;often sharp&#41;                  
+&gt;</code></pre>
+<blockquote>
+<h3>3. <strong>Augmentation Doesn&#39;t Fully Solve the Problem</strong></h3>
+<p>Vision heavily uses data augmentation &#40;crops, flips, color jitter&#41;, but:</p>
+<p><strong>What augmentation does:</strong> Increases diversity of training samples <strong>What augmentation doesn&#39;t do:</strong> Guarantee flat minima</p>
+<p>You can still overfit to the <em>augmented distribution</em>&#33; SAM provides an orthogonal benefit:</p>
+<ul>
+<li><p>Augmentation: Diversify the data</p>
+</li>
+<li><p>SAM: Flatten the loss landscape</p>
+</li>
+</ul>
+<p><strong>Empirical finding:</strong> SAM &#43; strong augmentation &gt; either alone</p>
+<h3>4. <strong>Spatial Structure and Inductive Biases</strong></h3>
+<p><strong>CNNs have strong inductive biases:</strong></p>
+<ul>
+<li><p>Translation equivariance &#40;same filter everywhere&#41;</p>
+</li>
+<li><p>Local receptive fields</p>
+</li>
+<li><p>Hierarchical feature building</p>
+</li>
+</ul>
+<p><strong>Why this interacts well with SAM:</strong></p>
+<ul>
+<li><p>These biases create loss landscapes with many &quot;equivalent&quot; solutions</p>
+</li>
+<li><p>Some are sharp &#40;memorize specific spatial patterns&#41;</p>
+</li>
+<li><p>Some are flat &#40;learn robust spatial features&#41;</p>
+</li>
+<li><p>SAM&#39;s flatness-seeking aligns with finding robust features</p>
+</li>
+</ul>
+<p><strong>ViTs &#40;Vision Transformers&#41;:</strong></p>
+<ul>
+<li><p>Less inductive bias than CNNs</p>
+</li>
+<li><p>Even more prone to sharp minima without explicit guidance</p>
+</li>
+<li><p>SAM provides crucial regularization → especially large gains on ViTs&#33;</p>
+</li>
+</ul>
+<h3>5. <strong>Empirical Evidence from the Paper</strong></h3>
+<p><strong>Gains on vision benchmarks:</strong></p>
+<ul>
+<li><p>ImageNet &#40;ResNet-50&#41;: &#43;1.5&#37; top-1 accuracy</p>
+</li>
+<li><p>CIFAR-10 &#40;WideResNet&#41;: &#43;2.0&#37; accuracy</p>
+</li>
+<li><p>CIFAR-100 &#40;PyramidNet&#41;: &#43;3.0&#37; accuracy</p>
+</li>
+</ul>
+<p><strong>Gains on NLP benchmarks &#40;when trained multi-epoch&#41;:</strong></p>
+<ul>
+<li><p>GLUE: &#43;0.3-0.5&#37; &#40;smaller gains&#41;</p>
+</li>
+<li><p>Machine translation: &#43;0.1-0.2 BLEU</p>
+</li>
+</ul>
+<p><strong>Why the difference?</strong></p>
+<ul>
+<li><p>Vision: High-dimensional inputs, many epochs, complex augmentation</p>
+</li>
+<li><p>NLP: Often single-pass training, less spatial structure</p>
+</li>
+</ul>
+<h3>6. <strong>Label Noise and Distribution Shift in Vision</strong></h3>
+<p><strong>Real-world vision data:</strong></p>
+<ul>
+<li><p>Annotation errors common &#40;ImageNet ~6&#37; label noise&#41;</p>
+</li>
+<li><p>Natural distribution shift &#40;lighting, camera, perspective&#41;</p>
+</li>
+<li><p>Test conditions often differ from training</p>
+</li>
+</ul>
+<p><strong>SAM&#39;s implicit robustness:</strong></p>
+<ul>
+<li><p>Flat minima are naturally robust to label noise</p>
+</li>
+<li><p>Handles distribution shift better &#40;as discussed earlier&#41;</p>
+</li>
+<li><p>Vision is particularly susceptible to both → SAM particularly valuable</p>
+</li>
+</ul>
+<h3>When SAM Helps LESS</h3>
+<p>❌ <strong>Language modeling &#40;GPT-style&#41;</strong></p>
+<ul>
+<li><p>Single pass over tokens</p>
+</li>
+<li><p>Different paradigm: predicting next token, not classifying</p>
+</li>
+<li><p>Model rarely sees same sequence twice</p>
+</li>
+</ul>
+<p>❌ <strong>Small models on simple datasets</strong>  </p>
+<ul>
+<li><p>MNIST, Fashion-MNIST with small networks</p>
+</li>
+<li><p>Already in flat minima regime</p>
+</li>
+<li><p>SAM overhead not justified</p>
+</li>
+</ul>
+<p>❌ <strong>Overparameterized regime with perfect generalization</strong></p>
+<ul>
+<li><p>If your model already generalizes perfectly</p>
+</li>
+<li><p>SAM provides minimal additional benefit</p>
+</li>
+</ul>
+<h3>The Bottom Line</h3>
+<p><strong>SAM works best when:</strong></p>
+<ol>
+<li><p>✅ Multiple epochs over same data &#40;vision: typical&#41;</p>
+</li>
+<li><p>✅ Complex loss landscape with many minima &#40;CNNs/ViTs: yes&#41;</p>
+</li>
+<li><p>✅ Risk of overfitting despite augmentation &#40;vision: common&#41;</p>
+</li>
+<li><p>✅ Distribution shift between train/test &#40;vision: frequent&#41;</p>
+</li>
+</ol>
+<p><strong>Vision tasks check ALL these boxes</strong>, which is why SAM shows particularly strong empirical gains there. But the principles apply broadly - SAM helps any task where flatness matters for generalization&#33;</p>
+</blockquote>
+<h3 id="when_sam_may_not_help"><a href="#when_sam_may_not_help" class="header-anchor">When SAM May Not Help</a></h3>
+<p>❌ Language modeling with single-pass over data &#40;e.g., GPT training&#41; ❌ When computational budget is extremely limited ❌ Tasks where base optimizer already achieves good generalization</p>
+<hr />
+<h2 id="variants_extensions"><a href="#variants_extensions" class="header-anchor">🚀 Variants &amp; Extensions</a></h2>
+<ol>
+<li><p><strong>ASAM &#40;Adaptive SAM&#41;</strong>: Adapts \(\rho\) based on parameter scales</p>
+</li>
+<li><p><strong>LookSAM</strong>: Amortizes SAM computation over multiple steps</p>
+</li>
+<li><p><strong>Fisher-SAM</strong>: Uses Fisher information for perturbations</p>
+</li>
+<li><p><strong>SAM &#43; Tricks</strong>: Combines with label smoothing, data augmentation</p>
+</li>
+</ol>
+<hr />
+<h2 id="summary_the_three_key_takeaways"><a href="#summary_the_three_key_takeaways" class="header-anchor">📝 Summary: The Three Key Takeaways</a></h2>
+<ol>
+<li><p><strong>SAM finds flat minima by explicitly optimizing for low neighborhood loss</strong>, not just point loss</p>
+</li>
+<li><p><strong>The algorithm is beautifully simple</strong>: compute gradient, perturb weights, compute gradient again, update</p>
+</li>
+<li><p><strong>Flat minima generalize better</strong> because they&#39;re robust to perturbations - both in parameter space and in the data distribution</p>
+</li>
+</ol>
+<p><strong>In one sentence</strong>: SAM makes your model sit in a comfortable valley rather than balance on a knife&#39;s edge, which helps it handle unseen data better.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 06, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

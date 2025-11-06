@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Unconventional Approaches to Interpretability in Flat Minima</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="unconventional_approaches_to_interpretability_in_flat_minima"><a href="#unconventional_approaches_to_interpretability_in_flat_minima" class="header-anchor">Unconventional Approaches to Interpretability in Flat Minima</a></h1>
+<p>You&#39;re right that ensemble/averaging answers are obvious. Here are genuinely unconventional approaches that have shown promise but aren&#39;t mainstream knowledge:</p>
+<h2 id="sharpness-aware_minimization_sam_and_variants"><a href="#sharpness-aware_minimization_sam_and_variants" class="header-anchor"><ol>
+<li><p>Sharpness-Aware Minimization &#40;SAM&#41; and Variants</p>
+</li>
+</ol>
+</a></h2>
+<p>Instead of just finding flat minima, SAM explicitly seeks them during training by perturbing parameters in directions that increase loss, then minimizing at those perturbed points. The counterintuitive part: <strong>intentionally making optimization harder improves generalization AND interpretability</strong>. Flat minima found this way tend to have more coherent feature representations.</p>
+<p><strong>Why unconventional</strong>: You&#39;re adding computational cost to make training &quot;worse&quot; in the short term. Yet SAM-trained models often have more interpretable neurons and cleaner feature decompositions.</p>
+<blockquote>
+<p><strong>Sources and Common Approaches</strong>: The original SAM paper is Foret et al. &#40;2021&#41; &quot;Sharpness-Aware Minimization for Efficiently Improving Generalization&quot; &#40;ICLR&#41;. Common variants include: ASAM &#40;Adaptive SAM&#41;, GSAM &#40;Gradient SAM&#41;, LookSAM, and Fisher-SAM. The interpretability claim is more speculative - it comes from empirical observations in Jiang et al. &#40;2022&#41; on feature collapse and some mechanistic interpretability work, but isn&#39;t the main focus of SAM literature.</p>
+<p><strong>On reproducibility concerns</strong>: This is a sharp observation&#33; SAM doesn&#39;t actually decrease reproducibility in practice because: &#40;1&#41; You&#39;re not randomly searching - you&#39;re doing adversarial perturbation in a principled direction &#40;gradient of loss&#41;, &#40;2&#41; The perturbation radius is small and controlled, &#40;3&#41; Empirically, SAM training is quite stable and reaches similar minima across runs. The paradox: making each step &quot;harder&quot; makes the overall trajectory MORE reproducible because you&#39;re constrained to flatter regions from the start, which are larger basins. Sharp minima are actually less reproducible because small initialization/stochasticity differences matter more.</p>
+</blockquote>
+<h2 id="ol_start2_linear_mode_connectivity_as_an_interpretability_probe"><a href="#ol_start2_linear_mode_connectivity_as_an_interpretability_probe" class="header-anchor"><ol start="2">
+<li><p>Linear Mode Connectivity as an Interpretability Probe</p>
+</li>
+</ol>
+</a></h2>
+<p>Two independently trained networks in flat minima can often be connected by a near-linear path of low-loss solutions. <strong>The structure of this path reveals functional organization</strong> - which features are fundamental vs. which are implementation details.</p>
+<p><strong>Controversial application</strong>: Train multiple models, identify the &quot;invariant core&quot; along the connecting path. This core is often far more interpretable than any single model. It&#39;s like crystallizing out the essential computation from implementation noise.</p>
+<blockquote>
+<p><strong>Making this concrete</strong>: Yes, it&#39;s interpolation but not naive linear interpolation. The key papers are Frankle et al. &#40;2020&#41; &quot;Linear Mode Connectivity and the Lottery Ticket Hypothesis&quot; and Garipov et al. &#40;2018&#41; on loss surface connectivity. </p>
+<p><strong>How to interpolate</strong>: For two networks with parameters θ₁ and θ₂, you compute θ&#40;α&#41; &#61; &#40;1-α&#41;θ₁ &#43; αθ₂ for α ∈ &#91;0,1&#93;. Sometimes you need to align neurons first &#40;permutation invariance problem&#41; using techniques like weight matching or optimal transport.</p>
+<p><strong>How to define connectivity</strong>: Two minima are &quot;connected&quot; if the interpolated path θ&#40;α&#41; maintains low loss &#40;and ideally high accuracy&#41; for all α. Formally: max_α L&#40;θ&#40;α&#41;&#41; - min&#123;L&#40;θ₁&#41;, L&#40;θ₂&#41;&#125; &lt; ε for small ε.</p>
+<p><strong>Finding the invariant core</strong>: The practical approach is to: &#40;1&#41; Sample points along the connected path, &#40;2&#41; For each neuron/feature, measure its activation patterns across all path points, &#40;3&#41; Features with low variance across the path are &quot;invariant&quot; - they&#39;re necessary for the computation. Features with high variance are degenerate solutions. This is still somewhat ad-hoc and an active research area.</p>
+<p><strong>Reality check</strong>: You&#39;re absolutely right - this is a ton of engineering. The neuron alignment problem alone can be computationally expensive and brittle. The activation pattern analysis requires careful design choices &#40;which layers? which datasets? what counts as &quot;low variance&quot;?&#41;. This is probably why it hasn&#39;t taken off despite being theoretically interesting. It&#39;s more of a research curiosity than a practical tool right now.</p>
+</blockquote>
+<h2 id="ol_start3_lottery_ticket_rewinding_to_convergence_points"><a href="#ol_start3_lottery_ticket_rewinding_to_convergence_points" class="header-anchor"><ol start="3">
+<li><p>Lottery Ticket Rewinding to Convergence Points</p>
+</li>
+</ol>
+</a></h2>
+<p>Take a pruned lottery ticket, but instead of rewinding to initialization, rewind to just before it enters the flat basin. Train multiple times from there. <strong>The variance in final solutions within the same basin tells you which features are &quot;real&quot; vs. spurious</strong>.</p>
+<p><strong>Tail-end insight</strong>: Features that appear consistently across basin re-trainings are functionally necessary. Those that vary are degeneracies of flatness.</p>
+<h2 id="ol_start4_hessian_eigenspace_clustering"><a href="#ol_start4_hessian_eigenspace_clustering" class="header-anchor"><ol start="4">
+<li><p>Hessian Eigenspace Clustering</p>
+</li>
+</ol>
+</a></h2>
+<p>Compute the Hessian&#39;s top eigenvectors at your flat minimum. <strong>Features that consistently align with low-eigenvalue directions are the ones &quot;protected&quot; by flatness</strong> - they&#39;re robust to perturbation. Features orthogonal to these directions are typically more interpretable.</p>
+<p><strong>Why it works</strong>: Flatness isn&#39;t uniform. The basin has structure - some directions are flatter than others. The flat directions encode the semantically meaningful aspects of the solution.</p>
+<blockquote>
+<p><strong>Feasibility concern</strong>: You&#39;re absolutely right - computing the full Hessian for neural networks is completely infeasible &#40;O&#40;p²&#41; memory for p parameters&#41;. Practical approaches use approximations:</p>
+<p><strong>Power iteration with Hessian-vector products</strong>: You can compute the top-k eigenvectors using only Hessian-vector products Hv, which can be computed efficiently via automatic differentiation without forming the full matrix. This is O&#40;p&#41; memory. PyTorch&#39;s <code>torch.autograd.functional.hvp</code> does this.</p>
+<p><strong>Lanczos algorithm</strong>: Iteratively builds an approximation to the top eigenspace using only matrix-vector products. This is the standard approach in papers like Yao et al. &#40;2020&#41; &quot;PYHESSIAN: Neural Networks Through the Lens of the Hessian.&quot;</p>
+<p><strong>Hutchinson trace estimator &#43; stochastic power iteration</strong>: For even cheaper approximations, sample random directions and estimate eigenvalues statistically.</p>
+<p><strong>The honest truth</strong>: Even with these tricks, Hessian analysis for large models &#40;millions of parameters&#41; is still expensive and often limited to studying small models or subnetworks. Some recent work tries to use gradient covariance as a first-order proxy for Hessian structure, but it&#39;s much less principled.</p>
+</blockquote>
+<blockquote>
+<p><strong>How to actually use this</strong>: This is primarily a <strong>post-hoc analysis tool</strong>, not something used during training &#40;you&#39;re right that would be hopeless&#41;. The workflow is:</p>
+<ol>
+<li><p>Train your model normally</p>
+</li>
+<li><p>At the final minimum, compute top-k Hessian eigenvectors &#40;say k&#61;10-100&#41;</p>
+</li>
+<li><p>For interpretability: Project individual neurons&#39; parameter vectors onto these eigendirections. Neurons that align with low-eigenvalue directions are the &quot;robust&quot; features worth interpreting</p>
+</li>
+<li><p>Alternative use: Perturb the model along different eigendirections and see which neurons&#39; activations change. Those that are stable under flat-direction perturbations are interpretable</p>
+</li>
+</ol>
+<p><strong>Practical value</strong>: Honestly limited. It&#39;s more useful for theoretical understanding of why some neurons are interpretable than as a practical interpretability method. The computation cost usually isn&#39;t worth it compared to just doing standard feature visualization or probing.</p>
+</blockquote>
+<h2 id="ol_start5_noise_injection_with_directional_constraints"><a href="#ol_start5_noise_injection_with_directional_constraints" class="header-anchor"><ol start="5">
+<li><p>Noise Injection with Directional Constraints</p>
+</li>
+</ol>
+</a></h2>
+<p>Instead of standard dropout/noise, inject noise specifically in the flat directions of parameter space &#40;identified via Hessian&#41;. <strong>Force the model to maintain functionality despite maximum allowed perturbation in flat directions</strong>. This &quot;squeezes out&quot; degeneracy.</p>
+<p><strong>Counterintuitive result</strong>: Models become more interpretable because they can&#39;t rely on arbitrary linear combinations of features - they must use robust, separable features.</p>
+<h2 id="ol_start6_temperature-dependent_analysis"><a href="#ol_start6_temperature-dependent_analysis" class="header-anchor"><ol start="6">
+<li><p>Temperature-Dependent Analysis</p>
+</li>
+</ol>
+</a></h2>
+<p>This is genuinely weird: Take your trained model and analyze it at different &quot;temperatures&quot; &#40;scaling the logits&#41;. <strong>Different temperatures in flat minima reveal different aspects of the learned function</strong>. Low temperature exposes fine-grained features; high temperature reveals coarse structure.</p>
+<p><strong>Why promising</strong>: The temperature-trajectory through decision boundaries in flat basins is often more interpretable than any single temperature snapshot.</p>
+<blockquote>
+<p><strong>Making this concrete</strong>: Temperature T scales the logits before softmax: p&#40;y|x&#41; &#61; softmax&#40;f&#40;x&#41;/T&#41;. </p>
+<p><strong>Low temperature &#40;T→0&#41;</strong>: The model becomes increasingly confident, making sharp decisions. It reveals fine-grained distinctions the model has learned. Example: distinguishing between different dog breeds, or subtle texture differences.</p>
+<p><strong>High temperature &#40;T→∞&#41;</strong>: The model becomes uncertain, outputs approach uniform. It reveals what the model considers &quot;fundamentally different&quot; categories. Example: dog vs. cat vs. car - the coarsest semantic groupings.</p>
+<p><strong>The interpretability claim</strong>: In flat minima, as you vary T, you can trace how the model hierarchically organizes concepts. Features that only matter at low T are &quot;refinement features&quot; &#40;breed-specific whisker patterns&#41;. Features that matter even at high T are &quot;core semantic features&quot; &#40;presence of fur, basic shape&#41;.</p>
+<p><strong>Honest assessment</strong>: This is extremely hand-wavy. The connection to flatness specifically is tenuous - temperature analysis works for any model. The &quot;hierarchical organization&quot; interpretation requires a lot of human judgment about what counts as fine vs. coarse. I included it because it&#39;s unconventional, but it&#39;s probably the weakest suggestion on this list in terms of rigorous methodology.</p>
+</blockquote>
+<h2 id="ol_start7_algorithmic_alignment_probing"><a href="#ol_start7_algorithmic_alignment_probing" class="header-anchor"><ol start="7">
+<li><p>Algorithmic Alignment Probing</p>
+</li>
+</ol>
+</a></h2>
+<p>Train a tiny, constrained network &#40;say, a shallow decision tree or sparse linear model&#41; to mimic your overparameterized model&#39;s behavior. <strong>The disagreements reveal where flatness enables degeneracy</strong>. The agreements reveal the &quot;true&quot; algorithm being computed.</p>
+<p><strong>Controversial claim</strong>: The interpretable model&#39;s decision boundaries often bisect the flat basin in meaningful ways, suggesting the flat region contains many &quot;functionally similar but mechanistically different&quot; solutions.</p>
+<h2 id="most_promising_for_experiments"><a href="#most_promising_for_experiments" class="header-anchor">Most Promising for Experiments</a></h2>
+<p>I&#39;d rank <strong>SAM variants &#43; Hessian eigenspace analysis</strong> as highest success probability because:</p>
+<ul>
+<li><p>SAM is already proven to find qualitatively different minima</p>
+</li>
+<li><p>Hessian eigenspace is computationally feasible and theoretically grounded</p>
+</li>
+<li><p>Combined, they let you both &quot;aim for&quot; interpretable solutions and &quot;diagnose&quot; why they&#39;re interpretable</p>
+</li>
+</ul>
+<p>The <strong>lottery ticket rewinding variant &#40;#3&#41;</strong> is probably most underexplored and could yield surprising empirical insights with relatively simple experiments.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 06, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+    
+  </body>
+</html>
