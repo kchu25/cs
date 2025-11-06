@@ -57,6 +57,30 @@
 </a></h2>
 <p>Take a pruned lottery ticket, but instead of rewinding to initialization, rewind to just before it enters the flat basin. Train multiple times from there. <strong>The variance in final solutions within the same basin tells you which features are &quot;real&quot; vs. spurious</strong>.</p>
 <p><strong>Tail-end insight</strong>: Features that appear consistently across basin re-trainings are functionally necessary. Those that vary are degeneracies of flatness.</p>
+<blockquote>
+<p><strong>Computational reality</strong>: Finding lottery tickets is <strong>very computationally intensive</strong>. The standard algorithm &#40;Frankle &amp; Carbin 2019&#41;:</p>
+<ol>
+<li><p>Train a network to completion</p>
+</li>
+<li><p>Prune lowest-magnitude weights &#40;say, remove 20&#37;&#41;</p>
+</li>
+<li><p>Rewind to initialization, train again with the pruned mask</p>
+</li>
+<li><p>Repeat steps 2-3 iteratively &#40;iterative magnitude pruning&#41;</p>
+</li>
+</ol>
+<p>This requires training the full network <strong>multiple times</strong> &#40;often 10-20&#43; iterations to reach high sparsity&#41;. Each iteration requires full training from scratch.</p>
+<p><strong>The rewinding variant is even worse</strong>: You need to:</p>
+<ol>
+<li><p>Find the lottery ticket &#40;already expensive&#41;</p>
+</li>
+<li><p>Identify when training enters the flat basin &#40;requires loss landscape analysis during training&#41;</p>
+</li>
+<li><p>Train multiple times from that rewind point</p>
+</li>
+</ol>
+<p><strong>Practical verdict</strong>: This is probably the most computationally expensive suggestion on the list. It&#39;s really only feasible for small-scale experiments &#40;MNIST, small CNNs on CIFAR&#41;. For modern large models, the cost is prohibitive. The original lottery ticket hypothesis itself is already considered too expensive for practical use, and this adds another layer of cost on top.</p>
+</blockquote>
 <h2 id="ol_start4_hessian_eigenspace_clustering"><a href="#ol_start4_hessian_eigenspace_clustering" class="header-anchor"><ol start="4">
 <li><p>Hessian Eigenspace Clustering</p>
 </li>

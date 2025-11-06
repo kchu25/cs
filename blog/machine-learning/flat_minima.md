@@ -38,6 +38,22 @@ Take a pruned lottery ticket, but instead of rewinding to initialization, rewind
 
 **Tail-end insight**: Features that appear consistently across basin re-trainings are functionally necessary. Those that vary are degeneracies of flatness.
 
+> **Computational reality**: Finding lottery tickets is **very computationally intensive**. The standard algorithm (Frankle & Carbin 2019):
+> 
+> 1. Train a network to completion
+> 2. Prune lowest-magnitude weights (say, remove 20%)
+> 3. Rewind to initialization, train again with the pruned mask
+> 4. Repeat steps 2-3 iteratively (iterative magnitude pruning)
+> 
+> This requires training the full network **multiple times** (often 10-20+ iterations to reach high sparsity). Each iteration requires full training from scratch.
+> 
+> **The rewinding variant is even worse**: You need to:
+> 1. Find the lottery ticket (already expensive)
+> 2. Identify when training enters the flat basin (requires loss landscape analysis during training)
+> 3. Train multiple times from that rewind point
+> 
+> **Practical verdict**: This is probably the most computationally expensive suggestion on the list. It's really only feasible for small-scale experiments (MNIST, small CNNs on CIFAR). For modern large models, the cost is prohibitive. The original lottery ticket hypothesis itself is already considered too expensive for practical use, and this adds another layer of cost on top.
+
 ## 4. Hessian Eigenspace Clustering
 
 Compute the Hessian's top eigenvectors at your flat minimum. **Features that consistently align with low-eigenvalue directions are the ones "protected" by flatness** - they're robust to perturbation. Features orthogonal to these directions are typically more interpretable.
