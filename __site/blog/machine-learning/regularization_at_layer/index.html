@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Regularizing Final vs First Layer Embeddings</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="regularizing_final_vs_first_layer_embeddings"><a href="#regularizing_final_vs_first_layer_embeddings" class="header-anchor">Regularizing Final vs First Layer Embeddings</a></h1>
+<h2 id="the_claim"><a href="#the_claim" class="header-anchor">The Claim</a></h2>
+<p><strong>Yes, this is generally true</strong> — regularizing final layer embeddings is typically easier and more effective than regularizing first layer embeddings in neural networks.</p>
+<h2 id="why_this_is_true"><a href="#why_this_is_true" class="header-anchor">Why This Is True</a></h2>
+<h3 id="semantic_coherence"><a href="#semantic_coherence" class="header-anchor"><ol>
+<li><p><strong>Semantic Coherence</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Final layer embeddings exist in a <strong>semantically meaningful space</strong> where:</p>
+<ul>
+<li><p>Similar inputs have been mapped to nearby representations</p>
+</li>
+<li><p>The network has learned task-relevant features</p>
+</li>
+<li><p>Distances and directions carry interpretable meaning</p>
+</li>
+</ul>
+<p>First layer embeddings, by contrast, are often arbitrary initial representations with less inherent structure.</p>
+<h3 id="ol_start2_gradient_flow_and_training_dynamics"><a href="#ol_start2_gradient_flow_and_training_dynamics" class="header-anchor"><ol start="2">
+<li><p><strong>Gradient Flow and Training Dynamics</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Final layers</strong> receive clearer training signals:</p>
+<ul>
+<li><p>Direct gradients from the loss function</p>
+</li>
+<li><p>Regularization penalties directly influence the optimization</p>
+</li>
+<li><p>Faster convergence to regularized solutions</p>
+</li>
+</ul>
+<p><strong>First layers</strong> face:</p>
+<ul>
+<li><p>Diluted gradients through many layers &#40;vanishing gradient problem&#41;</p>
+</li>
+<li><p>Regularization effects are indirect and weaker</p>
+</li>
+<li><p>Slower adaptation to regularization constraints</p>
+</li>
+</ul>
+<h3 id="ol_start3_dimensionality_and_manifold_structure"><a href="#ol_start3_dimensionality_and_manifold_structure" class="header-anchor"><ol start="3">
+<li><p><strong>Dimensionality and Manifold Structure</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>The transformation through the network typically involves:</p>
+\[\text{Input} \xrightarrow{\text{many layers}} \text{Low-dim manifold} \xrightarrow{\text{final layers}} \text{Output}\]
+<p>Final embeddings often lie on a <strong>lower-dimensional manifold</strong> that&#39;s easier to regularize. Common techniques like:</p>
+<ul>
+<li><p>L2 normalization: \(\mathbf{z} \leftarrow \frac{\mathbf{z}}{\|\mathbf{z}\|}\)</p>
+</li>
+<li><p>Hypersphere constraints</p>
+</li>
+<li><p>Contrastive losses</p>
+</li>
+</ul>
+<p>work well because the meaningful structure has already been extracted.</p>
+<h2 id="mathematical_intuition"><a href="#mathematical_intuition" class="header-anchor">Mathematical Intuition</a></h2>
+<p>Consider a loss function with regularization:</p>
+\[\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda \mathcal{R}(\mathbf{h})\]
+<p>where \(\mathbf{h}\) is an embedding layer.</p>
+<h3 id="for_final_layer_mathbfh_l"><a href="#for_final_layer_mathbfh_l" class="header-anchor">For Final Layer \(\mathbf{h}_L\):</a></h3>
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{h}_L} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_L}\]
+<p>Both terms are <strong>direct and strong</strong>.</p>
+<h3 id="for_first_layer_mathbfh_1"><a href="#for_first_layer_mathbfh_1" class="header-anchor">For First Layer \(\mathbf{h}_1\):</a></h3>
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{h}_L} \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{h}_{L-1}} \cdots \frac{\partial \mathbf{h}_2}{\partial \mathbf{h}_1} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_1}\]
+<p>The regularization gradient is <strong>diluted</strong> through the chain rule.</p>
+<h2 id="practical_examples"><a href="#practical_examples" class="header-anchor">Practical Examples</a></h2>
+<h3 id="effective_final_layer_regularization"><a href="#effective_final_layer_regularization" class="header-anchor">Effective Final Layer Regularization:</a></h3>
+<ul>
+<li><p><strong>Face recognition</strong>: Cosine similarity on final embeddings</p>
+</li>
+<li><p><strong>Metric learning</strong>: Triplet loss with normalized embeddings</p>
+</li>
+<li><p><strong>Contrastive learning</strong>: SimCLR, MoCo use final layer regularization</p>
+</li>
+</ul>
+<h3 id="challenges_with_first_layer_regularization"><a href="#challenges_with_first_layer_regularization" class="header-anchor">Challenges with First Layer Regularization:</a></h3>
+<ul>
+<li><p>Word embeddings in NLP: Often need pre-training or careful initialization</p>
+</li>
+<li><p>Image inputs: Raw pixel regularization is less meaningful</p>
+</li>
+<li><p>Requires architectural considerations &#40;e.g., ResNets&#41; to propagate regularization effects</p>
+</li>
+</ul>
+<hr />
+<blockquote>
+<h3>📝 Side Note: Why L1 Regularization Often Fails on First Layers</h3>
+<p><strong>The Problem:</strong> Applying L1 regularization to first layer embeddings:</p>
+</blockquote>
+\[\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda \|\mathbf{h}_1\|_1\]
+<blockquote>
+<p>often <strong>fails to induce sparsity</strong>. Here&#39;s why:</p>
+<h4>1. <strong>Gradient Competition</strong></h4>
+<p>The gradient for first layer weights \(\mathbf{W}_1\):</p>
+</blockquote>
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \underbrace{\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_1}}_{\text{task gradient}} + \underbrace{\lambda \cdot \text{sign}(\mathbf{h}_1) \cdot \frac{\partial \mathbf{h}_1}{\partial \mathbf{W}_1}}_{\text{sparsity gradient}}\]
+<blockquote>
+<p>The <strong>task gradient dominates</strong> because:</p>
+<ul>
+<li><p>It carries information from the final loss through all layers</p>
+</li>
+<li><p>It&#39;s typically much larger in magnitude</p>
+</li>
+<li><p>L1 penalty contributes only a constant &#40;±λ&#41; per parameter</p>
+</li>
+<li><p>Task gradients can be orders of magnitude larger</p>
+</li>
+</ul>
+<h4>2. <strong>Later Layers Can Compensate</strong></h4>
+<p>Even if \(\mathbf{h}_1\) becomes sparse, subsequent layers compensate:</p>
+</blockquote>
+\[\mathbf{h}_2 = f(\mathbf{W}_2 \mathbf{h}_1)\]
+<blockquote>
+<p>The network learns larger weights in \(\mathbf{W}_2\) to amplify remaining features and maintain expressiveness—the network&#39;s adaptive capacity works against your regularization goal.</p>
+<h4>3. <strong>Vanishing Sparsity Signal</strong></h4>
+<p>The chain rule dilutes the sparsity signal:</p>
+</blockquote>
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} \prod_{i=2}^{L} \frac{\partial \mathbf{h}_i}{\partial \mathbf{h}_{i-1}} + \lambda \cdot \text{sign}(\mathbf{h}_1)\]
+<blockquote>
+<ul>
+<li><p>The product of Jacobians can be very small &#40;vanishing gradients&#41;</p>
+</li>
+<li><p>The constant \(\lambda\) term fights against exponentially larger task gradients</p>
+</li>
+<li><p>Even with careful \(\lambda\) tuning, the balance is unstable</p>
+</li>
+</ul>
+<h4>4. <strong>Optimization Landscape Issues</strong></h4>
+<p>L1&#39;s non-smoothness at zero causes problems:</p>
+<ul>
+<li><p>SGD oscillates around zero without reaching it</p>
+</li>
+<li><p>Momentum prevents embeddings from becoming exactly sparse</p>
+</li>
+<li><p>Network finds local minima where features are small but non-zero</p>
+</li>
+</ul>
+<h4>5. <strong>Information Bottleneck Conflict</strong></h4>
+<p>First layers must encode all information needed downstream. Sparsity reduces capacity, creating a bottleneck that conflicts with task performance.</p>
+<h4>Why Final Layer L1 Works Better</h4>
+<p>For final embeddings \(\mathbf{h}_L\), the gradient looks similar:</p>
+</blockquote>
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_L} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L} + \lambda \cdot \text{sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\]
+<blockquote>
+<p><strong>So why does it work here?</strong> The crucial differences:</p>
+<p><strong>1. Gradient Magnitudes are Comparable</strong></p>
+<ul>
+<li><p>Task gradient \(\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L}\) is direct &#40;no chain through many layers&#41;</p>
+</li>
+<li><p>It&#39;s typically <strong>smaller</strong> than first layer task gradients because:</p>
+<ul>
+<li><p>No accumulation through backprop</p>
+</li>
+<li><p>Final features are often already refined and stable</p>
+</li>
+</ul>
+</li>
+<li><p>The sparsity penalty λ can actually compete on equal footing</p>
+</li>
+</ul>
+<p><strong>2. Task and Sparsity Can Align</strong></p>
+<ul>
+<li><p>Final layer often performs feature selection naturally</p>
+</li>
+<li><p>Sparse representations <strong>help</strong> the task &#40;remove noise, improve generalization&#41;</p>
+</li>
+<li><p>The network &quot;wants&quot; to ignore irrelevant features</p>
+</li>
+<li><p>L1 pushes in a direction the task already favors</p>
+</li>
+</ul>
+<p><strong>3. No Downstream Compensation</strong></p>
+<ul>
+<li><p>If \(\mathbf{h}_L\) becomes sparse, there are no more layers to &quot;undo&quot; it</p>
+</li>
+<li><p>The output layer directly uses the sparse representation</p>
+</li>
+<li><p>Sparsity is enforced all the way to the prediction</p>
+</li>
+</ul>
+<p><strong>4. Information Processing is Complete</strong></p>
+<ul>
+<li><p>By the final layer, the network has already extracted what it needs</p>
+</li>
+<li><p>Sparsity doesn&#39;t create a bottleneck—it prunes <strong>redundancy</strong></p>
+</li>
+<li><p>For first layers: sparsity removes raw information &#40;bad&#41;</p>
+</li>
+<li><p>For final layers: sparsity removes processed redundancy &#40;good&#41;</p>
+</li>
+</ul>
+<p><strong>5. Smaller Effective Dimensionality</strong></p>
+<ul>
+<li><p>Final embeddings often live in lower-dimensional manifolds</p>
+</li>
+<li><p>Fewer dimensions → each dimension matters more</p>
+</li>
+<li><p>Sparsity gradient per dimension has larger relative impact</p>
+</li>
+</ul>
+<h4>Practical Solutions for First Layer Sparsity</h4>
+<p>If you really need first-layer sparsity:</p>
+<ol>
+<li><p><strong>Structured sparsity</strong>: Group Lasso to zero out entire feature groups</p>
+</li>
+<li><p><strong>Explicit gating</strong>: Learnable binary masks with straight-through estimators</p>
+</li>
+<li><p><strong>Pruning post-training</strong>: Train dense, then prune and fine-tune</p>
+</li>
+<li><p><strong>Architecture changes</strong>: Build sparsity into the architecture &#40;e.g., sparse attention&#41;</p>
+</li>
+<li><p><strong>Much larger λ</strong>: Dramatically increase penalty &#40;but risk underfitting&#41;</p>
+</li>
+</ol>
+</blockquote>
+<hr />
+<h2 id="key_takeaway"><a href="#key_takeaway" class="header-anchor">Key Takeaway</a></h2>
+<p>The neural network progressively <strong>distills structure</strong> from data. By the final layers, this structure is refined and task-aligned, making it responsive to regularization. Early layers still process raw, high-dimensional, unstructured data where regularization constraints are harder to enforce and less meaningful.</p>
+<p><strong>For L1 sparsity specifically</strong>: First layers face overwhelming task gradients, adaptive compensation by later layers, and vanishing regularization signals—making sparse regularization ineffective without architectural or algorithmic interventions.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 16, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

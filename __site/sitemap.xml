@@ -33,7 +33,7 @@
 </url>
 <url>
     <loc>https://kchu25.github.io/blog/index.html</loc>
-    <lastmod>2025-11-06</lastmod>
+    <lastmod>2025-11-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
@@ -52,6 +52,12 @@
 <url>
     <loc>https://kchu25.github.io/blog/machine-learning/sharpness_aware/index.html</loc>
     <lastmod>2025-11-06</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/machine-learning/regularization_at_layer/index.html</loc>
+    <lastmod>2025-11-16</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
