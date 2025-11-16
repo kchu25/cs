@@ -1,5 +1,5 @@
 @def title = "Regularizing Final vs First Layer Embeddings"
-@def published = "5 November 2025"
+@def published = "16 November 2025"
 @def tags = ["machine-learning"]
 
 # Regularizing Final vs First Layer Embeddings
@@ -86,17 +86,79 @@ The regularization gradient is **diluted** through the chain rule.
 >
 > often **fails to induce sparsity**. Here's why:
 >
-> #### 1. **Gradient Competition**
+> #### 1. **Gradient Competition (When λ is Small)**
 >
 > The gradient for first layer weights $\mathbf{W}_1$:
 >
-> $$\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \underbrace{\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_1}}_{\text{task gradient}} + \underbrace{\lambda \cdot \text{sign}(\mathbf{h}_1) \cdot \frac{\partial \mathbf{h}_1}{\partial \mathbf{W}_1}}_{\text{sparsity gradient}}$$
+> $\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \underbrace{\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_1}}_{\text{task gradient}} + \underbrace{\lambda \cdot \text{sign}(\mathbf{h}_1) \cdot \frac{\partial \mathbf{h}_1}{\partial \mathbf{W}_1}}_{\text{sparsity gradient}}$
 >
-> The **task gradient dominates** because:
+> When λ is too small, the **task gradient dominates**:
 > - It carries information from the final loss through all layers
 > - It's typically much larger in magnitude
 > - L1 penalty contributes only a constant (±λ) per parameter
 > - Task gradients can be orders of magnitude larger
+> - **Result**: Network ignores sparsity, trains normally but isn't sparse
+>
+> #### 1b. **Gradient Conflict (When λ is Large)**
+>
+> When λ is too large, you see a different failure: **embeddings become unoptimizable**:
+>
+> $\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \text{small varied task signal} + \text{large constant sparsity signal}$
+>
+> **What happens:**
+> - The sparsity gradient is **uniform and strong**: always pushes toward zero
+> - The task gradient is **diverse and weak**: different directions for different inputs
+> - L1 "drowns out" the task signal, like noise overwhelming a weak radio signal
+> - Updates become dominated by: $\Delta \mathbf{W}_1 \approx -\eta \lambda \cdot \text{sign}(\mathbf{h}_1)$
+>
+> **Why training fails:**
+> - All embeddings get pushed toward zero uniformly
+> - Network loses capacity to represent different inputs differently
+> - Task loss stops decreasing or increases
+> - Gradients become uninformative (everything is being zeroed)
+> - Network is "trapped" - can't escape because any non-zero value gets immediately penalized
+>
+> **This is specific to first layers because:**
+> - Task gradients are already weak (diluted through backprop)
+> - The uniform sparsity pressure has nothing to balance against
+> - First layers need to preserve **diversity** of representations
+> - For final layers: uniform pressure toward zero can be okay (feature selection)
+> - For first layers: uniform pressure toward zero destroys information flow
+>
+> #### Why Final Layers Don't "Drown Out" as Easily
+>
+> Even with the same large λ, final layers remain trainable:
+>
+> $\Delta \mathbf{W}_L = -\eta\left(\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L} + \lambda \cdot \text{sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\right)$
+>
+> **Key differences:**
+>
+> **1. Task gradients are stronger (no dilution)**
+> - $\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L}$ is direct from the loss
+> - Magnitude is comparable to or larger than $\lambda \cdot \text{sign}(\mathbf{h}_L)$
+> - Can actually compete with sparsity pressure
+>
+> **2. Task gradient is also more uniform**
+> - Final layer features have converged to stable, task-relevant representations
+> - Less "diversity" needed - the network has already decided what matters
+> - Task gradient has **consensus**: "these features are important, keep them"
+> - Sparsity gradient: "make everything zero"
+> - When they conflict on important features, task wins. When they agree on unimportant features, sparsity wins.
+>
+> **3. Partial sparsity is acceptable**
+> - If L1 zeros out 50% of final features, the network can still function
+> - Remaining features carry the essential information
+> - For first layers: zeroing out 50% of raw input information is catastrophic
+>
+> **4. Natural "selection" equilibrium**
+> - Important features develop large task gradients that resist L1
+> - Unimportant features have weak task gradients, get zeroed by L1
+> - A stable equilibrium emerges: sparse but functional
+> - For first layers: all raw features might be "important" for some inputs, no clear selection
+>
+> **Analogy:**
+> - **First layer L1**: Like trying to have a conversation (weak signal) next to a jackhammer (uniform noise)
+> - **Final layer L1**: Like a negotiation between two parties of similar strength - they reach a compromise
 >
 > #### 2. **Later Layers Can Compensate**
 >
