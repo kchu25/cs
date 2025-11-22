@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>EfficientNet: Compound Scaling & MBConv Blocks - Complete Guide</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="efficientnet_compound_scaling_mbconv_blocks_-_complete_guide"><a href="#efficientnet_compound_scaling_mbconv_blocks_-_complete_guide" class="header-anchor">EfficientNet: Compound Scaling &amp; MBConv Blocks - Complete Guide</a></h1>
+<h2 id="initial_question_how_are_they_related"><a href="#initial_question_how_are_they_related" class="header-anchor">Initial Question: How Are They Related?</a></h2>
+<p>Great question&#33; Let me break this down in a conversational way because these concepts are actually quite related, even though they operate at different levels of the network design.</p>
+<h3 id="the_compound_scaling_coefficient"><a href="#the_compound_scaling_coefficient" class="header-anchor">The Compound Scaling Coefficient</a></h3>
+<p>First, let&#39;s talk about the <strong>compound scaling coefficient</strong>. In EfficientNet, the authors proposed scaling up networks in a balanced way using a compound coefficient <strong>φ</strong> &#40;phi&#41;. Instead of just making networks deeper OR wider OR using higher resolution images &#40;which is what people typically did&#41;, they scale all three dimensions together:</p>
+<ul>
+<li><p><strong>Depth</strong>: d &#61; α^φ</p>
+</li>
+<li><p><strong>Width</strong>: w &#61; β^φ  </p>
+</li>
+<li><p><strong>Resolution</strong>: r &#61; γ^φ</p>
+</li>
+</ul>
+<p>Where α, β, and γ are constants determined through a grid search, and they must satisfy: <strong>α · β² · γ² ≈ 2</strong></p>
+<p>This constraint means that for every increment of φ by 1, your total computational cost &#40;FLOPs&#41; roughly doubles. The authors found that α &#61; 1.2, β &#61; 1.1, and γ &#61; 1.15 work well.</p>
+<blockquote>
+<p><strong>💡 The Insight Behind Compound Scaling</strong></p>
+<p><strong>Why scale all three dimensions together?</strong> Before EfficientNet, people would scale networks by picking just one dimension—making them deeper, wider, OR using bigger images. But these dimensions are interdependent&#33;</p>
+<ul>
+<li><p><strong>Higher resolution images</strong> have more detail → need <strong>more channels</strong> to capture it → need <strong>more layers</strong> to combine features</p>
+</li>
+<li><p>Scaling just one dimension creates imbalanced networks &#40;like a 100-story building that&#39;s 1 foot wide&#33;&#41;</p>
+</li>
+</ul>
+<p><strong>The key insight</strong>: Networks need balanced growth. Just like building a bigger house means more floors &#40;depth&#41;, wider floors &#40;width&#41;, AND a bigger foundation &#40;resolution&#41;.</p>
+<p><strong>Why α · β² · γ² ≈ 2?</strong> This is about computational budget. CNN FLOPs scale as: <strong>FLOPs ∝ depth × width² × resolution²</strong> &#40;squared because convolutions multiply channels and images are 2D&#41;. By setting this constraint, each φ increment roughly doubles your FLOPs, giving you a predictable accuracy-efficiency trade-off.</p>
+<p>The authors found α &#61; 1.2, β &#61; 1.1, γ &#61; 1.15 through grid search—notice depth grows fastest since adding layers is relatively &quot;cheap&quot; compared to making everything wider or higher-res.</p>
+</blockquote>
+<h3 id="the_mbconv_block_structure"><a href="#the_mbconv_block_structure" class="header-anchor">The MBConv Block Structure</a></h3>
+<p>Now, the <strong>MBConv block</strong> &#40;Mobile Inverted Bottleneck Convolution&#41; is the fundamental building block used throughout EfficientNet. Here&#39;s its basic structure:</p>
+<ol>
+<li><p><strong>Expansion phase</strong>: 1×1 conv that expands channels by a factor &#40;typically 6&#41;</p>
+</li>
+<li><p><strong>Depthwise convolution</strong>: 3×3 or 5×5 depthwise conv</p>
+</li>
+<li><p><strong>Squeeze-and-Excitation</strong>: attention mechanism</p>
+</li>
+<li><p><strong>Projection phase</strong>: 1×1 conv that projects back down</p>
+</li>
+<li><p><strong>Skip connection</strong> &#40;if input and output dimensions match&#41;</p>
+</li>
+</ol>
+<blockquote>
+<p><strong>🔍 Width vs. Expansion Ratio</strong></p>
+<p><strong>Width and expansion are two different things&#33;</strong></p>
+<ul>
+<li><p><strong>Width &#40;scaled by β^φ&#41;</strong>: The number of <strong>input/output channels</strong> of the entire MBConv block</p>
+</li>
+<li><p><strong>Expansion ratio</strong>: How much you <strong>temporarily expand</strong> channels <strong>inside</strong> the block</p>
+</li>
+</ul>
+<p><strong>Example with 40-channel input &#40;MBConv6&#41;</strong>:</p>
+</blockquote>
+<pre><code class="language-julia">&gt; Input: 40 channels &#40;this is the &quot;width&quot;&#41;
+&gt;    ↓
+&gt; 1×1 Conv &#40;expansion&#41;: 40 × 6 &#61; 240 channels &#40;expansion ratio &#61; 6&#41;
+&gt;    ↓
+&gt; Depthwise 3×3: still 240 channels
+&gt;    ↓
+&gt; Squeeze-and-Excitation: operates on 240 channels
+&gt;    ↓
+&gt; 1×1 Conv &#40;projection&#41;: back to 40 channels
+&gt;    ↓
+&gt; Output: 40 channels &#40;same &quot;width&quot; as input&#41;
+&gt;</code></pre>
+<blockquote>
+<p>When you scale width with β^φ:</p>
+<ul>
+<li><p>B0: 40 input/output channels, 40 × 6 &#61; 240 internal</p>
+</li>
+<li><p>B1: 44 input/output channels, 44 × 6 &#61; 264 internal</p>
+</li>
+<li><p>The <strong>expansion ratio stays 6</strong>, but absolute numbers change</p>
+</li>
+</ul>
+</blockquote>
+<blockquote>
+<p><strong>⚙️ Squeeze-and-Excitation Reduction Ratio</strong></p>
+<p>The SE block learns channel attention weights. It has a <strong>reduction ratio r</strong> that controls compression:</p>
+</blockquote>
+<pre><code class="language-julia">&gt; Input: C channels
+&gt;    ↓
+&gt; Global Average Pool: C → C values &#40;one per channel&#41;
+&gt;    ↓
+&gt; FC layer 1 &#40;squeeze&#41;: C → C/r &#40;where r is the reduction ratio&#41;
+&gt;    ↓
+&gt; ReLU
+&gt;    ↓
+&gt; FC layer 2 &#40;excitation&#41;: C/r → C
+&gt;    ↓
+&gt; Sigmoid → Scale original input
+&gt;</code></pre>
+<blockquote>
+<p><strong>Why Sigmoid &#40;not Softmax&#41;?</strong></p>
+<p>SE blocks use <strong>Sigmoid</strong> for independent channel-wise attention, not Softmax:</p>
+<ul>
+<li><p><strong>Sigmoid</strong>: Each channel gets an independent weight &#91;0, 1&#93;</p>
+<ul>
+<li><p>Channel 1: 0.9 ← &quot;Very important&#33;&quot;</p>
+</li>
+<li><p>Channel 2: 0.8 ← &quot;Also very important&#33;&quot;</p>
+</li>
+<li><p>Channel 3: 0.1 ← &quot;Not useful here&quot;</p>
+</li>
+<li><p><strong>All channels can be important simultaneously</strong></p>
+</li>
+</ul>
+</li>
+<li><p><strong>Softmax</strong>: Channels compete &#40;weights sum to 1&#41;</p>
+<ul>
+<li><p>Channel 1: 0.7 ← &quot;Most important&quot;</p>
+</li>
+<li><p>Channel 2: 0.25 ← &quot;Second place&quot;</p>
+</li>
+<li><p>Channel 3: 0.05 ← &quot;Least important&quot;</p>
+</li>
+<li><p><strong>If one goes up, others must go down</strong></p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>The rationale</strong>: SE blocks do <strong>recalibration, not selection</strong>. Different feature channels &#40;edges, textures, colors&#41; can all be important at the same time. For a brick wall image, you want to emphasize BOTH edges AND textures—Sigmoid allows this, while Softmax would force you to choose.</p>
+<p><strong>Analogy</strong>: Sigmoid is like a music mixer where each instrument has its own volume knob. Softmax is like having a fixed total volume budget where turning up guitar forces you to turn down drums.</p>
+<p>Softmax makes sense for mutual exclusion &#40;classification, token selection&#41;, but for channel recalibration where multiple features matter simultaneously, Sigmoid is the right choice.</p>
+<p><strong>What should r be?</strong></p>
+<ul>
+<li><p><strong>r &#61; 4</strong> &#40;EfficientNet default&#41;: Best balance between cost and expressiveness</p>
+</li>
+<li><p><strong>r &#61; 16</strong>: Lighter, faster, but less expressive</p>
+</li>
+<li><p><strong>r &#61; 2</strong>: More parameters, potentially more expressive but diminishing returns</p>
+</li>
+</ul>
+<p><strong>Why r &#61; 4?</strong> From the original SE-Net paper, experiments showed:</p>
+<ul>
+<li><p>r &#61; 16 was too compressed &#40;lost information&#41;</p>
+</li>
+<li><p>r &#61; 2 added parameters without much benefit  </p>
+</li>
+<li><p>r &#61; 4 hit the sweet spot</p>
+</li>
+</ul>
+<p><strong>Intuition</strong>: The SE block learns &quot;how much attention to pay to each channel.&quot; Smaller r &#61; more complex attention mechanism. Larger r &#61; simpler, faster. <strong>Use r &#61; 4 as default</strong> unless you have extreme computational constraints.</p>
+</blockquote>
+<h3 id="how_theyre_related"><a href="#how_theyre_related" class="header-anchor">How They&#39;re Related</a></h3>
+<p>Here&#39;s where it gets interesting&#33; <strong>The compound scaling coefficient determines HOW you scale the MBConv blocks as you go from EfficientNet-B0 to B1, B2, etc.</strong></p>
+<p>When you increase φ:</p>
+<ul>
+<li><p><strong>Depth scaling &#40;α^φ&#41;</strong> means you repeat MBConv blocks more times in each stage</p>
+</li>
+<li><p><strong>Width scaling &#40;β^φ&#41;</strong> means you increase the number of channels in each MBConv block</p>
+</li>
+<li><p><strong>Resolution scaling &#40;r^φ&#41;</strong> means you feed in larger input images</p>
+</li>
+</ul>
+<p>So the MBConv block is the <strong>what</strong> &#40;the architectural component&#41;, while the compound coefficient is the <strong>how</strong> &#40;the scaling strategy&#41;.</p>
+<h3 id="a_concrete_example"><a href="#a_concrete_example" class="header-anchor">A Concrete Example</a></h3>
+<p>Let&#39;s say you have a stage in EfficientNet-B0 with:</p>
+<ul>
+<li><p>3 MBConv blocks repeated</p>
+</li>
+<li><p>40 output channels</p>
+</li>
+<li><p>Input resolution 224×224</p>
+</li>
+</ul>
+<p>When you scale to B1 with φ &#61; 1:</p>
+<ul>
+<li><p>Depth: 3 → 3 × 1.2¹ ≈ 4 blocks &#40;rounded&#41;</p>
+</li>
+<li><p>Width: 40 → 40 × 1.1¹ ≈ 44 channels</p>
+</li>
+<li><p>Resolution: 224 → 224 × 1.15¹ ≈ 240</p>
+</li>
+</ul>
+<p>The <strong>structure</strong> of each MBConv block stays the same &#40;expansion → depthwise → SE → projection&#41;, but you have more of them, they&#39;re wider, and they process larger images.</p>
+<h3 id="why_this_matters"><a href="#why_this_matters" class="header-anchor">Why This Matters</a></h3>
+<p>The beauty is that the compound scaling ensures balanced growth. If you only made the network deeper &#40;more MBConv blocks&#41; without making it wider, you&#39;d have a very deep but skinny network. If you only made it wider without increasing resolution, the network might not benefit from all those extra parameters since it&#39;s still seeing small images.</p>
+<p>By scaling all three together with the compound coefficient, EfficientNet maintains a good balance that empirically works better than scaling any dimension alone.</p>
+<h3 id="key_takeaway"><a href="#key_takeaway" class="header-anchor">Key Takeaway</a></h3>
+<p>Think of it this way: <strong>MBConv is your LEGO brick, and the compound scaling coefficient is your recipe for how many bricks to use, how big they should be, and what size base plate you&#39;re building on&#33;</strong></p>
+<hr />
+<h2 id="how_do_you_decide_φ_for_each_stage"><a href="#how_do_you_decide_φ_for_each_stage" class="header-anchor">How Do You Decide φ for Each Stage?</a></h2>
+<p>Great follow-up question&#33; Let me clarify because there&#39;s an important distinction here:</p>
+<p><strong>φ &#40;phi&#41; is a global parameter for the entire network, not something you decide per stage.</strong></p>
+<h3 id="how_φ_works"><a href="#how_φ_works" class="header-anchor">How φ Works</a></h3>
+<p>When you choose a φ value, it scales the <strong>entire network</strong> uniformly. For example:</p>
+<ul>
+<li><p><strong>EfficientNet-B0</strong>: φ &#61; 0 &#40;baseline&#41;</p>
+</li>
+<li><p><strong>EfficientNet-B1</strong>: φ &#61; 1</p>
+</li>
+<li><p><strong>EfficientNet-B2</strong>: φ &#61; 2</p>
+</li>
+<li><p><strong>EfficientNet-B3</strong>: φ &#61; 3</p>
+</li>
+<li><p>...and so on up to <strong>B7</strong>: φ &#61; 7</p>
+</li>
+</ul>
+<p>Each increment of φ roughly doubles the computational cost &#40;FLOPs&#41; across the whole network.</p>
+<h3 id="what_about_individual_stages"><a href="#what_about_individual_stages" class="header-anchor">What About Individual Stages?</a></h3>
+<p>Here&#39;s the key insight: <strong>You don&#39;t decide φ per stage. Instead, each stage scales according to the same global φ, but the scaling manifests differently.</strong></p>
+<p>Let me show you with math. If stage <em>i</em> in the baseline &#40;B0&#41; has:</p>
+<ul>
+<li><p><strong>L_i</strong> layers &#40;depth&#41;</p>
+</li>
+<li><p><strong>C_i</strong> channels &#40;width&#41;</p>
+</li>
+</ul>
+<p>Then in a scaled version with compound coefficient φ:</p>
+<ul>
+<li><p><strong>Depth becomes</strong>: L_i × α^φ</p>
+</li>
+<li><p><strong>Width becomes</strong>: C_i × β^φ</p>
+</li>
+</ul>
+<p>Notice that <strong>every stage</strong> uses the same α^φ and β^φ multipliers, but because each stage starts with different baseline values &#40;L<em>i and C</em>i&#41;, they end up with different absolute numbers.</p>
+<h3 id="another_concrete_example"><a href="#another_concrete_example" class="header-anchor">Another Concrete Example</a></h3>
+<p>Let&#39;s say EfficientNet-B0 has:</p>
+<ul>
+<li><p><strong>Stage 1</strong>: 1 block, 16 channels</p>
+</li>
+<li><p><strong>Stage 2</strong>: 2 blocks, 24 channels</p>
+</li>
+<li><p><strong>Stage 3</strong>: 2 blocks, 40 channels</p>
+</li>
+</ul>
+<p>When you scale to B1 &#40;φ &#61; 1, with α &#61; 1.2, β &#61; 1.1&#41;:</p>
+<ul>
+<li><p><strong>Stage 1</strong>: 1 × 1.2 ≈ <strong>1 block</strong>, 16 × 1.1 ≈ <strong>18 channels</strong></p>
+</li>
+<li><p><strong>Stage 2</strong>: 2 × 1.2 ≈ <strong>2 blocks</strong>, 24 × 1.1 ≈ <strong>26 channels</strong></p>
+</li>
+<li><p><strong>Stage 3</strong>: 2 × 1.2 ≈ <strong>2 blocks</strong>, 40 × 1.1 ≈ <strong>44 channels</strong></p>
+</li>
+</ul>
+<p>See how the <strong>same</strong> scaling factors &#40;1.2 and 1.1&#41; apply everywhere, but each stage grows from its own baseline?</p>
+<h3 id="the_real_design_decision"><a href="#the_real_design_decision" class="header-anchor">The Real Design Decision</a></h3>
+<p>The actual design decision happens when creating the <strong>baseline architecture &#40;B0&#41;</strong>:</p>
+<ol>
+<li><p>Through neural architecture search &#40;NAS&#41;, they found a good base architecture</p>
+</li>
+<li><p>They determined α, β, γ through a grid search on B0 to find what works best</p>
+</li>
+<li><p>Then they just increment φ to create B1, B2, B3, etc.</p>
+</li>
+</ol>
+<p>So you&#39;re not deciding &quot;how much to scale each stage&quot; individually—you&#39;re just turning one global knob &#40;φ&#41; and letting it proportionally scale everything&#33;</p>
+<p>The elegance is in its simplicity: one parameter controls the whole network&#39;s size.</p>
+<hr />
+<h2 id="does_φ_affect_the_number_of_stages"><a href="#does_φ_affect_the_number_of_stages" class="header-anchor">Does φ Affect the Number of Stages?</a></h2>
+<p>Excellent question&#33; The short answer is: <strong>No, the compound scaling coefficient φ does NOT change the number of stages.</strong></p>
+<h3 id="what_stays_fixed"><a href="#what_stays_fixed" class="header-anchor">What Stays Fixed</a></h3>
+<p>The <strong>architecture&#39;s structure</strong> remains constant across all EfficientNet variants &#40;B0 through B7&#41;:</p>
+<ul>
+<li><p>Number of stages: <strong>fixed</strong></p>
+</li>
+<li><p>Which operations go in each stage &#40;e.g., MBConv1, MBConv6&#41;: <strong>fixed</strong></p>
+</li>
+<li><p>Kernel sizes &#40;3×3 or 5×5&#41;: <strong>fixed</strong></p>
+</li>
+<li><p>Stride patterns: <strong>fixed</strong></p>
+</li>
+</ul>
+<h3 id="what_changes_with_φ"><a href="#what_changes_with_φ" class="header-anchor">What Changes with φ</a></h3>
+<p>Only these three dimensions scale:</p>
+<ul>
+<li><p><strong>Depth &#40;d &#61; α^φ&#41;</strong>: How many blocks you repeat <strong>within</strong> each stage</p>
+</li>
+<li><p><strong>Width &#40;w &#61; β^φ&#41;</strong>: Number of channels in each block</p>
+</li>
+<li><p><strong>Resolution &#40;r &#61; γ^φ&#41;</strong>: Input image size</p>
+</li>
+</ul>
+<h3 id="why_not_scale_the_number_of_stages"><a href="#why_not_scale_the_number_of_stages" class="header-anchor">Why Not Scale the Number of Stages?</a></h3>
+<p>This is actually a deliberate design choice&#33; Here&#39;s the reasoning:</p>
+<ol>
+<li><p><strong>Stages have semantic meaning</strong>: Early stages capture low-level features &#40;edges, textures&#41;, middle stages capture mid-level features &#40;parts, patterns&#41;, and late stages capture high-level features &#40;objects, concepts&#41;. This hierarchical structure is fundamental to CNNs.</p>
+</li>
+<li><p><strong>Stride patterns matter</strong>: Each stage typically has one stride-2 operation that downsamples the spatial resolution. If you added more stages, you&#39;d need to decide where to put strides, which would fundamentally change the feature hierarchy.</p>
+</li>
+<li><p><strong>Architectural search determined the best structure</strong>: The baseline B0 architecture was found through Neural Architecture Search &#40;NAS&#41;. The number of stages &#40;7 in EfficientNet&#41; was optimized as part of that search.</p>
+</li>
+</ol>
+<h3 id="the_efficientnet_stage_structure"><a href="#the_efficientnet_stage_structure" class="header-anchor">The EfficientNet Stage Structure</a></h3>
+<p>For reference, EfficientNet has this fixed structure:</p>
+<pre><code class="language-julia">Stage 1: MBConv1, k3×3
+Stage 2: MBConv6, k3×3  
+Stage 3: MBConv6, k5×5
+Stage 4: MBConv6, k3×3
+Stage 5: MBConv6, k5×5
+Stage 6: MBConv6, k5×5
+Stage 7: MBConv6, k3×3</code></pre>
+<p>When you go from B0 → B7, these stages remain, but each one gets:</p>
+<ul>
+<li><p><strong>Deeper</strong> &#40;more repeated blocks within the stage&#41;</p>
+</li>
+<li><p><strong>Wider</strong> &#40;more channels&#41;</p>
+</li>
+<li><p>Processing <strong>higher resolution</strong> features</p>
+</li>
+</ul>
+<h3 id="think_of_it_this_way"><a href="#think_of_it_this_way" class="header-anchor">Think of It This Way</a></h3>
+<p>Scaling the number of stages would be like adding more floors to a building&#39;s foundation-to-roof hierarchy. Instead, compound scaling makes each existing floor taller &#40;depth&#41;, wider &#40;width&#41;, and built with higher resolution materials—but the fundamental multi-floor structure stays the same&#33;</p>
+<hr />
+<h2 id="summary_what_you_decide_vs_what_φ_decides"><a href="#summary_what_you_decide_vs_what_φ_decides" class="header-anchor">Summary: What You Decide vs. What φ Decides</a></h2>
+<p><strong>Exactly&#33; Here&#39;s the final clarification:</strong></p>
+<h3 id="what_you_decide_architecture_design"><a href="#what_you_decide_architecture_design" class="header-anchor">What YOU Decide &#40;Architecture Design&#41;</a></h3>
+<ol>
+<li><p><strong>Number of stages</strong>: You decide this when designing the base architecture &#40;B0&#41;</p>
+</li>
+<li><p><strong>Which type of MBConv to use in each stage</strong>: MBConv1, MBConv6, etc.</p>
+</li>
+<li><p><strong>Kernel sizes</strong>: 3×3 or 5×5 for each stage</p>
+</li>
+<li><p><strong>Baseline depth</strong>: How many blocks in each stage for B0</p>
+</li>
+<li><p><strong>Baseline width</strong>: How many channels in each stage for B0</p>
+</li>
+</ol>
+<p>In EfficientNet, these were found through Neural Architecture Search &#40;NAS&#41;.</p>
+<h3 id="what_φ_compound_coefficient_determines"><a href="#what_φ_compound_coefficient_determines" class="header-anchor">What φ &#40;Compound Coefficient&#41; Determines</a></h3>
+<p>Once you have your baseline architecture, φ <strong>only</strong> controls:</p>
+<ol>
+<li><p><strong>How many MBConv blocks to repeat in each stage</strong> &#40;depth scaling: α^φ&#41;</p>
+</li>
+<li><p><strong>How wide each block is</strong> &#40;width scaling: β^φ&#41;  </p>
+</li>
+<li><p><strong>Input resolution</strong> &#40;resolution scaling: γ^φ&#41;</p>
+</li>
+</ol>
+<h3 id="the_formula_in_practice"><a href="#the_formula_in_practice" class="header-anchor">The Formula in Practice</a></h3>
+<p>For any stage in your network:</p>
+<pre><code class="language-julia">Number of blocks &#61; &#40;baseline blocks&#41; × α^φ
+Number of channels &#61; &#40;baseline channels&#41; × β^φ</code></pre>
+<p>So if Stage 3 in B0 has <strong>2 blocks</strong> with <strong>40 channels</strong>, and you set φ &#61; 2:</p>
+<pre><code class="language-julia">Stage 3 in B2:
+- Blocks: 2 × &#40;1.2&#41;² ≈ 2 × 1.44 ≈ 3 blocks
+- Channels: 40 × &#40;1.1&#41;² ≈ 40 × 1.21 ≈ 48 channels</code></pre>
+<h3 id="the_key_insight"><a href="#the_key_insight" class="header-anchor">The Key Insight</a></h3>
+<p>The <strong>architecture</strong> &#40;number of stages, what goes in each&#41; is a design-time decision.</p>
+<p>The <strong>compound coefficient φ</strong> is a scale-time decision—it&#39;s just a knob you turn to make the whole thing bigger or smaller while keeping the architecture&#39;s &quot;shape&quot; intact.</p>
+<p><strong>Think of it like a blueprint for a house</strong>: you design the blueprint once &#40;number of rooms, their purposes&#41;, but φ is like scaling that blueprint to 80&#37;, 100&#37;, 120&#37;, 150&#37; size—the layout stays the same, just everything gets proportionally bigger&#33; 🎯</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 22, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
