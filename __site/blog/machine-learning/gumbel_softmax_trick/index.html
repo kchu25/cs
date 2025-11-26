@@ -25,7 +25,7 @@
 
 
 <!-- Content appended here -->
-<div class="franklin-content"><h1 id="the_gumbel-softmax_trick"><a href="#the_gumbel-softmax_trick" class="header-anchor">The Gumbel-Softmax Trick </a></h1>
+<div class="franklin-content"><h1 id="the_gumbel-softmax_trick"><a href="#the_gumbel-softmax_trick" class="header-anchor">The Gumbel-Softmax Trick</a></h1>
 <h2 id="so_whats_the_deal"><a href="#so_whats_the_deal" class="header-anchor">So What&#39;s The Deal?</a></h2>
 <p>Okay, imagine you&#39;re training a neural network and you need it to make a choice. Like, pick one category out of several options. Maybe you&#39;re building a model that needs to decide &quot;cat, dog, or bird?&quot; for an image.</p>
 <p>The natural thing to do is sample from a categorical distribution, right? You have some probabilities \(\pi_1, \pi_2, \ldots, \pi_K\) and you pick one:</p>
@@ -210,6 +210,111 @@ function example_usage&#40;&#41;
     
     return model, gate
 end</code></pre>
+<h3 id="should_you_learn_the_stretching_parameters_γ_ζ"><a href="#should_you_learn_the_stretching_parameters_γ_ζ" class="header-anchor">Should You Learn the Stretching Parameters &#40;γ, ζ&#41;?</a></h3>
+<p><strong>Short answer: NO, keep them fixed&#33;</strong> Here&#39;s why:</p>
+<p><strong>The stretching parameters γ and ζ control the &quot;hardness&quot;:</strong></p>
+<ul>
+<li><p>They determine how aggressively values get pushed to 0 or 1</p>
+</li>
+<li><p>γ &lt; 0 and ζ &gt; 1 create the stretching effect</p>
+</li>
+<li><p>Standard values: γ &#61; -0.1, ζ &#61; 1.1 &#40;from the L0 paper&#41;</p>
+</li>
+</ul>
+<p><strong>Why NOT learn them:</strong></p>
+<p><strong>YES, exactly&#33; The network will make them &quot;loose&quot; &#40;soft&#41;.</strong> Here&#39;s the intuition:</p>
+<p>Think about what the network &quot;wants&quot; during training:</p>
+<ul>
+<li><p><strong>Hard gates</strong> &#40;γ very negative, ζ very positive&#41;: Clear 0s and 1s, but small gradients through them</p>
+</li>
+<li><p><strong>Soft gates</strong> &#40;γ → 0, ζ → 1&#41;: Smooth values, easy gradients, easier optimization</p>
+</li>
+</ul>
+<p>The network&#39;s gradient descent will push toward: <strong>&quot;Whatever makes my loss go down easiest&quot;</strong></p>
+<p>And what makes optimization easiest? <strong>Soft, smooth functions&#33;</strong></p>
+<p>So if you let the network learn γ and ζ, it would likely do this:</p>
+<pre><code class="language-julia">Initial:  γ &#61; -0.1,  ζ &#61; 1.1  &#40;nice and hard&#41;
+          ↓ gradient descent
+After:    γ &#61; -0.01, ζ &#61; 1.01 &#40;getting softer...&#41;
+          ↓ gradient descent  
+Final:    γ ≈ 0,    ζ ≈ 1    &#40;basically no stretching&#33;&#41;</code></pre>
+<p><strong>Why does this happen?</strong></p>
+<ol>
+<li><p><strong>Gradients are bigger through soft functions</strong> - calculus loves smooth curves&#33;</p>
+</li>
+<li><p><strong>No explicit pressure for hardness</strong> - your loss function doesn&#39;t say &quot;make it hard&quot;, it just says &quot;classify correctly&quot;</p>
+</li>
+<li><p><strong>The path of least resistance</strong> - soft is easier, so SGD goes there</p>
+</li>
+</ol>
+<p><strong>Analogy:</strong> It&#39;s like asking a student to set their own exam difficulty. They&#39;ll make it as easy as possible&#33; You need the teacher &#40;you, the researcher&#41; to set the difficulty externally.</p>
+<p><strong>The fix:</strong> Keep γ, ζ fixed at values that give you the hardness you want. Let the network only learn the <code>logit</code> values &#40;which gates to open/close&#41;.</p>
+<p><strong>Could you force it to stay hard?</strong> Technically yes, with tricks:</p>
+<ul>
+<li><p>Add regularization: penalize γ and ζ for being too close to 0 and 1</p>
+</li>
+<li><p>Use hard constraints: clip them or use specific parameterizations</p>
+</li>
+<li><p>Add a &quot;hardness loss&quot; to explicitly encourage hard gates</p>
+</li>
+</ul>
+<p>But this is way more complicated than just... keeping them fixed&#33; 😅</p>
+<p><strong>What about temperature τ?</strong></p>
+<p><strong>Same problem, same answer: Keep it fixed too&#33;</strong></p>
+<p>Temperature τ controls the softness in a different way - it&#39;s in the sampling step <em>before</em> stretching:</p>
+\(s = \sigma\left(\frac{\log(u) - \log(1-u) + \text{logit}}{\tau}\right)\)
+<p><strong>If you let the network learn τ:</strong></p>
+<ul>
+<li><p><strong>High τ</strong> &#40;like τ&#61;10&#41;: Softmax becomes very smooth → easy gradients → network prefers this&#33;</p>
+</li>
+<li><p><strong>Low τ</strong> &#40;like τ&#61;0.1&#41;: Softmax becomes spiky → harder gradients → network avoids this&#33;</p>
+</li>
+</ul>
+<p>So the network will push τ higher and higher to make optimization easier.</p>
+<p><strong>The progression would be:</strong></p>
+<pre><code class="language-julia">Initial:  τ &#61; 0.67  &#40;reasonable&#41;
+          ↓ gradient descent
+After:    τ &#61; 2.0   &#40;getting softer...&#41;
+          ↓ gradient descent  
+Final:    τ &#61; 10&#43;   &#40;way too soft, basically uniform&#33;&#41;</code></pre>
+<p><strong>Why all three &#40;τ, γ, ζ&#41; want to go &quot;loose&quot;:</strong></p>
+<p>All three parameters control hardness in different ways, but they all face the same issue:</p>
+<table><tr><th align="right">Parameter</th><th align="right">What it does</th><th align="right">What network wants</th></tr><tr><td align="right"><strong>τ</strong></td><td align="right">Controls softmax sharpness</td><td align="right">τ → ∞ &#40;very soft&#41;</td></tr><tr><td align="right"><strong>γ</strong></td><td align="right">Left stretch boundary</td><td align="right">γ → 0 &#40;less stretch&#41;</td></tr><tr><td align="right"><strong>ζ</strong></td><td align="right">Right stretch boundary</td><td align="right">ζ → 1 &#40;less stretch&#41;</td></tr></table>
+<p>All arrows point toward <strong>&quot;make it easier to optimize&quot;</strong>&#33;</p>
+<p><strong>Standard practice for all three:</strong></p>
+<pre><code class="language-julia">struct HardConcrete&#123;T&#125;
+    logit::T              # ✅ LEARN THIS
+    tau::Float32          # 🔒 KEEP FIXED &#40;e.g., 2/3&#41;
+    gamma::Float32        # 🔒 KEEP FIXED &#40;e.g., -0.1&#41;
+    zeta::Float32         # 🔒 KEEP FIXED &#40;e.g., 1.1&#41;
+end</code></pre>
+<p><strong>Only mark logit as learnable:</strong></p>
+<pre><code class="language-julia"># This tells Flux to only train the logit
+Flux.@functor HardConcrete
+Flux.trainable&#40;hc::HardConcrete&#41; &#61; &#40;logit &#61; hc.logit,&#41;</code></pre>
+<p><strong>Bottom line:</strong> τ, γ, and ζ are all &quot;meta-parameters&quot; that define the hardness of your sampling mechanism. The network will make all of them softer if given the chance. Keep them fixed and only learn the <code>logit</code> values&#33;</p>
+<p><strong>What you COULD learn &#40;but usually don&#39;t&#41;:</strong></p>
+<p>If you really wanted to, you could make τ &#40;temperature&#41; learnable <em>per-layer</em> with constraints:</p>
+<pre><code class="language-julia">struct HardConcreteWithLearnableTau&#123;T&#125;
+    logit::T
+    tau_raw::T  # Unconstrained
+    gamma::Float32
+    zeta::Float32
+end
+
+function &#40;hc::HardConcreteWithLearnableTau&#41;&#40;&#41;
+    # Constrain tau to reasonable range, e.g., &#91;0.1, 2.0&#93;
+    tau &#61; 0.1 &#43; 1.9 * σ&#40;hc.tau_raw&#41;
+    
+    u &#61; rand&#40;Float32&#41;
+    s &#61; σ&#40;&#40;log&#40;u&#41; - log&#40;1 - u&#41; &#43; hc.logit&#41; / tau&#41;
+    s_bar &#61; s * &#40;hc.zeta - hc.gamma&#41; &#43; hc.gamma
+    z &#61; clamp&#40;s_bar, 0f0, 1f0&#41;
+    
+    return z
+end</code></pre>
+<p>But even this is rare in practice. Most papers stick with fixed hyperparameters.</p>
+<p><strong>Bottom line:</strong> Learn the <code>logit</code> &#40;which controls the probability p&#41;, but keep γ, ζ, and τ fixed. They&#39;re &quot;meta-parameters&quot; that define the sampling mechanism, not model parameters that should adapt to data.</p>
 <p><strong>For a layer with multiple gates &#40;like L0 regularization for each weight&#41;:</strong></p>
 <pre><code class="language-julia">struct HardConcreteLayer&#123;T&#125;
     logits::T  # Vector of learnable logits, one per feature

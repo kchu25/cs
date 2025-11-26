@@ -2,7 +2,7 @@
 @def published = "26 November 2025"
 @def tags = ["machine-learning"]
 
-# The Gumbel-Softmax Trick 
+# The Gumbel-Softmax Trick
 
 ## So What's The Deal?
 
@@ -202,6 +202,138 @@ function example_usage()
     return model, gate
 end
 ```
+
+### Should You Learn the Stretching Parameters (γ, ζ)?
+
+**Short answer: NO, keep them fixed!** Here's why:
+
+**The stretching parameters γ and ζ control the "hardness":**
+- They determine how aggressively values get pushed to 0 or 1
+- γ < 0 and ζ > 1 create the stretching effect
+- Standard values: γ = -0.1, ζ = 1.1 (from the L0 paper)
+
+**Why NOT learn them:**
+
+**YES, exactly! The network will make them "loose" (soft).** Here's the intuition:
+
+Think about what the network "wants" during training:
+- **Hard gates** (γ very negative, ζ very positive): Clear 0s and 1s, but small gradients through them
+- **Soft gates** (γ → 0, ζ → 1): Smooth values, easy gradients, easier optimization
+
+The network's gradient descent will push toward: **"Whatever makes my loss go down easiest"**
+
+And what makes optimization easiest? **Soft, smooth functions!**
+
+So if you let the network learn γ and ζ, it would likely do this:
+```
+Initial:  γ = -0.1,  ζ = 1.1  (nice and hard)
+          ↓ gradient descent
+After:    γ = -0.01, ζ = 1.01 (getting softer...)
+          ↓ gradient descent  
+Final:    γ ≈ 0,    ζ ≈ 1    (basically no stretching!)
+```
+
+**Why does this happen?**
+
+1. **Gradients are bigger through soft functions** - calculus loves smooth curves!
+2. **No explicit pressure for hardness** - your loss function doesn't say "make it hard", it just says "classify correctly"
+3. **The path of least resistance** - soft is easier, so SGD goes there
+
+**Analogy:**
+It's like asking a student to set their own exam difficulty. They'll make it as easy as possible! You need the teacher (you, the researcher) to set the difficulty externally.
+
+**The fix:**
+Keep γ, ζ fixed at values that give you the hardness you want. Let the network only learn the `logit` values (which gates to open/close).
+
+**Could you force it to stay hard?**
+Technically yes, with tricks:
+- Add regularization: penalize γ and ζ for being too close to 0 and 1
+- Use hard constraints: clip them or use specific parameterizations
+- Add a "hardness loss" to explicitly encourage hard gates
+
+But this is way more complicated than just... keeping them fixed! 😅
+
+**What about temperature τ?**
+
+**Same problem, same answer: Keep it fixed too!**
+
+Temperature τ controls the softness in a different way - it's in the sampling step *before* stretching:
+
+$s = \sigma\left(\frac{\log(u) - \log(1-u) + \text{logit}}{\tau}\right)$
+
+**If you let the network learn τ:**
+- **High τ** (like τ=10): Softmax becomes very smooth → easy gradients → network prefers this!
+- **Low τ** (like τ=0.1): Softmax becomes spiky → harder gradients → network avoids this!
+
+So the network will push τ higher and higher to make optimization easier.
+
+**The progression would be:**
+```
+Initial:  τ = 0.67  (reasonable)
+          ↓ gradient descent
+After:    τ = 2.0   (getting softer...)
+          ↓ gradient descent  
+Final:    τ = 10+   (way too soft, basically uniform!)
+```
+
+**Why all three (τ, γ, ζ) want to go "loose":**
+
+All three parameters control hardness in different ways, but they all face the same issue:
+
+| Parameter | What it does | What network wants |
+|-----------|-------------|-------------------|
+| **τ** | Controls softmax sharpness | τ → ∞ (very soft) |
+| **γ** | Left stretch boundary | γ → 0 (less stretch) |
+| **ζ** | Right stretch boundary | ζ → 1 (less stretch) |
+
+All arrows point toward **"make it easier to optimize"**!
+
+**Standard practice for all three:**
+```julia
+struct HardConcrete{T}
+    logit::T              # ✅ LEARN THIS
+    tau::Float32          # 🔒 KEEP FIXED (e.g., 2/3)
+    gamma::Float32        # 🔒 KEEP FIXED (e.g., -0.1)
+    zeta::Float32         # 🔒 KEEP FIXED (e.g., 1.1)
+end
+```
+
+**Only mark logit as learnable:**
+```julia
+# This tells Flux to only train the logit
+Flux.@functor HardConcrete
+Flux.trainable(hc::HardConcrete) = (logit = hc.logit,)
+```
+
+**Bottom line:** τ, γ, and ζ are all "meta-parameters" that define the hardness of your sampling mechanism. The network will make all of them softer if given the chance. Keep them fixed and only learn the `logit` values!
+
+**What you COULD learn (but usually don't):**
+
+If you really wanted to, you could make τ (temperature) learnable *per-layer* with constraints:
+```julia
+struct HardConcreteWithLearnableTau{T}
+    logit::T
+    tau_raw::T  # Unconstrained
+    gamma::Float32
+    zeta::Float32
+end
+
+function (hc::HardConcreteWithLearnableTau)()
+    # Constrain tau to reasonable range, e.g., [0.1, 2.0]
+    tau = 0.1 + 1.9 * σ(hc.tau_raw)
+    
+    u = rand(Float32)
+    s = σ((log(u) - log(1 - u) + hc.logit) / tau)
+    s_bar = s * (hc.zeta - hc.gamma) + hc.gamma
+    z = clamp(s_bar, 0f0, 1f0)
+    
+    return z
+end
+```
+
+But even this is rare in practice. Most papers stick with fixed hyperparameters.
+
+**Bottom line:** Learn the `logit` (which controls the probability p), but keep γ, ζ, and τ fixed. They're "meta-parameters" that define the sampling mechanism, not model parameters that should adapt to data.
 
 **For a layer with multiple gates (like L0 regularization for each weight):**
 
