@@ -377,6 +377,7 @@ body { counter-reset: eqnum;
     CODE & HIGHLIGHT.JS
 ================================================================== */
 
+/* Inline code */
 code {
   background-color: var(--block-background);
   padding: 0.1em 0.2em;
@@ -384,20 +385,32 @@ code {
   font-size: var(--small);
 }
 
-/* .franklin-content code { */
+/* Code blocks */
+pre {
+  background-color: #f6f8fa;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 1em 0;
+  line-height: 1.45;
+}
 
-/* background-color: rgba(27,31,35,0.05); */
-
-/* padding: 0.1em 0.2em; */
-
-/* border-radius: 2px; */
-
-/* font-size: 90%; } */
+pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 14px;
+  font-family: 'SFMono-Regular', 'Consolas', 'Liberation Mono', 'Menlo', monospace;
+}
 
 .hljs {
   font-size: var(--small);
-  line-height: 1.35em;
-  border-radius: 10px;
+  line-height: 1.45em;
+  border-radius: 6px;
+  background-color: #f6f8fa !important;
+  padding: 16px;
+  overflow-x: auto;
 }
 
 .hljs-meta { font-weight: bold;}
@@ -408,6 +421,9 @@ code {
 .code-output {
   background: var(--output-background);
   border: 1px dashed #dbdbdb;
+  border-radius: 6px;
+  padding: 16px;
+  margin: 1em 0;
 }
 
 /* ==================================================================
