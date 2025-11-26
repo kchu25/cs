@@ -25,7 +25,301 @@
 
 
 <!-- Content appended here -->
-<div class="franklin-content"><h1 id="the_gumbel-softmax_trick"><a href="#the_gumbel-softmax_trick" class="header-anchor">The Gumbel-Softmax Trick</a></h1>
+<div class="franklin-content"><p><strong>Bottom line:</strong> Static p is simpler and more common &#40;especially for pruning&#41;. Adaptive p is more powerful but more complex. Choose based on whether your gating decision should be <em>structural</em> &#40;static&#41; or <em>contextual</em> &#40;adaptive&#41;&#33;</p>
+<h3 id="the_sigmoid_saturation_problem"><a href="#the_sigmoid_saturation_problem" class="header-anchor">The Sigmoid Saturation Problem</a></h3>
+<p><strong>You&#39;re absolutely right to worry about this&#33;</strong> Let&#39;s talk about the parameterization of p.</p>
+<h4 id="the_naive_approach_has_problems"><a href="#the_naive_approach_has_problems" class="header-anchor">The Naive Approach &#40;Has Problems&#33;&#41;</a></h4>
+<pre><code class="language-julia">struct NaiveBernoulliGate
+    logit::Float32  # Unconstrained parameter
+end
+
+function get_probability&#40;gate::NaiveBernoulliGate&#41;
+    return σ&#40;gate.logit&#41;  # p &#61; sigmoid&#40;logit&#41;
+end</code></pre>
+<p><strong>The saturation problem:</strong></p>
+<p>Sigmoid saturates at the extremes:</p>
+<ul>
+<li><p>When <code>logit &#61; 10</code>: <code>p ≈ 0.99999</code> &#40;almost 1, gradient ≈ 0&#41;</p>
+</li>
+<li><p>When <code>logit &#61; -10</code>: <code>p ≈ 0.00001</code> &#40;almost 0, gradient ≈ 0&#41;</p>
+</li>
+</ul>
+<pre><code class="language-julia">p &#61; σ&#40;logit&#41;
+    1.0 |         ___________  ← saturated&#33; &#40;gradient ≈ 0&#41;
+        |       /
+    0.5 |     /  
+        |   /
+    0.0 |__/                   ← saturated&#33; &#40;gradient ≈ 0&#41;
+        -10  -5   0   5   10
+                logit</code></pre>
+<p><strong>Why this is bad:</strong></p>
+<p>When gates saturate &#40;p ≈ 0 or p ≈ 1&#41;:</p>
+<ul>
+<li><p>Gradients through the sigmoid become tiny: \(\frac{d\sigma}{dx} = \sigma(x)(1-\sigma(x)) \approx 0\)</p>
+</li>
+<li><p>The gate is &quot;stuck&quot; and hard to update</p>
+</li>
+<li><p>Training slows down or stops</p>
+</li>
+</ul>
+<p><strong>But wait... isn&#39;t saturation what we want?</strong></p>
+<p>Here&#39;s the paradox:</p>
+<ul>
+<li><p>✅ We <em>want</em> gates to be confidently 0 or 1 &#40;that&#39;s the point&#33;&#41;</p>
+</li>
+<li><p>❌ But we <em>don&#39;t want</em> gradients to vanish &#40;we need to train&#33;&#41;</p>
+</li>
+</ul>
+<h4 id="solution_1_its_actually_fine_with_hard_concrete"><a href="#solution_1_its_actually_fine_with_hard_concrete" class="header-anchor">Solution 1: It&#39;s Actually Fine with Hard Concrete&#33;</a></h4>
+<p><strong>Good news:</strong> With Hard Concrete, this is less of a problem than you think&#33;</p>
+<p>Here&#39;s why:</p>
+<pre><code class="language-julia">function hard_concrete_sample&#40;logit, tau, gamma, zeta&#41;
+    u &#61; rand&#40;Float32&#41;
+    s &#61; σ&#40;&#40;log&#40;u&#41; - log&#40;1-u&#41; &#43; logit&#41; / tau&#41;  # ← Sigmoid here
+    s_bar &#61; s * &#40;zeta - gamma&#41; &#43; gamma
+    z &#61; clamp&#40;s_bar, 0, 1&#41;
+    return z
+end</code></pre>
+<p>The gradient flows back through:</p>
+<ol>
+<li><p>The clamp operation &#40;gradient flows when 0 &lt; s_bar &lt; 1&#41;</p>
+</li>
+<li><p>The stretching &#40;s_bar &#61; s * &#40;zeta - gamma&#41; &#43; gamma&#41;</p>
+</li>
+<li><p><strong>The sigmoid with Gumbel noise added&#33;</strong></p>
+</li>
+</ol>
+<p>The key: <code>log&#40;u&#41; - log&#40;1-u&#41;</code> adds random noise that prevents complete saturation&#33; Even if <code>logit</code> is large, the Gumbel noise means <code>s</code> isn&#39;t always saturated.</p>
+<h4 id="solution_2_careful_initialization"><a href="#solution_2_careful_initialization" class="header-anchor">Solution 2: Careful Initialization</a></h4>
+<p>Don&#39;t initialize gates at extremes:</p>
+<pre><code class="language-julia"># BAD: Starts saturated
+HardConcrete&#40;init_p&#61;0.999&#41;  # logit ≈ 6.9, nearly saturated
+
+# GOOD: Starts in the middle
+HardConcrete&#40;init_p&#61;0.5&#41;    # logit &#61; 0, maximum gradient
+
+# GOOD: Starts high but not saturated  
+HardConcrete&#40;init_p&#61;0.9&#41;    # logit ≈ 2.2, still has gradient</code></pre>
+<p><strong>Rule of thumb:</strong> Initialize p ∈ &#91;0.3, 0.9&#93; to avoid saturation at the start.</p>
+<h4 id="solution_3_alternative_parameterizations"><a href="#solution_3_alternative_parameterizations" class="header-anchor">Solution 3: Alternative Parameterizations</a></h4>
+<p>Some papers use different tricks:</p>
+<p><strong>a&#41; Bounded logit:</strong></p>
+<pre><code class="language-julia">struct BoundedBernoulliGate
+    logit_raw::Float32
+    logit_min::Float32
+    logit_max::Float32
+end
+
+function get_logit&#40;gate::BoundedBernoulliGate&#41;
+    # Constrain logit to reasonable range
+    return gate.logit_min &#43; &#40;gate.logit_max - gate.logit_min&#41; * σ&#40;gate.logit_raw&#41;
+end
+
+# Example: logit ∈ &#91;-5, 5&#93; instead of &#40;-∞, ∞&#41;
+gate &#61; BoundedBernoulliGate&#40;logit_raw, -5.0, 5.0&#41;</code></pre>
+<p><strong>b&#41; Direct probability parameterization &#40;with softplus&#41;:</strong></p>
+<pre><code class="language-julia">struct DirectProbGate
+    p_raw::Float32
+end
+
+function get_probability&#40;gate::DirectProbGate&#41;
+    # Constrain to &#40;0, 1&#41; but avoid hard saturation
+    return clamp&#40;σ&#40;gate.p_raw&#41;, 0.01, 0.99&#41;
+end</code></pre>
+<p><strong>c&#41; Temperature scaling &#40;already built-in&#33;&#41;:</strong></p>
+<p>Remember that temperature τ in the Hard Concrete formula already helps:</p>
+<pre><code class="language-julia">s &#61; σ&#40;&#40;log&#40;u&#41; - log&#40;1-u&#41; &#43; logit&#41; / tau&#41;</code></pre>
+<p>Higher τ → softer sigmoid → less saturation → better gradients&#33;</p>
+<p>This is why the L0 paper uses τ &#61; 2/3 ≈ 0.67 &#40;relatively high&#41;.</p>
+<h4 id="solution_4_regularization_to_prevent_saturation"><a href="#solution_4_regularization_to_prevent_saturation" class="header-anchor">Solution 4: Regularization to Prevent Saturation</a></h4>
+<p>Add a regularization term that penalizes extreme logits:</p>
+<pre><code class="language-julia">function regularization_loss&#40;gates&#41;
+    # Penalize logits that are too extreme
+    logit_penalty &#61; sum&#40;abs2, &#91;abs&#40;gate.logit&#41; for gate in gates if abs&#40;gate.logit&#41; &gt; 3&#93;&#41;
+    return λ * logit_penalty
+end</code></pre>
+<p>But be careful - you still <em>want</em> gates to be decisive eventually&#33;</p>
+<h4 id="what_the_l0_paper_actually_does"><a href="#what_the_l0_paper_actually_does" class="header-anchor">What the L0 Paper Actually Does</a></h4>
+<p>The L0 regularization paper handles this elegantly:</p>
+<ol>
+<li><p><strong>Uses sigmoid parameterization</strong> &#40;logit → p&#41;</p>
+</li>
+<li><p><strong>Adds L0 penalty</strong> that encourages gates to close &#40;p → 0&#41;</p>
+</li>
+<li><p><strong>Temperature τ &#61; 2/3</strong> provides enough gradient signal</p>
+</li>
+<li><p><strong>Gumbel noise</strong> prevents complete saturation during training</p>
+</li>
+<li><p><strong>Accepts that some saturation is okay</strong> - it means confident decisions&#33;</p>
+</li>
+</ol>
+<p>The loss function is: \(\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda \sum_i \sigma(\text{logit}_i - \beta \log(-\gamma/\zeta))\)</p>
+<p>The second term explicitly encourages gates to close &#40;p → 0&#41;, which means <em>some</em> saturation is actually the goal&#33;</p>
+<h4 id="practical_recommendations"><a href="#practical_recommendations" class="header-anchor">Practical Recommendations</a></h4>
+<p><strong>For most cases &#40;like L0 regularization&#41;:</strong></p>
+<pre><code class="language-julia"># Standard approach - it works&#33;
+struct HardConcrete
+    logit::Float32  # Learn this with sigmoid&#40;logit&#41; &#61; p
+end
+
+# Initialize sensibly
+gate &#61; HardConcrete&#40;init_p&#61;0.5&#41;  # or 0.9 for pruning
+
+# Use standard temperature
+tau &#61; 2/3</code></pre>
+<p><strong>If you&#39;re really worried about saturation:</strong></p>
+<pre><code class="language-julia"># Bounded logit version
+struct SafeHardConcrete
+    logit_raw::Float32
+end
+
+function get_logit&#40;gate::SafeHardConcrete&#41;
+    # Constrain logit to &#91;-5, 5&#93;
+    return 10 * tanh&#40;gate.logit_raw&#41;  # Maps ℝ → &#91;-10, 10&#93;
+end</code></pre>
+<p><strong>Bottom line:</strong> Sigmoid saturation <em>is</em> a concern, but:</p>
+<ol>
+<li><p>The Gumbel noise helps prevent it during training</p>
+</li>
+<li><p>Temperature τ controls gradient flow</p>
+</li>
+<li><p>Some saturation is actually desired &#40;confident gates&#33;&#41;</p>
+</li>
+<li><p>Standard parameterization &#40;unconstrained logit → sigmoid&#41; works well in practice</p>
+</li>
+<li><p>If really concerned, bound the logit or initialize carefully</p>
+</li>
+</ol>
+<p>The L0 paper&#39;s approach has been used successfully in many applications, so the sigmoid parameterization is validated&#33; The key insight: <em>saturation at the end of training is okay</em> - you want confident 0/1 decisions. You just need enough gradient signal <em>during</em> training, which the Gumbel noise and temperature provide.<strong>Bottom line:</strong> τ, γ, and ζ are all &quot;meta-parameters&quot; that define the hardness of your sampling mechanism. The network will make all of them softer if given the chance. Keep them fixed and only learn the <code>logit</code> values&#33;</p>
+<h3 id="should_p_the_bernoulli_probability_be_adaptive_or_just_a_parameter"><a href="#should_p_the_bernoulli_probability_be_adaptive_or_just_a_parameter" class="header-anchor">Should p &#40;the Bernoulli probability&#41; Be Adaptive or Just a Parameter?</a></h3>
+<p>This is actually a <strong>really important design choice</strong> that depends on what you&#39;re trying to do&#33; Let me break down both approaches:</p>
+<h4 id="option_1_p_as_a_simple_learnable_parameter_static"><a href="#option_1_p_as_a_simple_learnable_parameter_static" class="header-anchor">Option 1: p as a Simple Learnable Parameter &#40;Static&#41;</a></h4>
+<pre><code class="language-julia">struct SimpleBernoulliGate
+    logit::Float32  # Just a single number, learned during training
+end
+
+Flux.@functor SimpleBernoulliGate
+
+function &#40;gate::SimpleBernoulliGate&#41;&#40;x&#41;
+    # Sample once, apply to all inputs
+    z &#61; hard_concrete_sample&#40;gate.logit&#41;
+    return x .* z
+end</code></pre>
+<p><strong>Use this when:</strong></p>
+<ul>
+<li><p>You want a <strong>fixed gate</strong> for a feature/neuron</p>
+</li>
+<li><p>Like dropout, but learned: &quot;Should this neuron be in the network at all?&quot;</p>
+</li>
+<li><p>Network pruning: &quot;Is this weight important?&quot;</p>
+</li>
+<li><p>Feature selection: &quot;Is this input feature useful?&quot;</p>
+</li>
+</ul>
+<p><strong>Example:</strong> L0 regularization for pruning - each weight has its own static probability that&#39;s learned but doesn&#39;t change based on the input.</p>
+<h4 id="option_2_p_as_adaptive_input-dependent"><a href="#option_2_p_as_adaptive_input-dependent" class="header-anchor">Option 2: p as Adaptive &#40;Input-Dependent&#41;</a></h4>
+<pre><code class="language-julia">struct AdaptiveBernoulliGate
+    gate_network::Chain  # Neural network that outputs logit
+end
+
+function &#40;gate::AdaptiveBernoulliGate&#41;&#40;x&#41;
+    # Compute logit based on input x
+    logit &#61; gate.gate_network&#40;x&#41;
+    z &#61; hard_concrete_sample&#40;logit&#41;
+    return x .* z
+end</code></pre>
+<p><strong>Use this when:</strong></p>
+<ul>
+<li><p>You want <strong>context-aware gating</strong></p>
+</li>
+<li><p>&quot;Should this neuron be active <em>for this particular input</em>?&quot;</p>
+</li>
+<li><p>Conditional computation: different paths for different inputs</p>
+</li>
+<li><p>Attention mechanisms: &quot;Which parts of the input matter <em>right now</em>?&quot;</p>
+</li>
+</ul>
+<p><strong>Example:</strong> Adaptive neural networks that activate different parts based on the input &#40;like mixture of experts, or conditional computation&#41;.</p>
+<h4 id="the_key_difference"><a href="#the_key_difference" class="header-anchor">The Key Difference</a></h4>
+<p><strong>Static p:</strong></p>
+<pre><code class="language-julia">Training input 1 → p &#61; 0.8 → gate
+Training input 2 → p &#61; 0.8 → gate &#40;same&#33;&#41;
+Training input 3 → p &#61; 0.8 → gate &#40;same&#33;&#41;</code></pre>
+<p><strong>Adaptive p:</strong></p>
+<pre><code class="language-julia">Training input 1 → compute p₁ &#61; 0.9 → gate
+Training input 2 → compute p₂ &#61; 0.3 → gate &#40;different&#33;&#41;
+Training input 3 → compute p₃ &#61; 0.7 → gate &#40;different&#33;&#41;</code></pre>
+<h4 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h4>
+<table><tr><th align="right">Aspect</th><th align="right">Static p</th><th align="right">Adaptive p</th></tr><tr><td align="right"><strong>Complexity</strong></td><td align="right">Very simple</td><td align="right">More complex</td></tr><tr><td align="right"><strong>Parameters</strong></td><td align="right">1 per gate</td><td align="right">Entire network per gate</td></tr><tr><td align="right"><strong>Computation</strong></td><td align="right">Minimal</td><td align="right">Extra forward passes</td></tr><tr><td align="right"><strong>Use case</strong></td><td align="right">Structural decisions</td><td align="right">Dynamic decisions</td></tr><tr><td align="right"><strong>Examples</strong></td><td align="right">Pruning, feature selection</td><td align="right">Attention, conditional compute</td></tr><tr><td align="right"><strong>Training</strong></td><td align="right">Easier</td><td align="right">Harder &#40;more parameters&#41;</td></tr></table>
+<h4 id="code_comparison"><a href="#code_comparison" class="header-anchor">Code Comparison</a></h4>
+<p><strong>Static &#40;for pruning&#41;:</strong></p>
+<pre><code class="language-julia"># Each neuron has a fixed, learned gate
+gates &#61; &#91;HardConcrete&#40;init_p&#61;0.9&#41; for _ in 1:100&#93;
+
+# Forward pass - same gate value regardless of input
+function forward&#40;x&#41;
+    z &#61; &#91;gate&#40;&#41; for gate in gates&#93;  # Sample once
+    return x .* z
+end</code></pre>
+<p><strong>Adaptive &#40;for conditional computation&#41;:</strong></p>
+<pre><code class="language-julia"># Gate depends on the input
+struct AdaptiveGate
+    gate_net::Dense  # Small network to compute logit
+end
+
+function forward&#40;x&#41;
+    logit &#61; gate_net&#40;x&#41;  # Different for each x&#33;
+    z &#61; hard_concrete_sample&#40;logit&#41;
+    return x .* z
+end</code></pre>
+<h4 id="which_should_you_use"><a href="#which_should_you_use" class="header-anchor">Which Should You Use?</a></h4>
+<p><strong>Use static p when:</strong></p>
+<ul>
+<li><p>✅ You&#39;re doing model compression/pruning</p>
+</li>
+<li><p>✅ You want to permanently remove features/weights</p>
+</li>
+<li><p>✅ You want interpretability &#40;which features are important?&#41;</p>
+</li>
+<li><p>✅ You want efficiency &#40;fewer parameters&#41;</p>
+</li>
+</ul>
+<p><strong>Use adaptive p when:</strong></p>
+<ul>
+<li><p>✅ You want input-dependent behavior</p>
+</li>
+<li><p>✅ You&#39;re building attention mechanisms</p>
+</li>
+<li><p>✅ You need different computation paths for different inputs</p>
+</li>
+<li><p>✅ You&#39;re okay with extra computational cost</p>
+</li>
+</ul>
+<h4 id="real-world_example_l0_regularization"><a href="#real-world_example_l0_regularization" class="header-anchor">Real-World Example: L0 Regularization</a></h4>
+<p>The L0 regularization paper uses <strong>static p</strong> because:</p>
+<ul>
+<li><p>Goal: Find which weights can be permanently pruned</p>
+</li>
+<li><p>Each weight gets one learned probability</p>
+</li>
+<li><p>After training, weights with p ≈ 0 are removed forever</p>
+</li>
+<li><p>The decision doesn&#39;t depend on the input</p>
+</li>
+</ul>
+<h4 id="real-world_example_adaptive_computation"><a href="#real-world_example_adaptive_computation" class="header-anchor">Real-World Example: Adaptive Computation</a></h4>
+<p>Papers on adaptive depth/width use <strong>adaptive p</strong> because:</p>
+<ul>
+<li><p>Goal: Use different amounts of computation for different inputs</p>
+</li>
+<li><p>Easy inputs → skip layers &#40;p ≈ 0 for those layers&#41;</p>
+</li>
+<li><p>Hard inputs → use all layers &#40;p ≈ 1&#41;</p>
+</li>
+<li><p>The decision <em>must</em> depend on the input</p>
+</li>
+</ul>
+<p><strong>Bottom line:</strong> Static p is simpler and more common &#40;especially for pruning&#41;. Adaptive p is more powerful but more complex. Choose based on whether your gating decision should be <em>structural</em> &#40;static&#41; or <em>contextual</em> &#40;adaptive&#41;&#33;# The Gumbel-Softmax Trick &#40;But Make It Fun&#41;</p>
 <h2 id="so_whats_the_deal"><a href="#so_whats_the_deal" class="header-anchor">So What&#39;s The Deal?</a></h2>
 <p>Okay, imagine you&#39;re training a neural network and you need it to make a choice. Like, pick one category out of several options. Maybe you&#39;re building a model that needs to decide &quot;cat, dog, or bird?&quot; for an image.</p>
 <p>The natural thing to do is sample from a categorical distribution, right? You have some probabilities \(\pi_1, \pi_2, \ldots, \pi_K\) and you pick one:</p>
