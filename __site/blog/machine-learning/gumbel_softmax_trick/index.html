@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>The Gumbel-Softmax Trick </title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="the_gumbel-softmax_trick"><a href="#the_gumbel-softmax_trick" class="header-anchor">The Gumbel-Softmax Trick </a></h1>
+<h2 id="so_whats_the_deal"><a href="#so_whats_the_deal" class="header-anchor">So What&#39;s The Deal?</a></h2>
+<p>Okay, imagine you&#39;re training a neural network and you need it to make a choice. Like, pick one category out of several options. Maybe you&#39;re building a model that needs to decide &quot;cat, dog, or bird?&quot; for an image.</p>
+<p>The natural thing to do is sample from a categorical distribution, right? You have some probabilities \(\pi_1, \pi_2, \ldots, \pi_K\) and you pick one:</p>
+\[z = \text{Categorical}(\pi_1, \ldots, \pi_K)\]
+<p><strong>Plot twist</strong>: This sampling operation has no gradient. You can&#39;t backpropagate through it. Your optimizer is basically like &quot;¯<br/>&#95;&#40;ツ&#41;&#95;/¯ can&#39;t help you there.&quot;</p>
+<p>This is a problem.</p>
+<h2 id="enter_the_gumbel-max_trick"><a href="#enter_the_gumbel-max_trick" class="header-anchor">Enter: The Gumbel-Max Trick</a></h2>
+<p>Before we get to Gumbel-Softmax, let&#39;s talk about its cooler older sibling, the Gumbel-Max trick.</p>
+<p>Here&#39;s a wild fact: if you want to sample from a categorical distribution, you can do this instead:</p>
+<ol>
+<li><p>Take your log probabilities: \(\alpha_i = \log \pi_i\)</p>
+</li>
+<li><p>Sample some random Gumbel noise: \(G_i \sim \text{Gumbel}(0, 1)\) for each option</p>
+</li>
+<li><p>Add them together and pick the max: \(z = \text{one\_hot}\left(\arg\max_i (\alpha_i + G_i)\right)\)</p>
+</li>
+</ol>
+<p>And boom, you&#39;ve sampled from your categorical distribution&#33; It&#39;s mathematically equivalent, which is pretty neat.</p>
+<h3 id="quick_aside_whats_a_gumbel_distribution"><a href="#quick_aside_whats_a_gumbel_distribution" class="header-anchor">Quick aside: What&#39;s a Gumbel distribution?</a></h3>
+<p>Great question&#33; It&#39;s super easy to sample from:</p>
+\[G = -\log(-\log(U)), \quad \text{where } U \sim \text{Uniform}(0, 1)\]
+<p>Just sample a uniform random number, take negative log twice, and you&#39;re done. Easy peasy.</p>
+<h2 id="the_problem_with_gumbel-max"><a href="#the_problem_with_gumbel-max" class="header-anchor">The Problem With Gumbel-Max</a></h2>
+<p>So Gumbel-Max is cool, but we still have that \(\arg\max\) operation, which is... you guessed it... not differentiable. We&#39;re back to square one.</p>
+<h2 id="the_gumbel-softmax_solution_the_star_of_the_show"><a href="#the_gumbel-softmax_solution_the_star_of_the_show" class="header-anchor">The Gumbel-Softmax Solution &#40;The Star of the Show&#41;</a></h2>
+<p>Here&#39;s the brilliant idea: what if instead of taking the hard \(\arg\max\), we use a <strong>softmax</strong> function? It&#39;s like a &quot;soft&quot; version of max that&#39;s smooth and differentiable&#33;</p>
+\[y_i = \frac{\exp((\alpha_i + G_i) / \tau)}{\sum_{j=1}^K \exp((\alpha_j + G_j) / \tau)}\]
+<p>where:</p>
+<ul>
+<li><p>\(\tau\) is the <strong>temperature</strong> &#40;we&#39;ll get to this in a sec&#41;</p>
+</li>
+<li><p>\(\alpha_i = \log \pi_i\) are your log probabilities &#40;logits&#41;</p>
+</li>
+<li><p>\(G_i\) is that Gumbel noise we talked about</p>
+</li>
+</ul>
+<p>Instead of getting a one-hot vector like \([0, 0, 1, 0]\), you get something soft like \([0.05, 0.1, 0.8, 0.05]\). And the best part? <strong>Gradients flow through it&#33;</strong></p>
+<h2 id="temperature_the_magic_dial"><a href="#temperature_the_magic_dial" class="header-anchor">Temperature: The Magic Dial</a></h2>
+<p>The temperature \(\tau\) is like a knob you can turn:</p>
+<ul>
+<li><p><strong>Low temperature</strong> &#40;\(\tau \to 0\)&#41;: Output becomes spiky, almost one-hot. It&#39;s like &quot;I&#39;m pretty sure it&#39;s option 3.&quot; Gets you closer to true discrete sampling, but gradients get tiny.</p>
+</li>
+<li><p><strong>High temperature</strong> &#40;\(\tau \to \infty\)&#41;: Output becomes smooth and uniform. It&#39;s like &quot;eh, could be any of them.&quot; Better gradients, but less decisive.</p>
+</li>
+<li><p><strong>Sweet spot</strong>: Usually people use \(\tau \in [0.1, 1]\) during training. Sometimes you even anneal &#40;gradually decrease&#41; it over time.</p>
+</li>
+</ul>
+<h3 id="can_temperature_be_learned"><a href="#can_temperature_be_learned" class="header-anchor">Can Temperature Be Learned?</a></h3>
+<p>Great question&#33; The short answer: <strong>Yes, but people rarely do it, and here&#39;s why:</strong></p>
+<p><strong>The problem with learning \(\tau\):</strong></p>
+<ul>
+<li><p>The network will probably learn to make \(\tau\) really large to avoid making hard decisions &#40;gradients are easier when everything is smooth&#33;&#41;</p>
+</li>
+<li><p>It&#39;s kinda like asking the network &quot;how confident do you want to be?&quot; and the network answering &quot;not confident at all, that&#39;s easier&quot;</p>
+</li>
+<li><p>You&#39;d need to add regularization or constraints to prevent this</p>
+</li>
+</ul>
+<p><strong>What people actually do:</strong></p>
+<ol>
+<li><p><strong>Fixed temperature</strong>: Just pick a constant like \(\tau = 0.5\) or \(\tau = 1.0\). Simple and works fine.</p>
+</li>
+<li><p><strong>Temperature annealing</strong> &#40;most common&#41;: Start with high temperature for better gradients early on, then gradually decrease it:</p>
+</li>
+</ol>
+<pre><code class="language-python"># Example annealing schedule
+   tau &#61; max&#40;0.5, exp&#40;-anneal_rate * step&#41;&#41;</code></pre>
+<p>This is like training wheels - smooth gradients at first, then more decisive later.</p>
+<ol start="3">
+<li><p><strong>Per-layer learned temperature</strong> &#40;advanced&#41;: In some neural architecture search papers, they DO learn temperature, but with tricks:</p>
+<ul>
+<li><p>Initialize it to a reasonable value</p>
+</li>
+<li><p>Constrain it: \(\tau = \text{softplus}(\tau_{\text{raw}}) + \epsilon\) to keep it positive and bounded</p>
+</li>
+<li><p>Add a penalty for high temperatures in the loss</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Adaptive schedules</strong>: Some papers use heuristics that adjust \(\tau\) based on training progress or validation performance.</p>
+</li>
+</ol>
+<h3 id="the_hard_concrete_distribution_trick"><a href="#the_hard_concrete_distribution_trick" class="header-anchor">The Hard Concrete Distribution Trick</a></h3>
+<p>Now here&#39;s a really clever approach from the <strong>L0 regularization paper</strong> you mentioned&#33; Instead of dealing with temperature, they use a different strategy for the Binary Concrete case:</p>
+<p><strong>The idea</strong>: Transform your soft sample \(s\) &#40;which is in \((0, 1)\)&#41; to be &quot;hard&quot; by stretching and clamping it:</p>
+\(\bar{z} = \min(1, \max(0, s \cdot (\zeta - \gamma) + \gamma))\)
+<p>where:</p>
+<ul>
+<li><p>\(s\) is your soft sample from Binary Concrete &#40;using some temperature&#41;</p>
+</li>
+<li><p>\(\gamma < 0\) &#40;like \(-0.1\)&#41; is the left stretch</p>
+</li>
+<li><p>\(\zeta > 1\) &#40;like \(1.1\)&#41; is the right stretch</p>
+</li>
+<li><p>\(\bar{z}\) is the &quot;hardened&quot; output</p>
+</li>
+</ul>
+<p><strong>What&#39;s happening here?</strong> By setting \(\gamma < 0\) and \(\zeta > 1\), you&#39;re stretching the \((0,1)\) interval beyond its bounds, then clamping. This pushes values closer to 0 or 1&#33;</p>
+<p><strong>Visual intuition:</strong></p>
+<pre><code class="language-julia">Before stretching: s ∈ &#40;0, 1&#41;
+         &#91;0 &#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61; 1&#93;
+         
+After stretch &amp; clamp: s * 1.2 - 0.1
+    &#91;-0.1 &#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61;&#61; 1.1&#93;
+    clip to &#91;0, 1&#93;
+    
+Result: Most values pushed to 0 or 1&#33;</code></pre>
+<p><strong>In practice for L0 regularization:</strong></p>
+<pre><code class="language-python">def hard_concrete_sample&#40;logit, tau&#61;2/3, gamma&#61;-0.1, zeta&#61;1.1&#41;:
+    &quot;&quot;&quot;
+    Hard Concrete distribution &#40;L0 regularization paper&#41;
+    &quot;&quot;&quot;
+    # Sample soft gate
+    u &#61; uniform&#40;0, 1&#41;
+    s &#61; sigmoid&#40;&#40;log&#40;u&#41; - log&#40;1-u&#41; &#43; logit&#41; / tau&#41;
+    
+    # Stretch and clamp &#40;&quot;hard&quot; version&#41;
+    s_bar &#61; s * &#40;zeta - gamma&#41; &#43; gamma
+    z &#61; min&#40;1, max&#40;0, s_bar&#41;&#41;
+    
+    return z</code></pre>
+<p><strong>Julia implementation with learnable parameters:</strong></p>
+<pre><code class="language-julia">using Flux
+using Random
+
+struct HardConcrete&#123;T&#125;
+    logit::T  # Learnable parameter &#40;log-odds&#41;
+    tau::Float32
+    gamma::Float32
+    zeta::Float32
+end
+
+# Constructor with learnable logit
+function HardConcrete&#40;;init_p&#61;0.5, tau&#61;2/3, gamma&#61;-0.1, zeta&#61;1.1&#41;
+    # Convert probability p to logit: log&#40;p / &#40;1-p&#41;&#41;
+    logit &#61; log&#40;init_p / &#40;1 - init_p&#41;&#41;
+    HardConcrete&#40;logit, Float32&#40;tau&#41;, Float32&#40;gamma&#41;, Float32&#40;zeta&#41;&#41;
+end
+
+# Make it Flux-compatible for automatic differentiation
+Flux.@functor HardConcrete
+
+# Sampling function
+function &#40;hc::HardConcrete&#41;&#40;&#41;
+    # Sample uniform noise
+    u &#61; rand&#40;Float32&#41;
+    
+    # Compute soft sample using Gumbel-Softmax/Binary Concrete
+    s &#61; σ&#40;&#40;log&#40;u&#41; - log&#40;1 - u&#41; &#43; hc.logit&#41; / hc.tau&#41;
+    
+    # Stretch and clamp to get hard sample
+    s_bar &#61; s * &#40;hc.zeta - hc.gamma&#41; &#43; hc.gamma
+    z &#61; clamp&#40;s_bar, 0f0, 1f0&#41;
+    
+    return z
+end
+
+# Helper to get the current probability
+function get_probability&#40;hc::HardConcrete&#41;
+    return σ&#40;hc.logit&#41;
+end
+
+# Example usage
+function example_usage&#40;&#41;
+    # Create a learnable Hard Concrete gate starting at p&#61;0.8
+    gate &#61; HardConcrete&#40;init_p&#61;0.8&#41;
+    
+    # Sample from it
+    sample &#61; gate&#40;&#41;
+    println&#40;&quot;Sample: &quot;, sample&#41;
+    println&#40;&quot;Current p: &quot;, get_probability&#40;gate&#41;&#41;
+    
+    # Use in a neural network
+    model &#61; Chain&#40;
+        Dense&#40;10, 20&#41;,
+        x -&gt; x .* gate&#40;&#41;,  # Apply learned gate
+        Dense&#40;20, 1&#41;
+    &#41;
+    
+    # The gate.logit will be learned during training&#33;
+    params &#61; Flux.params&#40;model, gate&#41;
+    
+    return model, gate
+end</code></pre>
+<p><strong>For a layer with multiple gates &#40;like L0 regularization for each weight&#41;:</strong></p>
+<pre><code class="language-julia">struct HardConcreteLayer&#123;T&#125;
+    logits::T  # Vector of learnable logits, one per feature
+    tau::Float32
+    gamma::Float32
+    zeta::Float32
+end
+
+function HardConcreteLayer&#40;n_features::Int; init_p&#61;0.5, tau&#61;2/3, gamma&#61;-0.1, zeta&#61;1.1&#41;
+    logit_val &#61; log&#40;init_p / &#40;1 - init_p&#41;&#41;
+    logits &#61; fill&#40;Float32&#40;logit_val&#41;, n_features&#41;
+    HardConcreteLayer&#40;logits, Float32&#40;tau&#41;, Float32&#40;gamma&#41;, Float32&#40;zeta&#41;&#41;
+end
+
+Flux.@functor HardConcreteLayer
+
+function &#40;hcl::HardConcreteLayer&#41;&#40;&#41;
+    # Sample uniform noise for all features at once
+    u &#61; rand&#40;Float32, length&#40;hcl.logits&#41;&#41;
+    
+    # Vectorized computation
+    s &#61; σ.&#40;&#40;log.&#40;u&#41; .- log.&#40;1 .- u&#41; .&#43; hcl.logits&#41; ./ hcl.tau&#41;
+    s_bar &#61; s .* &#40;hcl.zeta - hcl.gamma&#41; .&#43; hcl.gamma
+    z &#61; clamp.&#40;s_bar, 0f0, 1f0&#41;
+    
+    return z
+end
+
+# Get sparsity &#40;how many gates are closed&#41;
+function get_sparsity&#40;hcl::HardConcreteLayer&#41;
+    probs &#61; σ.&#40;hcl.logits&#41;
+    return 1 - mean&#40;probs&#41;
+end
+
+# Example: Sparse neural network layer
+function sparse_layer_example&#40;&#41;
+    # 100 features, each with learnable gate
+    gates &#61; HardConcreteLayer&#40;100, init_p&#61;0.9&#41;  # Start mostly open
+    
+    # During forward pass
+    z &#61; gates&#40;&#41;  # Sample binary gates
+    
+    # Apply gates to activations
+    # x &#61; weights * input
+    # output &#61; x .* z  # Element-wise masking
+    
+    println&#40;&quot;Sparsity: &quot;, get_sparsity&#40;gates&#41;, &quot;&#37;&quot;&#41;
+    println&#40;&quot;Active features: &quot;, sum&#40;z&#41;&#41;
+    
+    return gates
+end</code></pre>
+<p><strong>Key differences from Python version:</strong></p>
+<ul>
+<li><p><code>logit</code> is now a <strong>learnable parameter</strong> that Flux will optimize</p>
+</li>
+<li><p>Use <code>Flux.@functor</code> to tell Flux which fields are trainable</p>
+</li>
+<li><p>Can create single gate or layer of gates</p>
+</li>
+<li><p>The probability <code>p</code> is implicitly learned through <code>logit &#61; log&#40;p/&#40;1-p&#41;&#41;</code></p>
+</li>
+<li><p>During training, gradients will flow back to update the logits&#33;</p>
+</li>
+</ul>
+<p><strong>During training:</strong></p>
+<ul>
+<li><p><strong>Forward pass</strong>: Use the hard \(\bar{z}\) &#40;which is often exactly 0 or 1 after clamping&#41;</p>
+</li>
+<li><p><strong>Backward pass</strong>: Gradient flows through the soft \(s\) before the clamp</p>
+</li>
+</ul>
+<p><strong>Why this is brilliant for sparse networks:</strong></p>
+<ul>
+<li><p>You get actual hard 0/1 gates that <em>truly</em> remove weights &#40;sparsity&#33;&#41;</p>
+</li>
+<li><p>Still differentiable through the soft \(s\)</p>
+</li>
+<li><p>No need to anneal temperature or worry about the network &quot;cheating&quot;</p>
+</li>
+<li><p>The stretch parameters \(\gamma, \zeta\) control how hard the gates are</p>
+</li>
+</ul>
+<p><strong>Comparison to straight-through:</strong></p>
+<ul>
+<li><p>Straight-through: \(\text{forward} = \text{one\_hot}(\arg\max)\), backward through soft values</p>
+</li>
+<li><p>Hard Concrete: \(\text{forward} = \text{stretched & clamped}\), backward through soft values</p>
+</li>
+</ul>
+<p>Both achieve &quot;hard in forward, soft in backward&quot; but Hard Concrete is smoother and more principled&#33;</p>
+<p><strong>Bottom line</strong>: You <em>can</em> make it learnable, but you need to be careful or the network will &quot;cheat&quot; by keeping everything soft. Fixed or annealed schedules are usually simpler and work just as well. OR, use the Hard Concrete trick to get hard samples without worrying about temperature at all&#33;</p>
+<h2 id="two_flavors"><a href="#two_flavors" class="header-anchor">Two Flavors</a></h2>
+<h3 id="flavor_1_straight-through_estimator"><a href="#flavor_1_straight-through_estimator" class="header-anchor">Flavor 1: Straight-Through Estimator</a></h3>
+<p>This one&#39;s sneaky:</p>
+<ul>
+<li><p><strong>Forward pass</strong>: Sample discrete one-hot vectors \(z = \text{one\_hot}(\arg\max_i y_i)\)</p>
+</li>
+<li><p><strong>Backward pass</strong>: Pretend you used the continuous \(y\) and pass those gradients</p>
+</li>
+</ul>
+<p>It&#39;s like lying to the backward pass, but in a good way&#33; You get discrete samples where you need them, but gradients flow as if everything was continuous.</p>
+<h3 id="flavor_2_fully_continuous"><a href="#flavor_2_fully_continuous" class="header-anchor">Flavor 2: Fully Continuous</a></h3>
+<p>Just use the soft vector \(y\) everywhere. No tricks, just smooth continuous outputs throughout.</p>
+<h2 id="but_wait_what_about_bernoulli_outputs"><a href="#but_wait_what_about_bernoulli_outputs" class="header-anchor">But Wait, What About Bernoulli Outputs?</a></h2>
+<p>Ah, great question&#33; What if you just need a binary choice? Like yes/no, 0/1, true/false?</p>
+<p>Good news: <strong>Bernoulli is just a special case&#33;</strong> A Bernoulli distribution is really just a categorical distribution with \(K=2\) classes.</p>
+<p>Here&#39;s how you&#39;d do it:</p>
+<h3 id="method_1_use_2-class_gumbel-softmax"><a href="#method_1_use_2-class_gumbel-softmax" class="header-anchor">Method 1: Use 2-Class Gumbel-Softmax</a></h3>
+<pre><code class="language-python"># Say you have probability p of class 1
+logits &#61; &#91;log&#40;1-p&#41;, log&#40;p&#41;&#93;  # logits for &#91;class 0, class 1&#93;
+
+# Apply Gumbel-Softmax
+y &#61; gumbel_softmax&#40;logits, tau&#41;  # returns &#91;y_0, y_1&#93;
+
+# If you want a single number, just take the second component
+binary_soft &#61; y&#91;1&#93;  # this is approximately 0 or 1</code></pre>
+<h3 id="method_2_binary_concrete_distribution"><a href="#method_2_binary_concrete_distribution" class="header-anchor">Method 2: Binary Concrete Distribution</a></h3>
+<p>There&#39;s actually a specific name for Bernoulli with Gumbel-Softmax: the <strong>Binary Concrete Distribution</strong> &#40;also called BinConcrete&#41;.</p>
+<p>For a Bernoulli with probability \(p\), you can directly sample:</p>
+\[y = \frac{1}{1 + \exp(-((\log p - \log(1-p) + G_1 - G_0) / \tau))}\]
+<p>where \(G_0, G_1 \sim \text{Gumbel}(0,1)\) are independent.</p>
+<p>This simplifies to:</p>
+\[y = \sigma\left(\frac{\log p - \log(1-p) + G_1 - G_0}{\tau}\right)\]
+<p>where \(\sigma\) is the sigmoid function. This gives you a number in \((0, 1)\) that&#39;s approximately 0 or 1 when \(\tau\) is small.</p>
+<h3 id="practical_code_for_bernoulli"><a href="#practical_code_for_bernoulli" class="header-anchor">Practical Code for Bernoulli</a></h3>
+<pre><code class="language-python">def binary_concrete_sample&#40;logit, tau&#61;1.0&#41;:
+    &quot;&quot;&quot;
+    Sample from Binary Concrete &#40;Gumbel-Softmax for Bernoulli&#41;
+    
+    Args:
+        logit: log&#40;p / &#40;1-p&#41;&#41; where p is Bernoulli probability
+        tau: temperature
+    
+    Returns:
+        Soft binary sample in &#40;0, 1&#41;
+    &quot;&quot;&quot;
+    U1, U2 &#61; uniform&#40;0, 1&#41;, uniform&#40;0, 1&#41;
+    G1, G2 &#61; -log&#40;-log&#40;U1&#41;&#41;, -log&#40;-log&#40;U2&#41;&#41;
+    
+    return sigmoid&#40;&#40;logit &#43; G1 - G2&#41; / tau&#41;</code></pre>
+<p>For straight-through:</p>
+<pre><code class="language-python"># Forward: hard binary
+z &#61; &#40;y &gt; 0.5&#41;.float&#40;&#41;  # or round&#40;y&#41;
+
+# Backward: use gradients from soft y</code></pre>
+<h2 id="real-world_applications"><a href="#real-world_applications" class="header-anchor">Real-World Applications</a></h2>
+<p>People use this trick for:</p>
+<ol>
+<li><p><strong>VAEs with discrete latents</strong> - &quot;Should this pixel be in cluster A or B?&quot;</p>
+</li>
+<li><p><strong>Neural architecture search</strong> - &quot;Should I use a conv layer or skip connection here?&quot;</p>
+</li>
+<li><p><strong>Reinforcement learning</strong> - &quot;Which action should the agent take?&quot;</p>
+</li>
+<li><p><strong>Attention mechanisms</strong> - &quot;Which part of the input should I focus on?&quot;</p>
+</li>
+<li><p><strong>Binary gates</strong> - &quot;Should this neuron be active or not?&quot; &#40;your Bernoulli case&#33;&#41;</p>
+</li>
+</ol>
+<h2 id="why_this_trick_is_awesome"><a href="#why_this_trick_is_awesome" class="header-anchor">Why This Trick Is Awesome</a></h2>
+<ul>
+<li><p>✅ <strong>It just works</strong> - Drop it into your model and start training</p>
+</li>
+<li><p>✅ <strong>Lower variance</strong> - Better than methods like REINFORCE</p>
+</li>
+<li><p>✅ <strong>Unbiased</strong> - As \(\tau \to 0\), you recover the true distribution</p>
+</li>
+<li><p>✅ <strong>Simple</strong> - Like 5 lines of code</p>
+</li>
+<li><p>✅ <strong>Flexible</strong> - Works for any categorical distribution &#40;including Bernoulli&#33;&#41;</p>
+</li>
+</ul>
+<h2 id="quick_example_discrete_vae"><a href="#quick_example_discrete_vae" class="header-anchor">Quick Example: Discrete VAE</a></h2>
+<p>Without Gumbel-Softmax:</p>
+<pre><code class="language-julia">Encoder → probabilities → &#91;SAMPLING - NOT DIFFERENTIABLE&#33;&#93; → Decoder
+                                ❌ Gradients die here</code></pre>
+<p>With Gumbel-Softmax:</p>
+<pre><code class="language-julia">Encoder → logits → Gumbel-Softmax → soft samples → Decoder
+                         ✅ Gradients flow&#33;</code></pre>
+<p>And that&#39;s it&#33; You can now backpropagate through discrete choices. Magic&#33; 🎉</p>
+<h2 id="tldr"><a href="#tldr" class="header-anchor">TL;DR</a></h2>
+<p>Need to sample discrete choices in a neural network? Can&#39;t backprop through sampling? Add Gumbel noise, apply softmax with temperature, and you&#39;ve got yourself a differentiable approximation. Works for categorical distributions &#40;pick 1 of K&#41; and Bernoulli distributions &#40;binary choice&#41; alike&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: November 26, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
