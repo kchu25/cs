@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Building a Simple Blockchain in Julia</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="building_a_simple_blockchain_in_julia"><a href="#building_a_simple_blockchain_in_julia" class="header-anchor">Building a Simple Blockchain in Julia</a></h1>
+<p>Hey&#33; So you want to build a blockchain in Julia? Absolutely possible, and I&#39;ll show you a minimal example that captures the core concepts.</p>
+<h2 id="what_makes_a_blockchain"><a href="#what_makes_a_blockchain" class="header-anchor">What Makes a Blockchain?</a></h2>
+<p>At its heart, a blockchain is just a linked list of blocks, where each block contains:</p>
+<ul>
+<li><p>Some data</p>
+</li>
+<li><p>A timestamp</p>
+</li>
+<li><p>A hash of the previous block &#40;this creates the &quot;chain&quot;&#41;</p>
+</li>
+<li><p>Its own hash</p>
+</li>
+</ul>
+<h2 id="the_code"><a href="#the_code" class="header-anchor">The Code</a></h2>
+<p>Let&#39;s build it step by step:</p>
+<pre><code class="language-julia">using SHA
+using Dates
+
+# Define what a Block looks like
+mutable struct Block
+    index::Int
+    timestamp::DateTime
+    data::String
+    previous_hash::String
+    hash::String
+end
+
+# Function to calculate a block&#39;s hash
+function calculate_hash&#40;block::Block&#41;
+    content &#61; string&#40;block.index, block.timestamp, block.data, block.previous_hash&#41;
+    return bytes2hex&#40;sha256&#40;content&#41;&#41;
+end
+
+# Create the first block &#40;the &quot;genesis block&quot;&#41;
+function create_genesis_block&#40;&#41;
+    block &#61; Block&#40;0, now&#40;&#41;, &quot;Genesis Block&quot;, &quot;0&quot;, &quot;&quot;&#41;
+    block.hash &#61; calculate_hash&#40;block&#41;
+    return block
+end
+
+# Add a new block to the chain
+function add_block&#40;blockchain::Vector&#123;Block&#125;, data::String&#41;
+    previous_block &#61; blockchain&#91;end&#93;
+    new_index &#61; previous_block.index &#43; 1
+    new_timestamp &#61; now&#40;&#41;
+    new_previous_hash &#61; previous_block.hash
+    
+    new_block &#61; Block&#40;new_index, new_timestamp, data, new_previous_hash, &quot;&quot;&#41;
+    new_block.hash &#61; calculate_hash&#40;new_block&#41;
+    
+    push&#33;&#40;blockchain, new_block&#41;
+    return new_block
+end
+
+# Verify the blockchain is valid
+function is_chain_valid&#40;blockchain::Vector&#123;Block&#125;&#41;
+    for i in 2:length&#40;blockchain&#41;
+        current &#61; blockchain&#91;i&#93;
+        previous &#61; blockchain&#91;i-1&#93;
+        
+        # Check if the hash is correct
+        if current.hash &#33;&#61; calculate_hash&#40;current&#41;
+            return false
+        end
+        
+        # Check if blocks are properly linked
+        if current.previous_hash &#33;&#61; previous.hash
+            return false
+        end
+    end
+    return true
+end</code></pre>
+<h2 id="lets_use_it"><a href="#lets_use_it" class="header-anchor">Let&#39;s Use It&#33;</a></h2>
+<pre><code class="language-julia"># Create our blockchain
+blockchain &#61; &#91;create_genesis_block&#40;&#41;&#93;
+
+# Add some blocks
+add_block&#40;blockchain, &quot;First transaction: Alice sends 10 coins to Bob&quot;&#41;
+add_block&#40;blockchain, &quot;Second transaction: Bob sends 5 coins to Charlie&quot;&#41;
+add_block&#40;blockchain, &quot;Third transaction: Charlie sends 2 coins to Alice&quot;&#41;
+
+# Print the blockchain
+println&#40;&quot;Our Blockchain:&quot;&#41;
+println&#40;&quot;&#61;&quot; ^ 50&#41;
+for block in blockchain
+    println&#40;&quot;Block #&#36;&#40;block.index&#41;&quot;&#41;
+    println&#40;&quot;  Timestamp: &#36;&#40;block.timestamp&#41;&quot;&#41;
+    println&#40;&quot;  Data: &#36;&#40;block.data&#41;&quot;&#41;
+    println&#40;&quot;  Previous Hash: &#36;&#40;block.previous_hash&#91;1:min&#40;10, length&#40;block.previous_hash&#41;&#41;&#93;&#41;...&quot;&#41;
+    println&#40;&quot;  Hash: &#36;&#40;block.hash&#91;1:10&#93;&#41;...&quot;&#41;
+    println&#40;&#41;
+end
+
+# Verify it&#39;s valid
+println&#40;&quot;Is blockchain valid? &#36;&#40;is_chain_valid&#40;blockchain&#41;&#41;&quot;&#41;</code></pre>
+<h2 id="whats_happening_here"><a href="#whats_happening_here" class="header-anchor">What&#39;s Happening Here?</a></h2>
+<p>The magic is in the <strong>hashing</strong>. Each block contains a hash of the previous block, creating an unbreakable chain. If someone tries to tamper with a block&#39;s data, its hash changes, which breaks the link to the next block. This is what makes blockchains tamper-evident&#33;</p>
+<p>The <code>SHA256</code> algorithm takes any input and produces a unique fingerprint. Change even one character in the data, and you get a completely different hash.</p>
+<h2 id="understanding_the_hash_fields"><a href="#understanding_the_hash_fields" class="header-anchor">Understanding the Hash Fields</a></h2>
+<p>You might notice each block stores <strong>two</strong> hash values:</p>
+<ol>
+<li><p><strong><code>hash</code></strong> - The block&#39;s own fingerprint/ID, calculated from its index, timestamp, data, and previous_hash</p>
+</li>
+<li><p><strong><code>previous_hash</code></strong> - A copy of the parent block&#39;s hash, creating the chain link</p>
+</li>
+</ol>
+<p>Why both? Think of it like a linked list:</p>
+<pre><code class="language-julia">Block 0               Block 1                  Block 2
+hash: &quot;abc123&quot;        hash: &quot;def456&quot;           hash: &quot;ghi789&quot;
+previous_hash: &quot;0&quot;    previous_hash: &quot;abc123&quot;  previous_hash: &quot;def456&quot;
+                      └─ points to Block 0     └─ points to Block 1</code></pre>
+<p>When you calculate a block&#39;s hash, you&#39;re hashing these specific fields &#40;not the entire block object&#41;:</p>
+<ul>
+<li><p><code>index</code>, <code>timestamp</code>, <code>data</code>, <code>previous_hash</code></p>
+</li>
+</ul>
+<p>Notice the <code>hash</code> field itself isn&#39;t included - that would be circular&#33;</p>
+<h2 id="does_order_in_the_vector_matter"><a href="#does_order_in_the_vector_matter" class="header-anchor">Does Order in the Vector Matter?</a></h2>
+<p>Here&#39;s something interesting: <strong>the order in the vector doesn&#39;t technically matter for the blockchain&#39;s integrity&#33;</strong> The chain is defined by the cryptographic links &#40;<code>previous_hash</code> → <code>hash</code>&#41;, not by array position.</p>
+<p>You could shuffle the blocks randomly in the vector, and as long as you can follow the hash pointers, you could reconstruct the correct order. The <code>index</code> field and hash links preserve the true sequence.</p>
+<p>However, in practice, we keep them ordered in the vector because:</p>
+<ul>
+<li><p>It&#39;s way more convenient for humans to read</p>
+</li>
+<li><p>Validation is simpler when you can just iterate forward</p>
+</li>
+<li><p>Adding new blocks is easier &#40;just append to the end&#41;</p>
+</li>
+</ul>
+<p>But the security? That comes purely from the cryptographic chain of hashes, not the array order&#33;</p>
+<h2 id="try_it_out"><a href="#try_it_out" class="header-anchor">Try It Out</a></h2>
+<p>Copy this code into a Julia REPL and run it&#33; You&#39;ll see your own little blockchain being created. It&#39;s missing features like proof-of-work &#40;mining&#41; and a distributed network, but it has the fundamental structure that makes blockchains work.</p>
+<p>Pretty cool, right? This is the same basic idea behind Bitcoin and other cryptocurrencies, just without all the complexity of consensus algorithms and peer-to-peer networking&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 01, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

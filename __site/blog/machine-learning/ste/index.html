@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Straight-Through Estimator (STE)</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="straight-through_estimator_ste"><a href="#straight-through_estimator_ste" class="header-anchor">Straight-Through Estimator &#40;STE&#41;</a></h1>
+<h2 id="the_problem"><a href="#the_problem" class="header-anchor">The Problem</a></h2>
+<p>Non-differentiable operations like \(\text{argmax}\), \(\text{round}\), or \(\mathbb{1}_{x > 0}\) break backpropagation:</p>
+\[\frac{\partial}{\partial x}\text{argmax}(x) = 0 \text{ or undefined}\]
+<h2 id="the_solution"><a href="#the_solution" class="header-anchor">The Solution</a></h2>
+<p><strong>Use different operations for forward and backward passes:</strong></p>
+<ul>
+<li><p><strong>Forward pass</strong>: Use the hard/discrete operation &#40;fast, what you actually want&#41;</p>
+</li>
+<li><p><strong>Backward pass</strong>: Pretend it was a smooth approximation &#40;differentiable&#41;</p>
+</li>
+</ul>
+<h2 id="mathematical_formulation"><a href="#mathematical_formulation" class="header-anchor">Mathematical Formulation</a></h2>
+<p>For a non-differentiable function \(h(x)\) and its smooth approximation \(s(x)\):</p>
+\[y = h(x) + [s(x) - s(x)]\]
+<p>During backpropagation:</p>
+\[\frac{\partial L}{\partial x} = \frac{\partial L}{\partial y} \cdot \frac{\partial s(x)}{\partial x}\]
+<p>The gradient flows through \(s(x)\), but forward pass uses \(h(x)\).</p>
+<h2 id="implementation_pattern"><a href="#implementation_pattern" class="header-anchor">Implementation Pattern</a></h2>
+<h3 id="julia_implementation"><a href="#julia_implementation" class="header-anchor">Julia Implementation</a></h3>
+<pre><code class="language-julia">using Flux
+
+# STE for binarization
+function binary_ste&#40;x&#41;
+    # Forward: hard threshold
+    hard &#61; Float32.&#40;x .&gt; 0&#41;
+    
+    # Backward: gradient of identity
+    # In Flux, we override the gradient manually
+    return hard
+end
+
+# Define custom gradient
+Flux.@adjoint binary_ste&#40;x&#41; &#61; binary_ste&#40;x&#41;, Δ -&gt; &#40;Δ,&#41;
+
+# Example usage
+x &#61; &#91;0.7, -0.3, 0.1&#93;
+y &#61; binary_ste&#40;x&#41;  # &#91;1.0, 0.0, 1.0&#93;</code></pre>
+<h3 id="gumbel-softmax_with_ste"><a href="#gumbel-softmax_with_ste" class="header-anchor">Gumbel-Softmax with STE</a></h3>
+<pre><code class="language-julia">using Flux
+using Random
+
+function gumbel_softmax_ste&#40;logits; τ&#61;1.0&#41;
+    # Sample Gumbel noise: -log&#40;-log&#40;U&#41;&#41;
+    U &#61; rand&#40;Float32, size&#40;logits&#41;...&#41;
+    gumbel &#61; -log.&#40;-log.&#40;U .&#43; 1f-20&#41; .&#43; 1f-20&#41;
+    
+    # Soft &#40;differentiable&#41; version
+    soft &#61; softmax&#40;&#40;logits .&#43; gumbel&#41; ./ τ&#41;
+    
+    # Hard &#40;discrete&#41; version - one-hot of argmax
+    hard_idx &#61; argmax&#40;soft, dims&#61;1&#41;
+    hard &#61; zeros&#40;Float32, size&#40;soft&#41;&#41;
+    hard&#91;hard_idx&#93; .&#61; 1.0f0
+    
+    # STE trick: hard forward, soft backward
+    return hard .- Flux.stopgradient&#40;soft&#41; .&#43; soft
+end
+
+# Example
+logits &#61; randn&#40;Float32, 5, 10&#41;  # 5 classes, 10 samples
+samples &#61; gumbel_softmax_ste&#40;logits, τ&#61;0.5&#41;
+# Forward: discrete one-hot vectors
+# Backward: gradients flow through soft distribution</code></pre>
+<h2 id="common_applications"><a href="#common_applications" class="header-anchor">Common Applications</a></h2>
+<table><tr><th align="right">Application</th><th align="right">Hard Operation</th><th align="right">Soft Approximation</th></tr><tr><td align="right"><strong>Binarization</strong></td><td align="right">\(\text{sign}(x)\) or \(\mathbb{1}_{x>0}\)</td><td align="right">\(\text{tanh}(x)\) or \(\sigma(x)\)</td></tr><tr><td align="right"><strong>Quantization</strong></td><td align="right">\(\text{round}(x)\)</td><td align="right">\(x\) &#40;identity&#41;</td></tr><tr><td align="right"><strong>Categorical Sampling</strong></td><td align="right">\(\text{argmax}(x)\)</td><td align="right">\(\text{softmax}(x/\tau)\)</td></tr><tr><td align="right"><strong>Top-k Selection</strong></td><td align="right">\(\text{top-k}(x)\)</td><td align="right">\(\text{softmax}(x/\tau)\)</td></tr></table>
+<h2 id="why_it_works"><a href="#why_it_works" class="header-anchor">Why It Works</a></h2>
+<ol>
+<li><p><strong>Forward pass gets what you want</strong>: Discrete, fast operations</p>
+</li>
+<li><p><strong>Backward pass is trainable</strong>: Smooth gradients flow</p>
+</li>
+<li><p><strong>Biased but useful</strong>: Gradients aren&#39;t &quot;correct&quot; but work in practice</p>
+</li>
+</ol>
+<h2 id="key_intuition"><a href="#key_intuition" class="header-anchor">Key Intuition</a></h2>
+<blockquote>
+<p><strong>&quot;Lie to the gradient&quot;</strong> - Use fast discrete operations forward, pretend they were smooth backward.</p>
+</blockquote>
+<p>The estimator is &quot;straight-through&quot; because gradients pass straight through the non-differentiable operation as if it were the identity &#40;or its smooth approximation&#41;.</p>
+<h2 id="performance_impact"><a href="#performance_impact" class="header-anchor">Performance Impact</a></h2>
+<p>For your case &#40;Gumbel-Softmax&#41;:</p>
+<ul>
+<li><p><strong>Without STE</strong>: Compute soft probabilities every forward pass → <strong>64&#37; of time</strong></p>
+</li>
+<li><p><strong>With STE</strong>: Just compute argmax → <strong>~5&#37; of time</strong> &#40;huge speedup&#33;&#41;</p>
+</li>
+</ul>
+<p>The backward pass still computes soft probabilities, but that&#39;s only once per batch and is parallelized with other gradient computations.</p>
+<blockquote>
+<p><strong>Wait, doesn&#39;t STE still generate Gumbel noise?</strong></p>
+<p>Yes&#33; The code above still samples Gumbel noise, so if you&#39;ve already wrapped that in <code>@ignore_derivatives</code>, you won&#39;t see much speedup from STE alone.</p>
+<p><strong>The real speedup comes from eliminating the soft probabilities computation:</strong></p>
+<ul>
+<li><p><strong>Without STE</strong>: <code>soft &#61; softmax&#40;&#40;logits &#43; gumbel&#41; / τ&#41;</code> → use this soft distribution directly &#40;expensive softmax on every forward pass&#41;</p>
+</li>
+<li><p><strong>With STE</strong>: Compute soft once, but use <code>argmax</code> &#43; one-hot encoding &#40;much cheaper&#41;</p>
+</li>
+</ul>
+<p><strong>However, if you&#39;re using continuous Gumbel-Softmax</strong> &#40;like <code>sigmoid&#40;&#40;logit &#43; gumbel&#41; / temp&#41;</code>&#41;, the issue is different:</p>
+<p>Your function computes:</p>
+</blockquote>
+<pre><code class="language-julia">&gt; s &#61; sigmoid&#40;&#40;logit_p &#43; gumbel&#41; / temp&#41;  # Still continuous &#91;0,1&#93;
+&gt; return clamp&#40;s * scale &#43; gamma, 0, 1&#41;    # Still continuous
+&gt;</code></pre>
+<blockquote>
+<p><strong>This is NOT producing discrete samples</strong>, so STE doesn&#39;t directly apply. You&#39;re computing a continuous relaxation every time.</p>
+<p><strong>To speed this up with STE, you need to make it discrete:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; function gumbel_softmax_ste_binary&#40;p, temp, eta, gamma&#41;
+&gt;     # Gumbel noise &#40;already optimized with @ignore_derivatives&#41;
+&gt;     gumbel &#61; @ignore_derivatives if p isa CuArray
+&gt;         -log.&#40;-log.&#40;CUDA.rand&#40;DEFAULT_FLOAT_TYPE, size&#40;p&#41;&#41;&#41;&#41;
+&gt;     else
+&gt;         -log.&#40;-log.&#40;rand&#40;DEFAULT_FLOAT_TYPE, size&#40;p&#41;&#41;&#41;&#41;
+&gt;     end
+&gt;     
+&gt;     logit_p &#61; @. log&#40;p &#43; MASK_EPSILON&#41; - log&#40;&#40;MASK_ONE - p&#41; &#43; MASK_EPSILON&#41;
+&gt;     
+&gt;     # Soft version &#40;for gradients&#41;
+&gt;     s &#61; @. sigmoid&#40;&#40;logit_p &#43; gumbel&#41; / temp&#41;
+&gt;     s_scaled &#61; @. clamp&#40;s * scale &#43; gamma, MASK_ZERO, MASK_ONE&#41;
+&gt;     
+&gt;     # Hard version &#40;for forward pass&#41; - threshold at 0.5
+&gt;     hard &#61; @. Float32&#40;s &gt; 0.5f0&#41;  # Binary: 0 or 1
+&gt;     
+&gt;     # STE: use hard in forward, soft in backward
+&gt;     return hard .- Flux.stopgradient&#40;s_scaled&#41; .&#43; s_scaled
+&gt; end
+&gt;</code></pre>
+<blockquote>
+<p><strong>The 64&#37; bottleneck breakdown:</strong></p>
+<ul>
+<li><p>Gumbel sampling: ~15-20&#37; &#40;unavoidable if you need stochasticity&#41;</p>
+</li>
+<li><p><code>log</code> operations: ~20-30&#37; &#40;for logit computation&#41;</p>
+</li>
+<li><p><code>sigmoid</code>: ~15-20&#37;</p>
+</li>
+<li><p>Scaling/clamping: ~10-15&#37;</p>
+</li>
+</ul>
+<p><strong>Ways to speed up your specific case:</strong></p>
+<ol>
+<li><p><strong>Use hard thresholding with STE</strong> &#40;as shown above&#41; - gets you discrete 0/1 in forward pass</p>
+</li>
+<li><p><strong>Remove temperature annealing</strong> - if temp is small, just use <code>logit_p &#43; gumbel &gt; 0</code> &#40;much faster than sigmoid&#41;</p>
+</li>
+<li><p><strong>Pre-compute logits</strong> - if <code>p</code> doesn&#39;t change often, cache <code>logit_p</code></p>
+</li>
+<li><p><strong>Fuse operations in a custom kernel</strong> - combine log &#43; sigmoid &#43; scale into one CUDA kernel</p>
+</li>
+<li><p><strong>At inference, drop Gumbel entirely</strong> - just use <code>p &gt; 0.5</code> &#40;deterministic&#41;</p>
+</li>
+</ol>
+<p><strong>Bottom line</strong>: Your bottleneck is the continuous relaxation &#40;<code>sigmoid</code> &#43; scaling&#41;. STE helps by replacing the forward pass with a simple threshold, but you still need the soft version for gradients in backward pass.</p>
+</blockquote>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 01, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
