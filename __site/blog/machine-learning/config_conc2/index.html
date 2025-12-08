@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Uniform Sampling with Concentration Bounds for Configuration Enumeration - II</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="uniform_sampling_with_concentration_bounds_for_configuration_enumeration_-_ii"><a href="#uniform_sampling_with_concentration_bounds_for_configuration_enumeration_-_ii" class="header-anchor">Uniform Sampling with Concentration Bounds for Configuration Enumeration - II </a></h1>
+<h2 id="clarified_version"><a href="#clarified_version" class="header-anchor">Clarified Version</a></h2>
+<h2 id="executive_summary"><a href="#executive_summary" class="header-anchor">Executive Summary</a></h2>
+<p>A principled approach to scaling motif discovery when α &#40;code image sparsity&#41; is large:</p>
+<ul>
+<li><p><strong>No heuristics</strong>: Pure uniform random sampling</p>
+</li>
+<li><p><strong>Theoretical guarantees</strong>: Concentration inequalities bound error</p>
+</li>
+<li><p><strong>Unbiased</strong>: Every configuration has equal probability</p>
+</li>
+<li><p><strong>Scalable</strong>: O&#40;log N&#41; sample complexity instead of O&#40;N&#41; enumeration</p>
+</li>
+<li><p><strong>Simple</strong>: Just set desired error ε and confidence δ</p>
+</li>
+</ul>
+<hr />
+<h2 id="the_problem"><a href="#the_problem" class="header-anchor">The Problem</a></h2>
+<h3 id="current_bottleneck"><a href="#current_bottleneck" class="header-anchor">Current Bottleneck</a></h3>
+<p>Given code image \(Z\) with \(m \leq \alpha\) non-zero entries:</p>
+<ul>
+<li><p>Need to evaluate all \(q\)-component configurations</p>
+</li>
+<li><p>Total configurations: \(N = \binom{m}{q}\)</p>
+</li>
+<li><p><strong>Exhaustive enumeration becomes intractable</strong> when \(\alpha\) is large</p>
+</li>
+</ul>
+<p><strong>Examples:</strong></p>
+<ul>
+<li><p>\(\alpha = 32\): \(\binom{32}{3} = 4{,}960\) ✓ &#40;feasible&#41;</p>
+</li>
+<li><p>\(\alpha = 100\): \(\binom{100}{3} = 161{,}700\) &#40;expensive&#41;</p>
+</li>
+<li><p>\(\alpha = 200\): \(\binom{200}{3} = 1{,}313{,}400\) &#40;prohibitive&#41;</p>
+</li>
+<li><p>\(\alpha = 500\): \(\binom{500}{3} = 20{,}708{,}500\) &#40;impossible&#41;</p>
+</li>
+</ul>
+<hr />
+<h2 id="key_clarification_what_are_we_sampling"><a href="#key_clarification_what_are_we_sampling" class="header-anchor">Key Clarification: What Are We Sampling?</a></h2>
+<p><strong>Important conceptual point</strong>: We&#39;re not sampling configurations that appear with different frequencies. Instead:</p>
+<ol>
+<li><p>There are \(N = \binom{m}{q}\) total <strong>possible</strong> configurations</p>
+</li>
+<li><p>Each configuration is equally likely when sampled uniformly</p>
+</li>
+<li><p>Each configuration gets <strong>tested</strong> &#40;e.g., with Fisher exact test&#41; to see if it&#39;s biologically significant</p>
+</li>
+<li><p>We want to find <strong>all significant configurations</strong> without testing all \(N\) of them</p>
+</li>
+</ol>
+<p>Think of it this way:</p>
+<ul>
+<li><p><strong>Space to explore</strong>: \(N\) possible configurations &#40;like \(N\) lottery tickets&#41;</p>
+</li>
+<li><p><strong>Goal</strong>: Find all &quot;winning tickets&quot; &#40;biologically significant patterns&#41;</p>
+</li>
+<li><p><strong>Unknown</strong>: Which configurations will pass our significance test</p>
+</li>
+<li><p><strong>Challenge</strong>: We can&#39;t test all \(N\) tickets when \(N\) is huge</p>
+</li>
+</ul>
+<hr />
+<h2 id="the_solution_uniform_random_sampling"><a href="#the_solution_uniform_random_sampling" class="header-anchor">The Solution: Uniform Random Sampling</a></h2>
+<h3 id="core_principle"><a href="#core_principle" class="header-anchor">Core Principle</a></h3>
+<p><strong>Sample configurations uniformly at random</strong>, then test each sampled configuration. Use <strong>concentration inequalities</strong> to guarantee we find important patterns.</p>
+<h3 id="what_were_actually_guaranteeing"><a href="#what_were_actually_guaranteeing" class="header-anchor">What We&#39;re Actually Guaranteeing</a></h3>
+<p>Let&#39;s say a configuration is <strong>&quot;significant&quot;</strong> if it passes our Fisher exact test &#40;or other biological validation&#41;.</p>
+<p><strong>Key insight</strong>: We don&#39;t know which configurations are significant until we test them. But if there are at least K significant configurations among the N total &#40;where K/N ≥ ε&#41;, we can guarantee finding them with high probability.</p>
+<hr />
+<h2 id="theoretical_guarantees_corrected"><a href="#theoretical_guarantees_corrected" class="header-anchor">Theoretical Guarantees &#40;Corrected&#41;</a></h2>
+<h3 id="the_actual_question_will_we_find_rare_needles_in_a_haystack"><a href="#the_actual_question_will_we_find_rare_needles_in_a_haystack" class="header-anchor">The Actual Question: Will We Find Rare Needles in a Haystack?</a></h3>
+<p>Suppose there are \(K\) &quot;significant&quot; configurations hidden among \(N\) total configurations, where:</p>
+<ul>
+<li><p>\(K/N \geq \varepsilon\) &#40;at least \(\varepsilon\) fraction are significant&#41;</p>
+</li>
+<li><p>We sample \(n\) configurations uniformly at random</p>
+</li>
+<li><p>We want to find <strong>at least one</strong> significant configuration with probability \(\geq 1-\delta\)</p>
+</li>
+</ul>
+<p><strong>Theorem &#40;Coupon Collector Style&#41;:</strong></p>
+<p>If there are at least \(K \geq \varepsilon N\) significant configurations, the probability we find <strong>at least one</strong> after \(n\) samples is:</p>
+\(\mathbb{P}(\text{find} \geq 1 \text{ significant}) = 1 - \left(1 - \frac{K}{N}\right)^n \geq 1 - (1 - \varepsilon)^n\)
+<p>Using the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\):</p>
+\(\mathbb{P}(\text{miss all significant configs}) \leq e^{-n\varepsilon}\)
+<p>Setting \(e^{-n\varepsilon} = \delta\):</p>
+\(n \geq \frac{\ln(1/\delta)}{\varepsilon}\)
+<p><strong>More conservatively &#40;using Chernoff bound&#41;:</strong></p>
+\(n \geq \frac{2\ln(2/\delta)}{\varepsilon^2}\)
+<p><strong>Interpretation</strong>: If at least \(\varepsilon\) fraction of configurations are significant, we need only \(O(1/\varepsilon^2)\) samples to find one, <strong>regardless of \(N\)</strong>.</p>
+<h3 id="example"><a href="#example" class="header-anchor">Example</a></h3>
+<ul>
+<li><p>Suppose 1&#37; of all configurations are biologically significant &#40;\(\varepsilon = 0.01\)&#41;</p>
+</li>
+<li><p>Want 99&#37; confidence &#40;\(\delta = 0.01\)&#41;</p>
+</li>
+<li><p>Need \(n \geq 2\ln(200) / 0.01^2 \approx 106{,}000\) samples</p>
+</li>
+<li><p><strong>This is the same whether \(N = 1\) million or \(N = 1\) billion&#33;</strong></p>
+</li>
+</ul>
+<hr />
+<h2 id="why_this_works_the_birthday_paradox_in_reverse"><a href="#why_this_works_the_birthday_paradox_in_reverse" class="header-anchor">Why This Works: The Birthday Paradox in Reverse</a></h2>
+<p>This is related to the <strong>coupon collector problem</strong>:</p>
+<ul>
+<li><p><strong>Classic coupon collector</strong>: &quot;How many samples to collect ALL coupons?&quot; → \(O(N \log N)\)</p>
+</li>
+<li><p><strong>Our version</strong>: &quot;How many samples to collect AT LEAST ONE coupon from the &#39;good&#39; pile?&quot; → \(O(1/\varepsilon)\)</p>
+</li>
+</ul>
+<p>If \(\varepsilon\) fraction of configurations are significant, each sample has probability \(\varepsilon\) of being significant. After \(n\) samples, probability of finding none is \((1-\varepsilon)^n\), which decays exponentially.</p>
+<hr />
+<h2 id="multiple_significant_configurations"><a href="#multiple_significant_configurations" class="header-anchor">Multiple Significant Configurations</a></h2>
+<h3 id="finding_all_significant_configurations"><a href="#finding_all_significant_configurations" class="header-anchor">Finding ALL Significant Configurations</a></h3>
+<p>If we want to find <strong>all</strong> significant configurations &#40;not just one&#41;, we need more samples.</p>
+<p><strong>Theorem</strong>: To find all \(K\) significant configurations with probability \(\geq 1-\delta\), we need:</p>
+\(n \geq \frac{N}{K} \cdot \left[\ln(K) + \ln(1/\delta)\right]\)
+<p>Or in terms of \(\varepsilon = K/N\):</p>
+\(n \geq \frac{1}{\varepsilon} \cdot \left[\ln(\varepsilon N) + \ln(1/\delta)\right]\)
+<p><strong>Now \(N\) appears&#33;</strong> Because finding ALL needles requires searching through more of the haystack as the haystack grows.</p>
+<h3 id="the_tradeoff"><a href="#the_tradeoff" class="header-anchor">The Tradeoff</a></h3>
+<p><strong>Finding ONE significant pattern</strong>: \(O(1/\varepsilon^2)\) samples &#40;independent of \(N\)&#41;</p>
+<p><strong>Finding ALL significant patterns</strong>: \(O((1/\varepsilon)\cdot\log(N))\) samples &#40;logarithmic in \(N\)&#41;</p>
+<p>Both are vastly better than \(O(N)\) exhaustive enumeration&#33;</p>
+<hr />
+<h2 id="practical_algorithm"><a href="#practical_algorithm" class="header-anchor">Practical Algorithm</a></h2>
+<pre><code class="language-python">def sample_configurations&#40;Z, q, n_samples&#41;:
+    &quot;&quot;&quot;
+    Uniformly sample configurations and test for significance.
+    
+    Parameters:
+    -----------
+    Z : Matrix
+        Code image with non-zero sparse code entries
+    q : int
+        Configuration size &#40;typically 3&#41;
+    n_samples : int
+        Number of configurations to sample
+    
+    Returns:
+    --------
+    significant_configs : list
+        Configurations that pass significance testing
+    &quot;&quot;&quot;
+    # Get non-zero positions
+    nonzero_positions &#61; get_nonzero&#40;Z&#41;
+    m &#61; len&#40;nonzero_positions&#41;
+    N &#61; comb&#40;m, q&#41;
+    
+    print&#40;f&quot;Total possible configurations: &#123;N:,&#125;&quot;&#41;
+    print&#40;f&quot;Sampling &#123;n_samples:,&#125; configurations &#40;&#123;100*n_samples/N:.2f&#125;&#37;&#41;&quot;&#41;
+    
+    tested_configs &#61; set&#40;&#41;
+    significant_configs &#61; &#91;&#93;
+    
+    for _ in range&#40;n_samples&#41;:
+        # Sample q positions uniformly at random &#40;without replacement&#41;
+        indices &#61; random.sample&#40;range&#40;m&#41;, q&#41;
+        config &#61; tuple&#40;sorted&#40;nonzero_positions&#91;i&#93; for i in indices&#41;&#41;
+        
+        # Avoid testing the same configuration twice
+        if config in tested_configs:
+            continue
+        tested_configs.add&#40;config&#41;
+        
+        # Test for biological significance
+        p_value &#61; fisher_exact_test&#40;config, test_set&#41;
+        if p_value &lt; 1e-6:  # Significance threshold
+            significant_configs.append&#40;config&#41;
+    
+    return significant_configs</code></pre>
+<hr />
+<h2 id="sample_size_recommendations"><a href="#sample_size_recommendations" class="header-anchor">Sample Size Recommendations</a></h2>
+<h3 id="conservative_strategy_find_one_significant_pattern"><a href="#conservative_strategy_find_one_significant_pattern" class="header-anchor">Conservative Strategy &#40;Find ONE significant pattern&#41;</a></h3>
+<p>If you expect at least \(\varepsilon\) fraction of configurations to be significant:</p>
+\(n = \frac{2\ln(2/\delta)}{\varepsilon^2}\)
+<p>Example values:</p>
+<table><tr><th align="right">\(\varepsilon\) &#40;expected fraction significant&#41;</th><th align="right">\(\delta\) &#40;failure prob&#41;</th><th align="right">\(n\) &#40;samples needed&#41;</th></tr><tr><td align="right">0.01 &#40;1&#37;&#41;</td><td align="right">0.01</td><td align="right">~106,000</td></tr><tr><td align="right">0.05 &#40;5&#37;&#41;</td><td align="right">0.01</td><td align="right">~4,300</td></tr><tr><td align="right">0.10 &#40;10&#37;&#41;</td><td align="right">0.01</td><td align="right">~1,100</td></tr></table>
+<h3 id="aggressive_strategy_find_most_significant_patterns"><a href="#aggressive_strategy_find_most_significant_patterns" class="header-anchor">Aggressive Strategy &#40;Find MOST significant patterns&#41;</a></h3>
+<p>If you want high coverage of all significant patterns:</p>
+\(n = \frac{1}{\varepsilon} \cdot \left[\ln(N) + \ln(1/\delta)\right]\)
+<table><tr><th align="right">\(\alpha\) &#40;sparsity&#41;</th><th align="right">\(N = \binom{\alpha}{3}\)</th><th align="right">\(\varepsilon = 0.01\)</th><th align="right">\(n\) &#40;samples&#41;</th><th align="right">Speedup</th></tr><tr><td align="right">100</td><td align="right">161,700</td><td align="right">0.01</td><td align="right">~1,500</td><td align="right">108×</td></tr><tr><td align="right">200</td><td align="right">1,313,400</td><td align="right">0.01</td><td align="right">~1,600</td><td align="right">821×</td></tr><tr><td align="right">500</td><td align="right">20,708,500</td><td align="right">0.01</td><td align="right">~1,900</td><td align="right">10,900×</td></tr></table>
+<hr />
+<h2 id="are_these_bounds_too_pessimistic"><a href="#are_these_bounds_too_pessimistic" class="header-anchor">Are These Bounds Too Pessimistic?</a></h2>
+<p><strong>Short answer: Yes&#33;</strong> The theoretical bounds are quite conservative. Here&#39;s why and what to do about it.</p>
+<h3 id="why_the_bounds_are_pessimistic"><a href="#why_the_bounds_are_pessimistic" class="header-anchor">Why the Bounds Are Pessimistic</a></h3>
+<h4 id="worst-case_vs_average-case"><a href="#worst-case_vs_average-case" class="header-anchor"><ol>
+<li><p>Worst-Case vs. Average-Case</p>
+</li>
+</ol>
+</a></h4>
+<p>The formula \(n \geq \frac{2\ln(2/\delta)}{\varepsilon^2}\) is a <strong>worst-case guarantee</strong> that works even in unlucky scenarios.</p>
+<p><strong>Expected number of samples</strong> to find one significant configuration: \(\mathbb{E}[n] = \frac{1}{\varepsilon}\)</p>
+<p><strong>Guaranteed with high confidence:</strong> \(n = \frac{2\ln(2/\delta)}{\varepsilon^2}\)</p>
+<p><strong>Example</strong> &#40;\(\varepsilon = 0.01\), \(\delta = 0.01\)&#41;:</p>
+<ul>
+<li><p><strong>Expected &#40;average case&#41;</strong>: \(1/0.01 = 100\) samples</p>
+</li>
+<li><p><strong>Guaranteed &#40;worst case&#41;</strong>: \(106,000\) samples</p>
+</li>
+</ul>
+<p>That&#39;s a <strong>1,000× difference</strong>&#33;</p>
+<h4 id="ol_start2_actual_success_probabilities"><a href="#ol_start2_actual_success_probabilities" class="header-anchor"><ol start="2">
+<li><p>Actual Success Probabilities</p>
+</li>
+</ol>
+</a></h4>
+<p>Let&#39;s compute the <strong>actual</strong> probability of success for \(\varepsilon = 0.01\):</p>
+\(\mathbb{P}(\text{find} \geq 1) = 1 - (1-\varepsilon)^n\)
+<table><tr><th align="right">Samples \(n\)</th><th align="right">Actual P&#40;success&#41;</th><th align="right">Bound guarantees?</th><th align="right">Status</th></tr><tr><td align="right">100</td><td align="right">63.4&#37;</td><td align="right">❌ No</td><td align="right">Expected value</td></tr><tr><td align="right">300</td><td align="right">95.0&#37;</td><td align="right">❌ No</td><td align="right">Pretty good&#33;</td></tr><tr><td align="right">500</td><td align="right">99.3&#37;</td><td align="right">❌ No</td><td align="right">Excellent&#33;</td></tr><tr><td align="right">1,000</td><td align="right">99.996&#37;</td><td align="right">❌ No</td><td align="right">Nearly certain</td></tr><tr><td align="right">106,000</td><td align="right">~100&#37;</td><td align="right">✅ Yes</td><td align="right">Theoretical bound</td></tr></table>
+<p><strong>In practice</strong>: 500-1,000 samples would work great, but the theoretical bound says you need 106,000&#33;</p>
+<h4 id="ol_start3_the_concentration_bound_is_loose"><a href="#ol_start3_the_concentration_bound_is_loose" class="header-anchor"><ol start="3">
+<li><p>The Concentration Bound Is Loose</p>
+</li>
+</ol>
+</a></h4>
+<p>The Chernoff bound gives an <strong>upper bound</strong> on failure probability: \(\mathbb{P}(\text{miss all}) \leq e^{-n\varepsilon}\)</p>
+<p>The <strong>actual</strong> probability is: \(\mathbb{P}(\text{miss all}) = (1-\varepsilon)^n\)</p>
+<p>For small \(\varepsilon\), we use the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\), which adds conservatism.</p>
+<h3 id="when_are_pessimistic_bounds_useful"><a href="#when_are_pessimistic_bounds_useful" class="header-anchor">When Are Pessimistic Bounds Useful?</a></h3>
+<p>The conservative theoretical bounds are valuable when:</p>
+<ol>
+<li><p><strong>You absolutely cannot afford to fail</strong> &#40;high-stakes applications&#41;</p>
+</li>
+<li><p><strong>You&#39;re doing many independent searches</strong> &#40;need union bound over experiments&#41;</p>
+</li>
+<li><p><strong>You don&#39;t know \(\varepsilon\) in advance</strong> and want to be safe</p>
+</li>
+<li><p><strong>You&#39;re proving theoretical guarantees</strong> in a paper</p>
+</li>
+</ol>
+<h3 id="practical_recommendations"><a href="#practical_recommendations" class="header-anchor">Practical Recommendations</a></h3>
+<p>For actual implementation, consider these strategies:</p>
+<h4 id="strategy_1_use_expected_value_with_safety_factor"><a href="#strategy_1_use_expected_value_with_safety_factor" class="header-anchor">Strategy 1: Use Expected Value with Safety Factor</a></h4>
+\(n_{\text{practical}} = \frac{k}{\varepsilon}\)
+<p>where \(k = 3\) to \(5\) &#40;gives ~95-99&#37; success rate for finding at least one pattern&#41;</p>
+<p><strong>Example</strong>: For \(\varepsilon = 0.01\):</p>
+<ul>
+<li><p><strong>Theoretical bound</strong>: \(n = 106,000\)</p>
+</li>
+<li><p><strong>Practical approach</strong>: \(n = 300\) to \(500\)</p>
+</li>
+<li><p><strong>Speedup</strong>: 200-350× fewer samples&#33;</p>
+</li>
+</ul>
+<h4 id="strategy_2_sequential_sampling_with_early_stopping"><a href="#strategy_2_sequential_sampling_with_early_stopping" class="header-anchor">Strategy 2: Sequential Sampling with Early Stopping</a></h4>
+<pre><code class="language-python">def sample_until_found&#40;Z, q, epsilon, max_samples&#61;None&#41;:
+    &quot;&quot;&quot;
+    Sample until we find a significant configuration.
+    Much more efficient than using the theoretical bound&#33;
+    &quot;&quot;&quot;
+    n_expected &#61; int&#40;1 / epsilon&#41;
+    max_samples &#61; max_samples or int&#40;10 * n_expected&#41;  # 10× expected
+    
+    significant_configs &#61; &#91;&#93;
+    
+    for i in range&#40;max_samples&#41;:
+        config &#61; sample_one_configuration&#40;Z, q&#41;
+        
+        if is_significant&#40;config&#41;:
+            significant_configs.append&#40;config&#41;
+            print&#40;f&quot;Found significant pattern after &#123;i&#43;1&#125; samples&quot;&#41;
+            
+            # Optional: stop after finding k patterns
+            if len&#40;significant_configs&#41; &gt;&#61; desired_count:
+                return significant_configs
+    
+    if not significant_configs:
+        print&#40;f&quot;No pattern found after &#123;max_samples&#125; samples&quot;&#41;
+        print&#40;f&quot;This suggests epsilon &lt; &#123;1/max_samples:.6f&#125;&quot;&#41;
+    
+    return significant_configs</code></pre>
+<h4 id="strategy_3_adaptive_doubling"><a href="#strategy_3_adaptive_doubling" class="header-anchor">Strategy 3: Adaptive Doubling</a></h4>
+<pre><code class="language-python">def adaptive_sampling&#40;Z, q, epsilon_guess, confidence_threshold&#61;0.95&#41;:
+    &quot;&quot;&quot;
+    Start small and gradually increase sample size if needed.
+    &quot;&quot;&quot;
+    # Start with 3× expected value
+    n_initial &#61; int&#40;3 / epsilon_guess&#41;
+    
+    # Theoretical bound as upper limit
+    n_theoretical &#61; int&#40;2 * np.log&#40;2/0.01&#41; / epsilon_guess**2&#41;
+    
+    n_samples &#61; n_initial
+    all_samples &#61; &#91;&#93;
+    
+    while n_samples &lt;&#61; n_theoretical:
+        # Sample this batch
+        batch &#61; sample_configurations&#40;Z, q, n_samples - len&#40;all_samples&#41;&#41;
+        all_samples.extend&#40;batch&#41;
+        
+        # Check for significant patterns
+        significant &#61; &#91;c for c in all_samples if is_significant&#40;c&#41;&#93;
+        
+        if significant:
+            actual_rate &#61; len&#40;significant&#41; / len&#40;all_samples&#41;
+            print&#40;f&quot;Found &#123;len&#40;significant&#41;&#125; patterns in &#123;len&#40;all_samples&#41;&#125; samples&quot;&#41;
+            print&#40;f&quot;Empirical rate: &#123;actual_rate:.4f&#125;&quot;&#41;
+            return significant
+        
+        # Double sample size for next iteration
+        n_samples &#61; min&#40;n_samples * 2, n_theoretical&#41;
+    
+    print&#40;f&quot;Exhausted theoretical bound &#40;&#123;n_theoretical&#125; samples&#41;&quot;&#41;
+    return &#91;&#93;</code></pre>
+<h3 id="comparison_theory_vs_practice"><a href="#comparison_theory_vs_practice" class="header-anchor">Comparison: Theory vs. Practice</a></h3>
+<table><tr><th align="right">Scenario</th><th align="right">Theoretical \(n\)</th><th align="right">Practical \(n\)</th><th align="right">Ratio</th></tr><tr><td align="right">\(\varepsilon=0.10\)</td><td align="right">1,100</td><td align="right">30-50</td><td align="right">22-37×</td></tr><tr><td align="right">\(\varepsilon=0.05\)</td><td align="right">4,300</td><td align="right">60-100</td><td align="right">43-72×</td></tr><tr><td align="right">\(\varepsilon=0.01\)</td><td align="right">106,000</td><td align="right">300-500</td><td align="right">212-353×</td></tr><tr><td align="right">\(\varepsilon=0.001\)</td><td align="right">10.6M</td><td align="right">3,000-5,000</td><td align="right">2,120-3,533×</td></tr></table>
+<p><strong>Key insight</strong>: The gap between theory and practice <strong>increases</strong> as \(\varepsilon\) gets smaller, because the theoretical bound scales as \(O(1/\varepsilon^2)\) while practical needs scale as \(O(1/\varepsilon)\).</p>
+<h3 id="real-world_scenario"><a href="#real-world_scenario" class="header-anchor">Real-World Scenario</a></h3>
+<p>In the motif discovery context:</p>
+<ul>
+<li><p>You&#39;re typically running this on <strong>many sequences</strong></p>
+</li>
+<li><p>You&#39;ll likely find patterns in the <strong>first few hundred samples</strong> per sequence</p>
+</li>
+<li><p>The theoretical bound is there for <strong>worst-case protection</strong></p>
+</li>
+<li><p>Most practitioners would use \(n \approx 5/\varepsilon\) instead of \(n \approx 1/\varepsilon^2\)</p>
+</li>
+</ul>
+<h3 id="bottom_line"><a href="#bottom_line" class="header-anchor">Bottom Line</a></h3>
+<p><strong>Use the theoretical bound when:</strong></p>
+<ul>
+<li><p>Writing a paper and need provable guarantees</p>
+</li>
+<li><p>Cannot afford any failures</p>
+</li>
+<li><p>Need to bound worst-case behavior</p>
+</li>
+</ul>
+<p><strong>Use practical heuristics when:</strong></p>
+<ul>
+<li><p>Implementing for real applications</p>
+</li>
+<li><p>Can afford to occasionally need more samples</p>
+</li>
+<li><p>Want computational efficiency</p>
+</li>
+</ul>
+<p>The theoretical bounds are designed to work in <strong>all cases</strong>, even the unlucky \(1\%\) of scenarios. For the other \(99\%\) of cases, you can get away with far fewer samples&#33;</p>
+<hr />
+<h2 id="when_does_sampling_beat_exhaustive_enumeration"><a href="#when_does_sampling_beat_exhaustive_enumeration" class="header-anchor">When Does Sampling Beat Exhaustive Enumeration?</a></h2>
+<h3 id="crossover_analysis"><a href="#crossover_analysis" class="header-anchor">Crossover Analysis</a></h3>
+<p>Exhaustive enumeration costs: \(N = \binom{m}{q}\)</p>
+<p>Sampling costs: \(n \approx (1/\varepsilon)\cdot\ln(N)\) &#40;for finding most patterns&#41;</p>
+<p><strong>Crossover point</strong>: When \((1/\varepsilon)\cdot\ln(N) < N\)</p>
+<p>For \(\varepsilon = 0.01\), \(q = 3\):</p>
+<ul>
+<li><p>\(\alpha \approx 60\): Sampling and exhaustive are comparable</p>
+</li>
+<li><p>\(\alpha > 60\): Sampling is better</p>
+</li>
+<li><p>\(\alpha < 60\): Exhaustive is better</p>
+</li>
+</ul>
+<pre><code class="language-python">def choose_method&#40;alpha, q, epsilon&#61;0.01&#41;:
+    &quot;&quot;&quot;Decide whether to use sampling or exhaustive enumeration.&quot;&quot;&quot;
+    N &#61; comb&#40;alpha, q&#41;
+    n_sample &#61; int&#40;&#40;1/epsilon&#41; * &#40;np.log&#40;N&#41; &#43; 5&#41;&#41;  # &#43;5 for safety
+    
+    if n_sample &lt; 0.5 * N:
+        return &quot;sampling&quot;, n_sample
+    else:
+        return &quot;exhaustive&quot;, N</code></pre>
+<hr />
+<h2 id="multiple_sequences_finding_cross-dataset_patterns"><a href="#multiple_sequences_finding_cross-dataset_patterns" class="header-anchor">Multiple Sequences: Finding Cross-Dataset Patterns</a></h2>
+<p>When working with multiple sequences, the question changes:</p>
+<p><strong>Goal</strong>: Find configuration patterns that appear as significant in <strong>many</strong> sequences &#40;not just one&#41;.</p>
+<pre><code class="language-python">def find_cross_sequence_patterns&#40;all_Z, q, epsilon&#61;0.01, delta&#61;0.01&#41;:
+    &quot;&quot;&quot;
+    Find patterns that are significant across multiple sequences.
+    &quot;&quot;&quot;
+    N_sequences &#61; len&#40;all_Z&#41;
+    pattern_to_sequences &#61; defaultdict&#40;list&#41;
+    
+    # For each sequence, sample and test configurations
+    for seq_idx, Z in enumerate&#40;all_Z&#41;:
+        m &#61; np.sum&#40;Z &#33;&#61; 0&#41;
+        N &#61; comb&#40;m, q&#41;
+        
+        # Sample size: find at least one significant pattern per sequence
+        n_samples &#61; int&#40;2 * np.log&#40;2*N_sequences/delta&#41; / epsilon**2&#41;
+        
+        configs &#61; sample_configurations&#40;Z, q, n_samples&#41;
+        
+        for config in configs:
+            pattern_to_sequences&#91;config&#93;.append&#40;seq_idx&#41;
+    
+    # Filter: keep patterns appearing in many sequences
+    min_sequences &#61; int&#40;0.05 * N_sequences&#41;  # Appear in ≥5&#37; of sequences
+    frequent_patterns &#61; &#123;
+        pattern: seqs 
+        for pattern, seqs in pattern_to_sequences.items&#40;&#41;
+        if len&#40;seqs&#41; &gt;&#61; min_sequences
+    &#125;
+    
+    return frequent_patterns</code></pre>
+<hr />
+<h2 id="key_takeaways"><a href="#key_takeaways" class="header-anchor">Key Takeaways</a></h2>
+<ol>
+<li><p><strong>We&#39;re sampling from a uniform distribution</strong> over \(N\) possible configurations</p>
+</li>
+<li><p><strong>Each configuration is equally likely</strong> in our sample</p>
+</li>
+<li><p><strong>We test each sampled configuration</strong> for biological significance</p>
+</li>
+<li><p><strong>The guarantee</strong>: If \(\geq\varepsilon\) fraction are significant, we&#39;ll find at least one with high probability using \(O(1/\varepsilon^2)\) samples</p>
+</li>
+<li><p><strong>The speedup</strong>: \(O(\log N)\) samples instead of \(O(N)\) exhaustive search when seeking good coverage</p>
+</li>
+<li><p><strong>The beauty</strong>: Sample complexity depends on the <strong>density of significant patterns</strong> &#40;\(\varepsilon\)&#41;, not the <strong>size of the search space</strong> &#40;\(N\)&#41;</p>
+</li>
+</ol>
+<hr />
+<h2 id="why_the_original_articles_false_positive_language_was_confusing"><a href="#why_the_original_articles_false_positive_language_was_confusing" class="header-anchor">Why the Original Article&#39;s &quot;False Positive&quot; Language Was Confusing</a></h2>
+<p>The original article talked about &quot;false positives&quot; in a way that suggested configurations have different underlying frequencies. But actually:</p>
+<ul>
+<li><p>All N configurations are <strong>equally probable</strong> when sampling uniformly</p>
+</li>
+<li><p>The &quot;frequency&quot; language makes more sense when thinking about patterns <strong>across multiple sequences</strong></p>
+</li>
+<li><p>Or when thinking about configurations that <strong>pass significance testing</strong> vs those that don&#39;t</p>
+</li>
+</ul>
+<p>The correct framing is:</p>
+<ul>
+<li><p>We have \(N\) lottery tickets &#40;configurations&#41;</p>
+</li>
+<li><p>Some fraction \(\varepsilon\) are &quot;winners&quot; &#40;biologically significant&#41;</p>
+</li>
+<li><p>We want to find winners without checking all tickets</p>
+</li>
+<li><p>Concentration bounds tell us how many tickets to sample</p>
+</li>
+</ul>
+<hr />
+<h2 id="references"><a href="#references" class="header-anchor">References</a></h2>
+<ul>
+<li><p><strong>Chernoff bound</strong>: Chernoff, H. &#40;1952&#41;</p>
+</li>
+<li><p><strong>Coupon collector problem</strong>: Classic probability problem</p>
+</li>
+<li><p><strong>Union bound</strong>: Basic probability inequality</p>
+</li>
+<li><p><strong>PAC Learning</strong>: Valiant, L. G. &#40;1984&#41;</p>
+</li>
+</ul>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
