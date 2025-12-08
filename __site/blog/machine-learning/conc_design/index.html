@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Design Patterns for Concentration Inequalities in Sample Complexity</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="design_patterns_for_concentration_inequalities_in_sample_complexity"><a href="#design_patterns_for_concentration_inequalities_in_sample_complexity" class="header-anchor">Design Patterns for Concentration Inequalities in Sample Complexity</a></h1>
+<p>Hey&#33; So you&#39;re wondering about the key &quot;design patterns&quot; that show up when we use concentration inequalities to figure out sample complexity? Let me walk you through the main ideas in a conversational way.</p>
+<h2 id="the_big_picture"><a href="#the_big_picture" class="header-anchor">The Big Picture</a></h2>
+<p>Think of concentration inequalities as your toolbox for answering: <strong>&quot;How many samples do I need to be confident about something?&quot;</strong> The cool thing is that certain patterns show up over and over again, kind of like design patterns in software engineering.</p>
+<h2 id="pattern_1_the_finding_at_least_one_needle_pattern"><a href="#pattern_1_the_finding_at_least_one_needle_pattern" class="header-anchor">Pattern 1: The &quot;Finding at Least One Needle&quot; Pattern</a></h2>
+<p><strong>The Setup:</strong> You have a huge haystack with \(N\) possible items. Some fraction \(\varepsilon\) of them are &quot;good&quot; &#40;the needles you want&#41;. You sample uniformly at random.</p>
+<p><strong>The Question:</strong> How many samples \(n\) do I need to find at least one good item with probability \(\geq 1-\delta\)?</p>
+<p><strong>The Pattern:</strong></p>
+\[n \geq \frac{\ln(1/\delta)}{\varepsilon}\]
+<p>Or more conservatively &#40;using Chernoff&#41;:</p>
+\[n \geq \frac{2\ln(2/\delta)}{\varepsilon^2}\]
+<p><strong>Why It Works:</strong> Each sample is like a coin flip with success probability \(\varepsilon\). The probability of missing all good items after \(n\) samples is:</p>
+\[(1-\varepsilon)^n \approx e^{-n\varepsilon}\]
+<p>Set this equal to your acceptable failure rate \(\delta\), solve for \(n\), and boom—you have your sample size.</p>
+<blockquote>
+<p><strong>Derivation of \(n \geq \frac{\ln(1/\delta)}{\varepsilon}\)</strong></p>
+<p><strong>Step 1:</strong> For any single sample, probability of NOT picking a good item &#61; \((1 - \varepsilon)\)</p>
+<p><strong>Step 2:</strong> Probability of missing ALL good items in \(n\) independent samples:</p>
+</blockquote>
+\[P(\text{miss all}) = (1 - \varepsilon)^n\]
+<blockquote>
+<p><strong>Step 3:</strong> Use the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\) &#40;valid for small \(\varepsilon\)&#41;</p>
+<p>This comes from \(\ln(1-\varepsilon) \approx -\varepsilon\) for small \(\varepsilon\).</p>
+<p><strong>Step 4:</strong> We want failure probability \(\leq \delta\):</p>
+</blockquote>
+\[e^{-n\varepsilon} \leq \delta\]
+<blockquote>
+<p><strong>Step 5:</strong> Take natural log of both sides:</p>
+</blockquote>
+\[-n\varepsilon \leq \ln(\delta) = -\ln(1/\delta)\]
+<blockquote>
+<p><strong>Step 6:</strong> Divide by \(-\varepsilon\) &#40;flips inequality&#41;:</p>
+</blockquote>
+\[n \geq \frac{\ln(1/\delta)}{\varepsilon}\]
+<blockquote>
+<p>Done&#33; This tells us how many samples we need so that the probability of missing all good items is at most \(\delta\).</p>
+</blockquote>
+<blockquote>
+<p><strong>Why is the Chernoff bound more conservative?</strong></p>
+<p>The first bound \(n \geq \frac{\ln(1/\delta)}{\varepsilon}\) asks: &quot;How many samples to find <strong>at least one</strong> good item?&quot;</p>
+<p>The Chernoff bound \(n \geq \frac{2\ln(2/\delta)}{\varepsilon^2}\) asks a stricter question: &quot;How many samples so that the <strong>empirical frequency</strong> of good items is close to the true frequency \(\varepsilon\)?&quot;</p>
+<p>Here&#39;s the difference:</p>
+<p><strong>First bound &#40;coupon collector style&#41;:</strong></p>
+<ul>
+<li><p>Let \(X =\) number of good items found</p>
+</li>
+<li><p>We want \(P(X \geq 1) \geq 1 - \delta\)</p>
+</li>
+<li><p>This is asking: &quot;Did we find anything at all?&quot;</p>
+</li>
+<li><p>Result: \(n \sim O(1/\varepsilon)\)</p>
+</li>
+</ul>
+<p><strong>Chernoff bound &#40;concentration style&#41;:</strong></p>
+<ul>
+<li><p>Let \(\hat{\varepsilon} =\) empirical fraction of good items in our sample</p>
+</li>
+<li><p>We want \(P(|\hat{\varepsilon} - \varepsilon| \leq \text{some tolerance}) \geq 1 - \delta\)</p>
+</li>
+<li><p>This is asking: &quot;Is our sample frequency representative?&quot;</p>
+</li>
+<li><p>Chernoff gives: \(P(X = 0) \leq \exp(-n\varepsilon/2)\) when \(\mathbb{E}[X] = n\varepsilon\)</p>
+</li>
+<li><p>Setting this \(\leq \delta\) gives \(n \geq \frac{2\ln(1/\delta)}{\varepsilon}\)</p>
+</li>
+</ul>
+<p>But actually for <strong>one-sided</strong> deviation &#40;missing all&#41;, we use:</p>
+</blockquote>
+\[P(X = 0) \leq \exp\left(-\frac{(n\varepsilon)^2}{2n}\right) = \exp\left(-\frac{n\varepsilon^2}{2}\right)\]
+<blockquote>
+<p>Wait, this gives \(n \geq \frac{2\ln(1/\delta)}{\varepsilon^2}\), which is the \(1/\varepsilon^2\) form&#33;</p>
+<p><strong>The key difference:</strong></p>
+<ul>
+<li><p>Simple bound: Uses \((1-\varepsilon)^n \approx e^{-n\varepsilon}\) directly &#40;tight for this specific question&#41;</p>
+</li>
+<li><p>Chernoff: Gives a <strong>general</strong> concentration result that works for all deviations, not just the zero case. It&#39;s designed to bound \(|X - \mathbb{E}[X]|\), which is overkill if you only care about \(X = 0\).</p>
+</li>
+</ul>
+<p><strong>Bottom line:</strong> For finding &quot;at least one,&quot; use \(O(1/\varepsilon)\). For getting <strong>good empirical estimates</strong> or <strong>finding most/all</strong> items, Chernoff&#39;s \(O(1/\varepsilon^2)\) is more appropriate because it gives stronger concentration guarantees.</p>
+</blockquote>
+<blockquote>
+<p><strong>Where does this come from? PAC Learning or High-Dimensional Probability?</strong></p>
+<p>Great question&#33; The answer is: <strong>both</strong>, and they&#39;re deeply connected.</p>
+<p><strong>From High-Dimensional Probability:</strong></p>
+<ul>
+<li><p>Chernoff, Hoeffding, and other concentration inequalities are fundamentally results from <strong>probability theory</strong></p>
+</li>
+<li><p>They study how random variables concentrate around their means</p>
+</li>
+<li><p>Classic reference: Boucheron, Lugosi, Massart - &quot;Concentration Inequalities&quot; &#40;2013&#41;</p>
+</li>
+<li><p>The \(O(1/\varepsilon^2)\) scaling comes from the <strong>variance</strong> of Bernoulli random variables</p>
+</li>
+</ul>
+<p><strong>From PAC Learning:</strong></p>
+<ul>
+<li><p>PAC &#40;Probably Approximately Correct&#41; learning asks: &quot;How many samples to learn a concept?&quot;</p>
+</li>
+<li><p>The framework: Given error \(\varepsilon\) and confidence \(1-\delta\), find sample complexity</p>
+</li>
+<li><p>PAC sample complexity for finite hypothesis classes: \(n = O\left(\frac{1}{\varepsilon^2}\log\frac{|H|}{\delta}\right)\)</p>
+</li>
+<li><p>Notice the same \(1/\varepsilon^2\) dependence&#33;</p>
+</li>
+<li><p>Classic reference: Valiant &#40;1984&#41; - &quot;A Theory of the Learnable&quot;</p>
+</li>
+</ul>
+<p><strong>The Connection:</strong></p>
+<ul>
+<li><p>PAC learning <strong>uses</strong> concentration inequalities &#40;especially Hoeffding&#41; to derive sample complexity bounds</p>
+</li>
+<li><p>The typical PAC proof goes:</p>
+<ol>
+<li><p>Use Hoeffding to bound error for a single hypothesis: \(P(\text{error} > \varepsilon) \leq 2e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Use Union Bound over all \(|H|\) hypotheses: \(P(\text{any bad hypothesis}) \leq 2|H|e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Set this \(\leq \delta\) and solve for \(n\)</p>
+</li>
+</ol>
+</li>
+<li><p>This is exactly Pattern 3 &#40;avoiding false positives&#41; from below&#33;</p>
+</li>
+</ul>
+<p><strong>In the motif discovery context:</strong></p>
+<ul>
+<li><p>We&#39;re essentially doing <strong>finite hypothesis testing</strong> &#40;each configuration is a hypothesis&#41;</p>
+</li>
+<li><p>We want to find all &quot;good&quot; hypotheses with high probability</p>
+</li>
+<li><p>This is very PAC-like: learn the set of significant configurations</p>
+</li>
+<li><p>But the underlying math is high-dimensional probability &#40;concentration inequalities&#41;</p>
+</li>
+</ul>
+<p><strong>Historical lineage:</strong></p>
+</blockquote>
+<pre><code class="language-julia">&gt; High-Dim Probability &#40;1960s-70s&#41;
+&gt;   ↓ &#40;Chernoff, Hoeffding, etc.&#41;
+&gt; Statistical Learning Theory &#40;1980s-90s&#41;
+&gt;   ↓ &#40;Vapnik, Valiant - PAC framework&#41;
+&gt; Modern ML Sample Complexity &#40;2000s&#43;&#41;
+&gt;   ↓ &#40;Applications to various domains&#41;
+&gt; Your motif discovery problem &#40;2020s&#41;
+&gt;</code></pre>
+<blockquote>
+<p>So the answer is: it&#39;s <strong>probability theory at its core</strong>, popularized and systematized by <strong>PAC learning</strong>, and now applied to <strong>computational biology</strong>&#33;</p>
+</blockquote>
+<p><strong>Key Insight:</strong> Notice that \(n\)<strong>doesn&#39;t depend on \(N\)</strong> &#40;the total number of items&#41;&#33; It only depends on the density \(\varepsilon\) of good items. This is why sampling can beat exhaustive search—even if \(N = 1\) billion, if \(\varepsilon = 0.01\), you only need a few thousand samples.</p>
+<p><strong>Example:</strong> </p>
+<ul>
+<li><p>If 1&#37; of configurations are biologically significant &#40;\(\varepsilon = 0.01\)&#41;</p>
+</li>
+<li><p>Want 99&#37; confidence &#40;\(\delta = 0.01\)&#41;</p>
+</li>
+<li><p>Need roughly \(n \approx 106,000\) samples &#40;conservative bound&#41; or \(n \approx 300-500\) in practice</p>
+</li>
+</ul>
+<h2 id="pattern_2_the_finding_all_needles_pattern"><a href="#pattern_2_the_finding_all_needles_pattern" class="header-anchor">Pattern 2: The &quot;Finding All Needles&quot; Pattern</a></h2>
+<p><strong>The Setup:</strong> Same haystack, but now you want to find <strong>all</strong> \(K = \varepsilon N\) good items, not just one.</p>
+<p><strong>The Pattern:</strong></p>
+\[n \geq \frac{1}{\varepsilon} \cdot \left[\ln(N) + \ln(1/\delta)\right]\]
+<p><strong>Why It Works:</strong> This is related to the <strong>coupon collector problem</strong>. To collect all coupons, you need \(O(N \ln N)\) samples. But we only need to collect the \(K = \varepsilon N\) good coupons, so we get:</p>
+\[n \approx \frac{N}{K} \cdot \ln(K) = \frac{1}{\varepsilon} \cdot \ln(\varepsilon N)\]
+<p><strong>Key Insight:</strong> Now \(N\)<strong>does</strong> appear, but only <strong>logarithmically</strong>&#33; So even though finding all needles is harder than finding one, it&#39;s still way better than \(O(N)\) exhaustive search.</p>
+<p><strong>Scaling Comparison:</strong></p>
+<ul>
+<li><p>Finding one: \(O(1/\varepsilon^2)\) — doesn&#39;t scale with \(N\)</p>
+</li>
+<li><p>Finding all: \(O((1/\varepsilon) \log N)\) — scales logarithmically with \(N\)  </p>
+</li>
+<li><p>Exhaustive: \(O(N)\) — scales linearly with \(N\)</p>
+</li>
+</ul>
+<h2 id="pattern_3_the_avoiding_false_positives_pattern"><a href="#pattern_3_the_avoiding_false_positives_pattern" class="header-anchor">Pattern 3: The &quot;Avoiding False Positives&quot; Pattern</a></h2>
+<p><strong>The Setup:</strong> You&#39;re sampling and testing items. Some items are actually bad but might randomly appear good in your sample &#40;false positives&#41;. You want to control the probability that <strong>any</strong> bad item looks good.</p>
+<p><strong>The Pattern &#40;Union Bound &#43; Hoeffding&#41;:</strong></p>
+<p>If there are \(N\) total items and you don&#39;t want any item with true frequency \(p = 0\) to appear with empirical frequency \(\hat{p} \geq \varepsilon\), you need:</p>
+\[n \geq \frac{\ln(N/\delta)}{2\varepsilon^2}\]
+<p><strong>Why It Works:</strong> </p>
+<ol>
+<li><p>For a single item, Hoeffding&#39;s inequality bounds the probability of large deviations: \(\mathbb{P}[|\hat{p} - p| > \varepsilon] \leq 2e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Union bound over all \(N\) items: \(\mathbb{P}[\text{any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Set this \(\leq \delta\) and solve for \(n\)</p>
+</li>
+</ol>
+<p><strong>Key Insight:</strong> This is where \(N\) matters more directly. The more items you test, the more chances for false positives, so you need more samples to control them. But it&#39;s still logarithmic in \(N\), not linear&#33;</p>
+<h2 id="pattern_4_the_combined_guarantee_pattern"><a href="#pattern_4_the_combined_guarantee_pattern" class="header-anchor">Pattern 4: The &quot;Combined Guarantee&quot; Pattern</a></h2>
+<p><strong>The Setup:</strong> You want to simultaneously &#40;a&#41; find all good items and &#40;b&#41; avoid false positives.</p>
+<p><strong>The Pattern:</strong></p>
+\[n = \max\left\{\frac{2\ln(2/\delta)}{\varepsilon^2}, \frac{\ln(N/\delta)}{2\varepsilon^2}\right\}\]
+<p><strong>Why It Works:</strong> Take the maximum of the two requirements. Usually, for large \(N\) and small \(\varepsilon\), the false positive bound dominates.</p>
+<p><strong>Practical Note:</strong> These bounds are often quite conservative&#33; In practice, you can often get away with:</p>
+\[n_{\text{practical}} \approx \frac{k}{\varepsilon}\]
+<p>where \(k = 3\) to \(5\) gives you ~95-99&#37; success rate.</p>
+<h2 id="pattern_5_the_crossover_point_pattern"><a href="#pattern_5_the_crossover_point_pattern" class="header-anchor">Pattern 5: The &quot;Crossover Point&quot; Pattern</a></h2>
+<p><strong>The Question:</strong> When does sampling beat exhaustive enumeration?</p>
+<p><strong>The Pattern:</strong> Compare costs:</p>
+<ul>
+<li><p>Exhaustive: \(N\)</p>
+</li>
+<li><p>Sampling: \((1/\varepsilon) \ln N\)</p>
+</li>
+</ul>
+<p>Sampling wins when:</p>
+\[\frac{1}{\varepsilon} \ln N < N\]
+<p>Which simplifies to:</p>
+\[N > e^{1/\varepsilon}\]
+<p><strong>Example:</strong> For \(\varepsilon = 0.01\), crossover happens around \(N \approx e^{100}\), but in practice with \(q\)-combinations, the crossover for motif discovery happens around \(\alpha \approx 60\) &#40;where \(N = \binom{\alpha}{3}\)&#41;.</p>
+<h2 id="pattern_6_the_multiple_testing_pattern"><a href="#pattern_6_the_multiple_testing_pattern" class="header-anchor">Pattern 6: The &quot;Multiple Testing&quot; Pattern</a></h2>
+<p><strong>The Setup:</strong> You&#39;re doing the same sampling procedure across \(M\) different datasets/sequences. Want guarantees to hold across all of them.</p>
+<p><strong>The Pattern &#40;Bonferroni Correction&#41;:</strong></p>
+<p>For each dataset \(i\), use failure probability:</p>
+\[\delta_i = \frac{\delta}{M}\]
+<p>Then overall guarantee holds with probability \(\geq 1-\delta\).</p>
+<p><strong>Why It Works:</strong> Union bound again:</p>
+\[\mathbb{P}[\text{fail in at least one}] \leq \sum_{i=1}^M \mathbb{P}[\text{fail in } i] \leq M \cdot \frac{\delta}{M} = \delta\]
+<h2 id="common_concentration_inequalities_used"><a href="#common_concentration_inequalities_used" class="header-anchor">Common Concentration Inequalities Used</a></h2>
+<h3 id="chernoff_bound_for_finding_rare_events"><a href="#chernoff_bound_for_finding_rare_events" class="header-anchor"><ol>
+<li><p><strong>Chernoff Bound</strong> &#40;for finding rare events&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>For sum of independent Bernoullis \(X = \sum X_i\) where \(\mathbb{E}[X] = \mu\):</p>
+\[\mathbb{P}[X = 0] \leq e^{-\mu}\]
+<p>More generally:</p>
+\[\mathbb{P}[X \leq (1-t)\mu] \leq e^{-t^2\mu/2}\]
+<p><strong>Use when:</strong> You want to know if you&#39;ll find at least one good item.</p>
+<h3 id="ol_start2_hoeffdings_inequality_for_empirical_frequencies"><a href="#ol_start2_hoeffdings_inequality_for_empirical_frequencies" class="header-anchor"><ol start="2">
+<li><p><strong>Hoeffding&#39;s Inequality</strong> &#40;for empirical frequencies&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>For empirical average \(\hat{p} = \frac{1}{n}\sum X_i\) where true mean is \(p\):</p>
+\[\mathbb{P}[|\hat{p} - p| > \varepsilon] \leq 2e^{-2n\varepsilon^2}\]
+<p><strong>Use when:</strong> You want to bound how far your sample frequency is from the true frequency.</p>
+<h3 id="ol_start3_union_bound_for_multiple_events"><a href="#ol_start3_union_bound_for_multiple_events" class="header-anchor"><ol start="3">
+<li><p><strong>Union Bound</strong> &#40;for multiple events&#41;</p>
+</li>
+</ol>
+</a></h3>
+\[\mathbb{P}\left[\bigcup_i A_i\right] \leq \sum_i \mathbb{P}[A_i]\]
+<p><strong>Use when:</strong> You want to control the probability that <strong>any</strong> of many bad things happens &#40;like false positives&#41;.</p>
+<h2 id="putting_it_all_together_a_recipe"><a href="#putting_it_all_together_a_recipe" class="header-anchor">Putting It All Together: A Recipe</a></h2>
+<p>Here&#39;s the general workflow:</p>
+<ol>
+<li><p><strong>Define your &quot;success&quot; event</strong> &#40;e.g., finding a significant configuration&#41;</p>
+</li>
+<li><p><strong>Estimate the density</strong> \(\varepsilon\) of successes in your space</p>
+</li>
+<li><p><strong>Choose your confidence level</strong> \(1-\delta\) &#40;typically 0.95 or 0.99&#41;</p>
+</li>
+<li><p><strong>Pick the right pattern:</strong></p>
+<ul>
+<li><p>Need at least one? Use Pattern 1</p>
+</li>
+<li><p>Need most/all? Use Pattern 2  </p>
+</li>
+<li><p>Worried about false positives? Combine with Pattern 3</p>
+</li>
+<li><p>Multiple datasets? Add Pattern 6</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Compute sample size</strong> from the formulas</p>
+</li>
+<li><p><strong>Reality check:</strong> The theoretical bounds are often 10-100× more conservative than needed in practice</p>
+</li>
+</ol>
+<h2 id="why_these_patterns_matter"><a href="#why_these_patterns_matter" class="header-anchor">Why These Patterns Matter</a></h2>
+<p>The beautiful thing about concentration inequalities is they give you <strong>distribution-free</strong> guarantees. You don&#39;t need to know the exact distribution of your data—just some basic parameters like \(\varepsilon\) &#40;density of good items&#41; and \(N\) &#40;size of space&#41;.</p>
+<p>And the <strong>sublinear scaling</strong> &#40;logarithmic in \(N\) instead of linear&#41; is what makes sampling practical for huge spaces. When \(N = 20\) million configurations but you only need to sample 100,000, that&#39;s a 200× speedup&#33;</p>
+<h2 id="the_gap_theory_vs_practice"><a href="#the_gap_theory_vs_practice" class="header-anchor">The Gap: Theory vs Practice</a></h2>
+<p>One last thing worth noting: there&#39;s often a big gap between theoretical bounds and practical needs.</p>
+<p><strong>Theory says:</strong> \(n = \frac{2\ln(2/\delta)}{\varepsilon^2} \approx 106,000\) for \(\varepsilon=0.01\), \(\delta=0.01\)</p>
+<p><strong>Practice shows:</strong> \(n = \frac{k}{\varepsilon} \approx 300-500\) works great with \(k=3-5\)</p>
+<p>Why the gap? The theoretical bounds are <strong>worst-case guarantees</strong> that work even in unlucky scenarios. But in the average case, you need far fewer samples.</p>
+<p><strong>Adaptive strategy:</strong> Start with practical estimates, and if you&#39;re not finding anything, gradually increase toward the theoretical bound. This way you get efficiency in the common case but still have guarantees for the worst case.</p>
+<hr />
+<h2 id="the_elephant_in_the_room_the_iid_assumption"><a href="#the_elephant_in_the_room_the_iid_assumption" class="header-anchor">The Elephant in the Room: The i.i.d. Assumption</a></h2>
+<p>You&#39;re absolutely right to call this out&#33; Let&#39;s talk about what&#39;s really holding this whole framework together.</p>
+<blockquote>
+<p><strong>Why does all of this work? The i.i.d. assumption&#33;</strong></p>
+<p><strong>The Foundation:</strong></p>
+<ul>
+<li><p>All these concentration inequalities &#40;Chernoff, Hoeffding, etc.&#41; <strong>fundamentally assume</strong> samples are <strong>independent and identically distributed &#40;i.i.d.&#41;</strong></p>
+</li>
+<li><p>Uniform sampling &#61; every configuration has equal probability \(1/N\)</p>
+</li>
+<li><p>Independence &#61; knowing you sampled config A tells you nothing about whether you&#39;ll sample config B next</p>
+</li>
+<li><p>This is what lets us write: \(P(\text{miss all}) = (1-\varepsilon)^n\) &#40;product of independent events&#41;</p>
+</li>
+</ul>
+<p><strong>Without i.i.d., the house of cards falls apart:</strong></p>
+<ul>
+<li><p>If samples are <strong>dependent</strong>, concentration is weaker &#40;or stronger, depending on correlation structure&#41;</p>
+</li>
+<li><p>If sampling is <strong>non-uniform</strong>, you lose the clean probabilistic guarantees</p>
+</li>
+<li><p>The beautiful \(O(\log N)\) scaling can disappear</p>
+</li>
+</ul>
+</blockquote>
+<blockquote>
+<p><strong>Can we break free from uniform sampling without heuristics?</strong></p>
+<p>This is a deep question, and the answer is: <strong>sort of, but it&#39;s tricky&#33;</strong> Here are the main approaches:</p>
+<p><strong>1. Importance Sampling &#40;Still Principled&#33;&#41;</strong></p>
+<ul>
+<li><p><strong>Idea:</strong> Sample from a proposal distribution \(q(x)\) instead of uniform \(p(x) = 1/N\)</p>
+</li>
+<li><p><strong>Key:</strong> Weight samples by \(w(x) = p(x)/q(x)\) to get unbiased estimates</p>
+</li>
+<li><p><strong>Example:</strong> If you think certain filter combinations are more likely to be significant, sample them more heavily, then weight appropriately</p>
+</li>
+<li><p><strong>Pros:</strong> </p>
+<ul>
+<li><p>Still mathematically rigorous&#33; Unbiased estimator</p>
+</li>
+<li><p>Can dramatically reduce variance if you choose \(q\) well</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Cons:</strong> </p>
+<ul>
+<li><p>Need to <strong>know</strong> or <strong>estimate</strong> a good proposal \(q\) &#40;this is the hard part&#41;</p>
+</li>
+<li><p>Concentration bounds now depend on the variance of the weights, which can be worse if \(q\) is poorly chosen</p>
+</li>
+<li><p>You&#39;re not really avoiding heuristics—choosing \(q\) is itself a heuristic&#33;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>2. Stratified Sampling &#40;Structured Non-Uniformity&#41;</strong></p>
+<ul>
+<li><p><strong>Idea:</strong> Partition space into strata, sample uniformly <strong>within</strong> each stratum</p>
+</li>
+<li><p><strong>Example:</strong> For motif discovery, stratify by which filters appear</p>
+</li>
+<li><p><strong>Key:</strong> This is still uniform within strata, so concentration bounds apply per-stratum</p>
+</li>
+<li><p><strong>Pros:</strong></p>
+<ul>
+<li><p>Can improve efficiency if strata are natural</p>
+</li>
+<li><p>Still principled—union bound over strata</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Cons:</strong></p>
+<ul>
+<li><p>How do you choose strata? &#40;Heuristic alert&#33;&#41;</p>
+</li>
+<li><p>If strata are unbalanced, doesn&#39;t help much</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>3. Adaptive/Sequential Sampling &#40;Explore-Exploit&#41;</strong></p>
+<ul>
+<li><p><strong>Idea:</strong> Use early samples to guide later samples &#40;multi-armed bandits, Thompson sampling&#41;</p>
+</li>
+<li><p><strong>Example:</strong> If you find promising patterns in region A, sample more from region A</p>
+</li>
+<li><p><strong>Pros:</strong></p>
+<ul>
+<li><p>Can be very efficient in practice</p>
+</li>
+<li><p>Some theoretical guarantees exist &#40;regret bounds for bandits&#41;</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Cons:</strong></p>
+<ul>
+<li><p>Samples are now <strong>dependent</strong>&#33;</p>
+</li>
+<li><p>Standard concentration inequalities don&#39;t apply directly</p>
+</li>
+<li><p>Need specialized analysis &#40;martingale concentration, etc.&#41;</p>
+</li>
+<li><p>This is <strong>definitely</strong> introducing heuristics in how you adapt</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>4. Active Learning / Query Complexity</strong></p>
+<ul>
+<li><p><strong>Idea:</strong> Intelligently choose which configurations to test based on maximizing information gain</p>
+</li>
+<li><p><strong>Pros:</strong></p>
+<ul>
+<li><p>Theoretically well-studied in some settings</p>
+</li>
+<li><p>Can achieve better bounds than passive sampling</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Cons:</strong></p>
+<ul>
+<li><p>Need a model of what &quot;informative&quot; means &#40;heuristic&#33;&#41;</p>
+</li>
+<li><p>Often computationally expensive to compute information gain</p>
+</li>
+<li><p>Breaks i.i.d. assumption</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>The Fundamental Tension:</strong></p>
+<p>Here&#39;s the real issue: <strong>Any non-uniform sampling strategy requires some kind of prior knowledge or belief about where the good stuff is.</strong> And that&#39;s inherently a heuristic&#33;</p>
+</blockquote>
+<pre><code class="language-julia">&gt; Pure uniform sampling:
+&gt;   - No assumptions about where good items are
+&gt;   - Clean probabilistic guarantees
+&gt;   - May be inefficient if good items cluster
+&gt;
+&gt; Non-uniform sampling:
+&gt;   - Assumes you know something about the structure
+&gt;   - That assumption is a heuristic&#33;
+&gt;   - But can be much more efficient
+&gt;</code></pre>
+<blockquote>
+<p><strong>The Pragmatic Middle Ground:</strong></p>
+<p>In practice, you might do something like:</p>
+<ol>
+<li><p><strong>Phase 1:</strong> Uniform sampling to explore &#40;small budget, say 5&#37; of theoretical bound&#41;</p>
+</li>
+<li><p><strong>Analyze:</strong> Look at what you found—do patterns cluster in certain regions?</p>
+</li>
+<li><p><strong>Phase 2:</strong> If you see clear structure, use importance/stratified sampling with theory-based weights</p>
+</li>
+<li><p><strong>Guarantee:</strong> Use union bound over phases to maintain overall probabilistic guarantee</p>
+</li>
+</ol>
+<p>This way you get:</p>
+<ul>
+<li><p>Theoretical guarantees &#40;from the uniform phase&#41;</p>
+</li>
+<li><p>Practical efficiency &#40;from the adaptive phase&#41;</p>
+</li>
+<li><p>Some principled justification &#40;importance sampling with reweighting&#41;</p>
+</li>
+</ul>
+</blockquote>
+<blockquote>
+<p><strong>What about the original motif discovery problem?</strong></p>
+<p>In your specific case with motif discovery:</p>
+<p><strong>Why uniform sampling makes sense:</strong></p>
+<ul>
+<li><p>You genuinely don&#39;t know which filter combinations will be biologically meaningful</p>
+</li>
+<li><p>Biological signals might be subtle and not obvious from simple heuristics</p>
+</li>
+<li><p>The sparse coding already did the heavy lifting &#40;learning the filters&#41;</p>
+</li>
+<li><p>Configuration enumeration is just &quot;which combinations co-occur?&quot;</p>
+</li>
+</ul>
+<p><strong>Where you might break uniformity:</strong></p>
+<ul>
+<li><p><strong>Spatial constraints:</strong> If filters must be nearby on the sequence &#40;local patterns&#41;, you could sample locally-clustered configurations</p>
+<ul>
+<li><p>This is semi-principled: encode biological prior about locality</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Filter co-occurrence:</strong> If you have training data showing certain filters often co-occur, use that as a prior for importance sampling</p>
+<ul>
+<li><p>Need to be careful: this might be circular &#40;finding what you expect to find&#41;</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Two-phase:</strong> Coarse uniform sampling → identify hot regions → dense sampling in hot regions</p>
+<ul>
+<li><p>This is what the article&#39;s &quot;adaptive two-phase sampling&quot; does, and it&#39;s reasonable&#33;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>My Take:</strong></p>
+<p>The beauty of the uniform sampling approach is its <strong>intellectual honesty</strong>—it makes no assumptions beyond the sparse representation itself. Any heuristic you add is a claim about the structure of the problem, and you should:</p>
+<ol>
+<li><p>Make that claim explicit</p>
+</li>
+<li><p>Justify why you believe it</p>
+</li>
+<li><p>Ideally, validate it empirically</p>
+</li>
+</ol>
+<p>For a first principled approach, uniform sampling is the right starting point. Once you understand the structure of solutions in your domain, <em>then</em> you can introduce informed non-uniform sampling strategies. But at that point, you&#39;re no longer doing pure statistical sampling—you&#39;re doing domain-informed search, which is a different &#40;and valid&#33;&#41; paradigm.</p>
+</blockquote>
+<hr />
+<p>Hope this helps&#33; The key insight is that these patterns give you the power to <strong>trade exhaustive search for randomness &#43; probability theory</strong>, and concentration inequalities tell you exactly how much randomness you need to be confident in your results. But yes, the i.i.d. assumption is the bedrock—without it, you need much more sophisticated tools&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
