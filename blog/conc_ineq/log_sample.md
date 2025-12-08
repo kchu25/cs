@@ -77,6 +77,24 @@ $$n \gtrsim \frac{1}{\varepsilon}$$
 
 Wait, that gives $1/\varepsilon$, not $1/\varepsilon^2$! What happened?
 
+> **About that weird notation $\lesssim$:**
+> 
+> You'll see $\lesssim$ (and its friends $\gtrsim$, $\approx$) used in asymptotic analysis. Here's what they mean:
+> 
+> - $a \lesssim b$ means "$a$ is less than or equal to $b$ **up to constant factors**"
+>   - Formally: $a \leq C \cdot b$ for some constant $C$
+>   - Example: $2n \lesssim n$ because $2n \leq 2 \cdot n$ (constant is 2)
+> 
+> - $a \gtrsim b$ means "$a$ is greater than or equal to $b$ up to constant factors"
+>   - Formally: $a \geq c \cdot b$ for some constant $c > 0$
+> 
+> - $a \approx b$ means "approximately equal, up to constant factors"
+>   - Combines both: $c_1 \cdot b \leq a \leq c_2 \cdot b$
+> 
+> This notation is useful because in big-O analysis, we often don't care about constants—we only care about how things scale. So $\lesssim$ is a way of saying "ignoring constants, this is at most..." while keeping the inequality precise.
+> 
+> In my derivation above, when I write $\sqrt{\varepsilon/n} \lesssim \varepsilon$, I mean "the standard deviation should be at most $\varepsilon$ times some constant." This is an informal way of setting up the scaling argument before we make it rigorous with Hoeffding.
+
 The subtlety: To **guarantee** (with high probability) that our deviation is at most $\varepsilon$, we need to go several standard deviations out. Hoeffding tells us the exponential tail decay, and when you work through the math with $\delta$ confidence, you get the $1/\varepsilon^2$ dependence.
 
 Think of it this way:
