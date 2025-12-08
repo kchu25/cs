@@ -37,6 +37,21 @@ Set this equal to your acceptable failure rate $\delta$, solve for $n$, and boom
 > **Step 3:** Use the approximation $(1-\varepsilon)^n \approx e^{-n\varepsilon}$ (valid for small $\varepsilon$)
 > 
 > This comes from $\ln(1-\varepsilon) \approx -\varepsilon$ for small $\varepsilon$.
+>
+> **Yes, this is related to convexity!** More precisely, it's the **first-order Taylor approximation** of $\ln(1-\varepsilon)$ around $\varepsilon = 0$:
+> $\ln(1-\varepsilon) = -\varepsilon - \frac{\varepsilon^2}{2} - \frac{\varepsilon^3}{3} - \cdots \approx -\varepsilon$
+>
+> But there's also a **convexity inequality** at play here! Since $\ln(x)$ is **concave**, we have:
+> $\ln(1-\varepsilon) \leq -\varepsilon \quad \text{for all } \varepsilon \in [0,1)$
+>
+> So the approximation $(1-\varepsilon)^n \approx e^{-n\varepsilon}$ is actually an **upper bound** (we're approximating from above):
+> $(1-\varepsilon)^n = e^{n\ln(1-\varepsilon)} \leq e^{-n\varepsilon}$
+>
+> This is **crucial** for the concentration bound! We're using:
+> - **Upper bound** on failure probability: $(1-\varepsilon)^n \leq e^{-n\varepsilon}$
+> - Which gives us a **lower bound** on sample size when we solve for $n$
+>
+> So yes, the convexity of $\ln$ (or equivalently, the inequality $1-x \leq e^{-x}$) is what makes this work!
 > 
 > **Step 4:** We want failure probability $\leq \delta$:
 > $$e^{-n\varepsilon} \leq \delta$$
