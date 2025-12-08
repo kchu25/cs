@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding ε² and Logarithmic Sample Complexity</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_ε_and_logarithmic_sample_complexity"><a href="#understanding_ε_and_logarithmic_sample_complexity" class="header-anchor">Understanding ε² and Logarithmic Sample Complexity</a></h1>
+<p>Hey&#33; So you&#39;re looking at equations 8, 9, and 10 from that concentration inequalities article and wondering &quot;why is ε² showing up?&quot; and &quot;why does sample complexity only need logarithmic samples instead of checking all N items?&quot; Great questions&#33; Let me break this down conversationally.</p>
+<h2 id="the_big_picture_first"><a href="#the_big_picture_first" class="header-anchor">The Big Picture First</a></h2>
+<p>The key insight is that we&#39;re dealing with <strong>two different types of questions</strong>:</p>
+<ol>
+<li><p><strong>Finding at least one good item</strong> &#40;simple question&#41; → needs \(O(1/\varepsilon)\) samples</p>
+</li>
+<li><p><strong>Getting accurate frequency estimates</strong> &#40;harder question&#41; → needs \(O(1/\varepsilon^2)\) samples</p>
+</li>
+</ol>
+<p>The ε² shows up in the second case, and it&#39;s deeply connected to variance. Let me explain why.</p>
+<hr />
+<h2 id="why_does_ε_appear_the_variance_story"><a href="#why_does_ε_appear_the_variance_story" class="header-anchor">Why Does ε² Appear? The Variance Story</a></h2>
+<h3 id="the_setup"><a href="#the_setup" class="header-anchor">The Setup</a></h3>
+<p>Imagine you&#39;re flipping a biased coin with probability \(\varepsilon\) of landing heads &#40;a &quot;good&quot; item&#41;. You flip it \(n\) times and count how many heads you get. Call this count \(X\).</p>
+<p><strong>What we know:</strong></p>
+<ul>
+<li><p>Expected value: \(E[X] = n\varepsilon\)</p>
+</li>
+<li><p>Variance: \(\text{Var}(X) = n\varepsilon(1-\varepsilon)\)</p>
+</li>
+</ul>
+<h3 id="the_two_types_of_questions"><a href="#the_two_types_of_questions" class="header-anchor">The Two Types of Questions</a></h3>
+<p><strong>Question 1: Did we get at least one head?</strong></p>
+<p>This is asking \(P(X = 0) \leq \delta\). Using the simple approximation:</p>
+\[P(X = 0) = (1-\varepsilon)^n \approx e^{-n\varepsilon}\]
+<p>Setting this equal to \(\delta\) and solving:</p>
+\[e^{-n\varepsilon} = \delta\]
+\[n\varepsilon = \ln(1/\delta)\]
+\[n = \frac{\ln(1/\delta)}{\varepsilon}\]
+<p><strong>Notice:</strong> Only \(\varepsilon\) appears, not \(\varepsilon^2\)&#33; This is because we&#39;re just asking &quot;yes or no&quot; — did we find anything at all?</p>
+<p><strong>Question 2: Is our sample frequency close to the true frequency?</strong></p>
+<p>Now we want the <strong>empirical frequency</strong> \(\hat{\varepsilon} = X/n\) to be close to the true frequency \(\varepsilon\). Specifically, we want:</p>
+\[P\left(|\hat{\varepsilon} - \varepsilon| > \text{tolerance}\right) \leq \delta\]
+<p>This is where Chernoff/Hoeffding bounds come in. Hoeffding&#39;s inequality says:</p>
+\[P\left(|\hat{\varepsilon} - \varepsilon| > t\right) \leq 2e^{-2nt^2}\]
+<p><strong>The key thing:</strong> That \(t^2\) in the exponent&#33; If we want \(|\hat{\varepsilon} - \varepsilon| \leq t\) with probability \(\geq 1-\delta\), we need:</p>
+\[2e^{-2nt^2} \leq \delta\]
+\[n \geq \frac{\ln(2/\delta)}{2t^2}\]
+<p>If we set our tolerance \(t = \varepsilon\) &#40;we want to detect deviations on the order of \(\varepsilon\)&#41;, we get:</p>
+\[n \geq \frac{\ln(2/\delta)}{2\varepsilon^2}\]
+<p><strong>BAM&#33;</strong> There&#39;s your \(\varepsilon^2\) in the denominator.</p>
+<h3 id="why_the_difference"><a href="#why_the_difference" class="header-anchor">Why the Difference?</a></h3>
+<p>The fundamental reason is <strong>concentration around the mean</strong>.</p>
+<ul>
+<li><p><strong>Finding one</strong>: We only care if \(X \geq 1\). The mean is \(n\varepsilon\), so if \(n\varepsilon\) is reasonably large &#40;say, \(> 5\)&#41;, we&#39;re very likely to get at least one. This only requires \(n = O(1/\varepsilon)\).</p>
+</li>
+<li><p><strong>Estimating frequency</strong>: We need \(X/n\) to be close to \(\varepsilon\). The <strong>standard deviation</strong> of \(X/n\) is roughly \(\sqrt{\varepsilon(1-\varepsilon)/n} \approx \sqrt{\varepsilon/n}\). To make this smaller than \(\varepsilon\) &#40;so our estimate is accurate&#41;, we need:</p>
+</li>
+</ul>
+\[\sqrt{\frac{\varepsilon}{n}} \lesssim \varepsilon\]
+\[\frac{\varepsilon}{n} \lesssim \varepsilon^2\]
+\[n \gtrsim \frac{1}{\varepsilon}\]
+<p>Wait, that gives \(1/\varepsilon\), not \(1/\varepsilon^2\)&#33; What happened?</p>
+<p>The subtlety: To <strong>guarantee</strong> &#40;with high probability&#41; that our deviation is at most \(\varepsilon\), we need to go several standard deviations out. Hoeffding tells us the exponential tail decay, and when you work through the math with \(\delta\) confidence, you get the \(1/\varepsilon^2\) dependence.</p>
+<p>Think of it this way:</p>
+<ul>
+<li><p>Standard deviation of \(\hat{\varepsilon}\) is \(\Theta(\sqrt{\varepsilon/n})\)</p>
+</li>
+<li><p>We want deviation \(\leq \varepsilon\) with high probability</p>
+</li>
+<li><p>Setting \(k\sqrt{\varepsilon/n} = \varepsilon\) for some constant \(k\) &#40;related to \(\ln(1/\delta)\)&#41;</p>
+</li>
+<li><p>This gives \(n = k^2/\varepsilon\), which is \(O(1/\varepsilon)\) if \(k\) is constant</p>
+</li>
+<li><p>But to get <em>exponentially good</em> concentration &#40;failure probability \(\delta\)&#41;, the constant becomes \(\sqrt{\ln(1/\delta)}\), and squaring it brings in the extra \(\ln(1/\delta)\) factor we see in the bound</p>
+</li>
+</ul>
+<p>The cleaner way to see it: Hoeffding bounds <strong>squared deviations</strong>, which naturally brings in \(\varepsilon^2\).</p>
+<hr />
+<h2 id="why_logarithmic_in_n_the_magic_of_independence"><a href="#why_logarithmic_in_n_the_magic_of_independence" class="header-anchor">Why Logarithmic in N? The Magic of Independence</a></h2>
+<p>Okay, now the big question: why don&#39;t we need to check all \(N\) configurations? Why is \(O(\log N)\) enough?</p>
+<h3 id="the_intuition"><a href="#the_intuition" class="header-anchor">The Intuition</a></h3>
+<p>Imagine you have \(N = 1{,}000{,}000\) configurations, and 1&#37; of them are &quot;good&quot; &#40;\(\varepsilon = 0.01\)&#41;. </p>
+<p><strong>Naive thought:</strong> &quot;I need to check all 1 million to find the good ones.&quot;</p>
+<p><strong>Actual truth:</strong> &quot;If I sample randomly, each sample has a 1&#37; chance of hitting a good one. After just a few hundred samples, I&#39;m basically guaranteed to have found at least one.&quot;</p>
+<p>The reason is <strong>independence</strong>. Each sample is like rolling a 100-sided die and hoping for a specific number. The probability you <em>miss</em> after \(n\) rolls is:</p>
+\[(0.99)^n\]
+<p>This decays <strong>exponentially fast</strong> in \(n\):</p>
+<ul>
+<li><p>After 100 samples: \((0.99)^{100} \approx 0.366\) &#40;still 37&#37; chance of missing&#33;&#41;</p>
+</li>
+<li><p>After 300 samples: \((0.99)^{300} \approx 0.049\) &#40;5&#37; chance of missing&#41;</p>
+</li>
+<li><p>After 500 samples: \((0.99)^{500} \approx 0.0066\) &#40;&lt; 1&#37; chance of missing&#41;</p>
+</li>
+</ul>
+<p>So with just 300-500 samples, we&#39;re very confident of finding at least one, <strong>regardless of the fact that \(N = 1{,}000{,}000\)</strong>.</p>
+<h3 id="the_math"><a href="#the_math" class="header-anchor">The Math</a></h3>
+<p>For &quot;finding at least one good item&quot;:</p>
+\[n \geq \frac{\ln(1/\delta)}{\varepsilon}\]
+<p><strong>Notice:</strong> \(N\) doesn&#39;t appear&#33; This bound works for <em>any</em> \(N\), as long as the fraction of good items is \(\varepsilon\).</p>
+<p>For &quot;finding all good items&quot; &#40;coupon collector problem&#41;, we get:</p>
+\[n \geq \frac{1}{\varepsilon}\left[\ln(N) + \ln(1/\delta)\right]\]
+<p><strong>Now \(N\) appears</strong>, but only inside a \(\log\)&#33; This is the magic.</p>
+<h3 id="why_logarithmic"><a href="#why_logarithmic" class="header-anchor">Why Logarithmic?</a></h3>
+<p>The reason \(\log N\) appears &#40;when finding all items&#41; is because of the coupon collector problem. To collect all \(K\) coupons when sampling uniformly from \(K\) items, you need roughly:</p>
+\[K \cdot H_K \approx K \ln K\]
+<p>samples, where \(H_K\) is the \(K\)-th harmonic number.</p>
+<p>In our case, there are \(K = \varepsilon N\) good items out of \(N\) total. Adjusting for the density:</p>
+\[n \approx \frac{N}{K} \cdot K \ln K = \frac{N}{\varepsilon N} \cdot \varepsilon N \ln(\varepsilon N) = \frac{1}{\varepsilon} \ln(\varepsilon N)\]
+<p>Simplifying:</p>
+\[n \approx \frac{1}{\varepsilon}\left[\ln(\varepsilon) + \ln(N)\right] \approx \frac{\ln(N)}{\varepsilon}\]
+<p>&#40;The \(\ln(\varepsilon)\) term is typically absorbed into the constant.&#41;</p>
+<h3 id="the_crossover_point"><a href="#the_crossover_point" class="header-anchor">The Crossover Point</a></h3>
+<p>Sampling beats exhaustive search when:</p>
+\[\frac{\ln N}{\varepsilon} < N\]
+<p>This is true when:</p>
+\[\ln N < \varepsilon N\]
+<p>For small \(\varepsilon\) &#40;say 0.01&#41;, this is satisfied for pretty much any reasonable \(N\). For example:</p>
+<ul>
+<li><p>\(N = 10^6\): \(\ln(10^6) \approx 14\), but \(\varepsilon N = 10{,}000\). Sampling wins by 700×&#33;</p>
+</li>
+<li><p>\(N = 10^9\): \(\ln(10^9) \approx 21\), but \(\varepsilon N = 10{,}000{,}000\). Sampling wins by 500,000×&#33;</p>
+</li>
+</ul>
+<p>The intuition: <strong>Logarithms grow incredibly slowly</strong>. Even if \(N\) is astronomical &#40;billions, trillions&#41;, \(\ln N\) is only 20-40. This is why sampling is so powerful.</p>
+<hr />
+<h2 id="connecting_to_pattern_3_false_positives"><a href="#connecting_to_pattern_3_false_positives" class="header-anchor">Connecting to Pattern 3: False Positives</a></h2>
+<p>Now, in <strong>Pattern 3</strong> from the article &#40;avoiding false positives&#41;, we get:</p>
+\[n \geq \frac{\ln(N/\delta)}{2\varepsilon^2}\]
+<p>Here, <strong>both</strong> \(N\) and \(\varepsilon^2\) appear&#33; Why?</p>
+<p>The reason is <strong>union bound</strong>. We&#39;re not just asking &quot;did I find a good item?&quot; We&#39;re asking &quot;did <em>any</em> of the \(N\) items incorrectly appear good?&quot;</p>
+<ul>
+<li><p>For a single item, Hoeffding gives us: \(P[\text{false positive}] \leq 2e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Union bound over all \(N\) items: \(P[\text{any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
+</li>
+<li><p>Setting this \(\leq \delta\) and solving for \(n\):</p>
+</li>
+</ul>
+\[N \cdot 2e^{-2n\varepsilon^2} \leq \delta\]
+\[e^{-2n\varepsilon^2} \leq \frac{\delta}{2N}\]
+\[2n\varepsilon^2 \geq \ln\left(\frac{2N}{\delta}\right)\]
+\[n \geq \frac{\ln(2N/\delta)}{2\varepsilon^2}\]
+<p>So now:</p>
+<ul>
+<li><p>The \(\varepsilon^2\) comes from Hoeffding &#40;we&#39;re estimating frequencies&#41;</p>
+</li>
+<li><p>The \(\ln N\) comes from the union bound &#40;we&#39;re testing \(N\) hypotheses&#41;</p>
+</li>
+</ul>
+<p>This is the <strong>most conservative</strong> bound because it&#39;s controlling false positives across <em>all</em> \(N\) items. In practice, if you only care about finding true positives &#40;and can tolerate some false positives&#41;, you can use the simpler \(O(1/\varepsilon)\) bound.</p>
+<hr />
+<h2 id="summary_the_two_key_insights"><a href="#summary_the_two_key_insights" class="header-anchor">Summary: The Two Key Insights</a></h2>
+<h3 id="why_varepsilon2"><a href="#why_varepsilon2" class="header-anchor"><ol>
+<li><p>Why \(\varepsilon^2\)?</p>
+</li>
+</ol>
+</a></h3>
+<ul>
+<li><p>\(\varepsilon\) in denominator: For &quot;find at least one&quot; questions &#40;just need \(X \geq 1\)&#41;</p>
+</li>
+<li><p>\(\varepsilon^2\) in denominator: For &quot;estimate frequencies accurately&quot; questions &#40;need \(|\hat{\varepsilon} - \varepsilon|\) small&#41;</p>
+</li>
+<li><p>The squared term comes from concentration inequalities &#40;Hoeffding&#41; that bound deviations from the mean. These inherently deal with <strong>variance</strong>, which scales like \(\varepsilon/n\), so to make variance-scaled deviations small, you need \(n \propto 1/\varepsilon^2\).</p>
+</li>
+</ul>
+<h3 id="ol_start2_why_log_n_instead_of_n"><a href="#ol_start2_why_log_n_instead_of_n" class="header-anchor"><ol start="2">
+<li><p>Why \(\log N\) instead of \(N\)?</p>
+</li>
+</ol>
+</a></h3>
+<ul>
+<li><p><strong>Independence is magic</strong>: Each sample is an independent chance to find something good</p>
+</li>
+<li><p>Probability of missing after \(n\) samples: \((1-\varepsilon)^n \approx e^{-n\varepsilon}\)</p>
+</li>
+<li><p>This decays <strong>exponentially</strong> in \(n\), so you only need \(n = O(\ln(1/\delta)/\varepsilon)\) to drive failure probability below \(\delta\)</p>
+</li>
+<li><p>For finding <em>all</em> items or controlling false positives, you pay an extra \(\log N\) factor &#40;from coupon collector or union bound&#41;, but this is still <strong>way</strong> better than linear \(O(N)\)</p>
+</li>
+</ul>
+<p>The fundamental reason sampling works: <strong>Exponential concentration beats polynomial growth</strong>. Even though the space is huge &#40;\(N\) can be millions or billions&#41;, the exponential decay of \((1-\varepsilon)^n\) means you only need logarithmically many samples to be confident.</p>
+<hr />
+<p>Hope this clarifies things&#33; The key is understanding that different questions require different sample complexities, and the \(\varepsilon^2\) appears when you need strong concentration &#40;accurate estimates&#41;, while \(\log N\) appears because exponential probabilities grow incredibly fast.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

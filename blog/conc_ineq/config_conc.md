@@ -1,6 +1,6 @@
 @def title = "Uniform Sampling with Concentration Bounds for Configuration Enumeration"
 @def published = "5 December 2025"
-@def tags = ["machine-learning"]
+@def tags = ["machine-learning", "concentration-inequalities"]
 
 # Uniform Sampling with Concentration Bounds for Configuration Enumeration
 

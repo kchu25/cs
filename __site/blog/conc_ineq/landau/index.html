@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding Landau Notation in Concentration Inequalities</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_landau_notation_in_concentration_inequalities"><a href="#understanding_landau_notation_in_concentration_inequalities" class="header-anchor">Understanding Landau Notation in Concentration Inequalities</a></h1>
+<p>Hey&#33; So you&#39;re reading about concentration inequalities and seeing all these Big-O, little-o notations everywhere. Let me break down what&#39;s happening in the context of this article about sample complexity.</p>
+<h2 id="the_big_picture_whats_landau_notation_doing_here"><a href="#the_big_picture_whats_landau_notation_doing_here" class="header-anchor">The Big Picture: What&#39;s Landau Notation Doing Here?</a></h2>
+<p>In this article, Landau notation &#40;Big-O, little-o, Big-Ω, etc.&#41; is used to capture <strong>how things scale</strong> as parameters get large or small. When we say \(n = O(1/\varepsilon)\), we&#39;re saying &quot;the sample size grows roughly like \(1/\varepsilon\)&quot; without worrying about exact constants.</p>
+<p>Think of it as a <strong>zoom lens for mathematics</strong>—we&#39;re stepping back to see the shape of the relationship rather than the exact numerical details.</p>
+<h2 id="the_cast_of_characters"><a href="#the_cast_of_characters" class="header-anchor">The Cast of Characters</a></h2>
+<h3 id="big-o_ocdot_upper_bound_or_at_most_this_fast"><a href="#big-o_ocdot_upper_bound_or_at_most_this_fast" class="header-anchor">Big-O: \(O(\cdot)\) — &quot;Upper Bound&quot; or &quot;At Most This Fast&quot;</a></h3>
+<p><strong>Definition:</strong> \(f(n) = O(g(n))\) means there exist constants \(C > 0\) and \(n_0\) such that:</p>
+\[|f(n)| \leq C \cdot g(n) \text{ for all } n \geq n_0\]
+<p><strong>Translation:</strong> &quot;\(f\) grows <strong>no faster than</strong> \(g\) &#40;up to a constant factor&#41;&quot;</p>
+<p><strong>In the article:</strong></p>
+<ul>
+<li><p>&quot;\(n \sim O(1/\varepsilon)\)&quot; means the sample size grows <strong>at most</strong> proportionally to \(1/\varepsilon\)</p>
+</li>
+<li><p>&quot;\(O(1/\varepsilon^2)\)&quot; means sample size might need up to &#40;constant times&#41; \(1/\varepsilon^2\) samples</p>
+</li>
+<li><p>&quot;\(O((1/\varepsilon)\log N)\)&quot; means sample complexity scales <strong>at most</strong> like \(\frac{\log N}{\varepsilon}\)</p>
+</li>
+</ul>
+<p><strong>Why use it?</strong> We don&#39;t care about the exact constant &#40;is it \(2/\varepsilon^2\) or \(5/\varepsilon^2\)?&#41;, we care that it&#39;s <strong>quadratic</strong> in \(1/\varepsilon\).</p>
+<h3 id="little-o_ocdot_strictly_smaller"><a href="#little-o_ocdot_strictly_smaller" class="header-anchor">Little-o: \(o(\cdot)\) — &quot;Strictly Smaller&quot;</a></h3>
+<p><strong>Definition:</strong> \(f(n) = o(g(n))\) means:</p>
+\[\lim_{n \to \infty} \frac{f(n)}{g(n)} = 0\]
+<p><strong>Translation:</strong> &quot;\(f\) is <strong>negligible</strong> compared to \(g\)&quot;</p>
+<p><strong>Example in context:</strong></p>
+<ul>
+<li><p>If error is \(o(1/n)\), it means the error <strong>vanishes faster</strong> than \(1/n\)</p>
+</li>
+<li><p>If we say \(\ln(1-\varepsilon) = -\varepsilon + o(\varepsilon)\), the remaining terms &#40;like \(-\varepsilon^2/2\)&#41; are <strong>negligible</strong> compared to \(-\varepsilon\) when \(\varepsilon\) is small</p>
+</li>
+</ul>
+<p><strong>Not in the article explicitly, but helpful to know:</strong> The difference between \(O\) and \(o\):</p>
+<ul>
+<li><p>\(2n = O(n)\) ✓ and \(2n = o(n)\) ✗</p>
+</li>
+<li><p>\(\sqrt{n} = O(n)\) ✓ and \(\sqrt{n} = o(n)\) ✓</p>
+</li>
+</ul>
+<h3 id="big-ω_omegacdot_lower_bound_or_at_least_this_fast"><a href="#big-ω_omegacdot_lower_bound_or_at_least_this_fast" class="header-anchor">Big-Ω: \(\Omega(\cdot)\) — &quot;Lower Bound&quot; or &quot;At Least This Fast&quot;</a></h3>
+<p><strong>Definition:</strong> \(f(n) = \Omega(g(n))\) means there exist constants \(C > 0\) and \(n_0\) such that:</p>
+\[f(n) \geq C \cdot g(n) \text{ for all } n \geq n_0\]
+<p><strong>Translation:</strong> &quot;\(f\) grows <strong>at least as fast as</strong> \(g\)&quot;</p>
+<p><strong>Why it matters:</strong> If you prove a lower bound of \(\Omega(1/\varepsilon^2)\), you&#39;re saying &quot;you <strong>cannot</strong> do better than this—any algorithm needs at least this many samples&quot;</p>
+<h3 id="big-θ_thetacdot_tight_bound_or_exactly_this_rate"><a href="#big-θ_thetacdot_tight_bound_or_exactly_this_rate" class="header-anchor">Big-Θ: \(\Theta(\cdot)\) — &quot;Tight Bound&quot; or &quot;Exactly This Rate&quot;</a></h3>
+<p><strong>Definition:</strong> \(f(n) = \Theta(g(n))\) means:</p>
+\[f(n) = O(g(n)) \text{ AND } f(n) = \Omega(g(n))\]
+<p><strong>Translation:</strong> &quot;\(f\) grows <strong>at exactly the same rate</strong> as \(g\)&quot;</p>
+<p><strong>In the article:</strong> When we say finding one needle is \(\Theta(1/\varepsilon)\), we mean:</p>
+<ul>
+<li><p>Upper bound: you <strong>can</strong> do it with \(O(1/\varepsilon)\) samples</p>
+</li>
+<li><p>Lower bound: you <strong>must</strong> use \(\Omega(1/\varepsilon)\) samples</p>
+</li>
+<li><p>Together: it&#39;s <strong>exactly</strong> \(\Theta(1/\varepsilon)\)</p>
+</li>
+</ul>
+<h2 id="how_to_read_these_in_the_articles_context"><a href="#how_to_read_these_in_the_articles_context" class="header-anchor">How to Read These in the Article&#39;s Context</a></h2>
+<p>Let&#39;s look at some specific examples from the article:</p>
+<h3 id="example_1_result_n_sim_o1varepsilon"><a href="#example_1_result_n_sim_o1varepsilon" class="header-anchor">Example 1: &quot;Result: \(n \sim O(1/\varepsilon)\)&quot;</a></h3>
+<p>This appears in Pattern 1. Here&#39;s how to think about it:</p>
+<pre><code class="language-julia">n ≥ ln&#40;1/δ&#41; / ε</code></pre>
+<p>The <strong>dominant term</strong> is \(1/\varepsilon\). The \(\ln(1/\delta)\) is just a constant factor that depends on your confidence level. So we write:</p>
+\[n = O(1/\varepsilon)\]
+<p><strong>What this tells you:</strong></p>
+<ul>
+<li><p>If \(\varepsilon\) is halved, you need roughly <strong>twice</strong> as many samples</p>
+</li>
+<li><p>The <strong>logarithmic</strong> dependence on \(\delta\) is <strong>negligible</strong> compared to the <strong>linear</strong> dependence on \(1/\varepsilon\)</p>
+</li>
+</ul>
+<h3 id="example_2_chernoff_gives_o1varepsilon2"><a href="#example_2_chernoff_gives_o1varepsilon2" class="header-anchor">Example 2: Chernoff gives &quot;\(O(1/\varepsilon^2)\)&quot;</a></h3>
+<pre><code class="language-julia">n ≥ 2ln&#40;2/δ&#41; / ε²</code></pre>
+<p>Now the dominant term is \(1/\varepsilon^2\):</p>
+\[n = O(1/\varepsilon^2)\]
+<p><strong>What this tells you:</strong></p>
+<ul>
+<li><p>If \(\varepsilon\) is halved, you need roughly <strong>four times</strong> as many samples &#40;quadratic&#33;&#41;</p>
+</li>
+<li><p>This is <strong>worse</strong> scaling than \(O(1/\varepsilon)\) when \(\varepsilon\) is small</p>
+</li>
+</ul>
+<p><strong>Comparison:</strong></p>
+<ul>
+<li><p>\(\varepsilon = 0.1\): \(O(1/\varepsilon) \sim 10\) vs \(O(1/\varepsilon^2) \sim 100\)</p>
+</li>
+<li><p>\(\varepsilon = 0.01\): \(O(1/\varepsilon) \sim 100\) vs \(O(1/\varepsilon^2) \sim 10,000\)</p>
+</li>
+</ul>
+<p>The gap <strong>explodes</strong> as \(\varepsilon\) shrinks&#33;</p>
+<h3 id="example_3_finding_all_o1varepsilonlog_n"><a href="#example_3_finding_all_o1varepsilonlog_n" class="header-anchor">Example 3: &quot;Finding all: \(O((1/\varepsilon)\log N)\)&quot;</a></h3>
+<pre><code class="language-julia">n ≥ &#40;1/ε&#41; · &#91;ln&#40;N&#41; &#43; ln&#40;1/δ&#41;&#93;</code></pre>
+<p>This is saying:</p>
+\[n = O\left(\frac{\log N}{\varepsilon}\right)\]
+<p><strong>What this tells you:</strong></p>
+<ul>
+<li><p>Linear in \(1/\varepsilon\) &#40;like finding one&#41;</p>
+</li>
+<li><p>But now also <strong>logarithmic</strong> in \(N\) &#40;the size of the space&#41;</p>
+</li>
+<li><p>Doubling \(N\) only adds a <strong>tiny</strong> amount &#40;one more bit of information&#41;</p>
+</li>
+</ul>
+<p><strong>The magic:</strong> Even though \(N\) might be <strong>massive</strong> &#40;millions or billions&#41;, \(\log N\) is tiny:</p>
+<ul>
+<li><p>\(N = 10^6\) → \(\log N \approx 14\)</p>
+</li>
+<li><p>\(N = 10^9\) → \(\log N \approx 21\)</p>
+</li>
+</ul>
+<p>So \(\log N\) barely matters compared to \(1/\varepsilon\) when \(\varepsilon\) is small&#33;</p>
+<h2 id="the_patterns_you_see_in_proofs"><a href="#the_patterns_you_see_in_proofs" class="header-anchor">The Patterns You See in Proofs</a></h2>
+<p>When you&#39;re reading proofs with Landau notation, here&#39;s the <strong>mental workflow</strong>:</p>
+<h3 id="step_1_identify_the_exact_bound"><a href="#step_1_identify_the_exact_bound" class="header-anchor">Step 1: Identify the exact bound</a></h3>
+<p>You&#39;ll see something like:</p>
+\[\mathbb{P}[\text{fail}] \leq 2e^{-2n\varepsilon^2}\]
+<h3 id="step_2_set_equal_to_your_failure_tolerance"><a href="#step_2_set_equal_to_your_failure_tolerance" class="header-anchor">Step 2: Set equal to your failure tolerance</a></h3>
+\[2e^{-2n\varepsilon^2} \leq \delta\]
+<h3 id="step_3_solve_for_n"><a href="#step_3_solve_for_n" class="header-anchor">Step 3: Solve for \(n\)</a></h3>
+<p>Take logs:</p>
+\[\ln(2) - 2n\varepsilon^2 \leq \ln(\delta)\]
+\[-2n\varepsilon^2 \leq \ln(\delta) - \ln(2) = \ln(\delta/2)\]
+\[n \geq -\frac{\ln(\delta/2)}{2\varepsilon^2} = \frac{\ln(2/\delta)}{2\varepsilon^2}\]
+<h3 id="step_4_extract_the_landau_notation"><a href="#step_4_extract_the_landau_notation" class="header-anchor">Step 4: Extract the Landau notation</a></h3>
+<p>Look at the <strong>dominant terms</strong>:</p>
+<ul>
+<li><p>Main term: \(1/\varepsilon^2\) &#40;this is what <strong>explodes</strong> when \(\varepsilon\) shrinks&#41;</p>
+</li>
+<li><p>Logarithmic term: \(\ln(2/\delta)\) &#40;grows <strong>slowly</strong> with \(1/\delta\)&#41;</p>
+</li>
+</ul>
+<p>So we write:</p>
+\[n = O(1/\varepsilon^2)\]
+<p>or more precisely:</p>
+\[n = O\left(\frac{\log(1/\delta)}{\varepsilon^2}\right)\]
+<p><strong>Key insight:</strong> We&#39;re <strong>hiding</strong> the constant factors and the logarithmic terms because:</p>
+<ol>
+<li><p>Constants like 2 don&#39;t affect the <strong>scaling behavior</strong></p>
+</li>
+<li><p>Logarithmic terms grow so slowly they&#39;re often negligible</p>
+</li>
+<li><p>We care about <strong>how things scale</strong> as \(\varepsilon \to 0\) or \(N \to \infty\)</p>
+</li>
+</ol>
+<h2 id="when_can_you_write_big-o_on_the_next_step"><a href="#when_can_you_write_big-o_on_the_next_step" class="header-anchor">When Can You &quot;Write Big-O on the Next Step&quot;?</a></h2>
+<p>Here&#39;s the pattern recognition game:</p>
+<h3 id="pattern_1_dropping_constant_factors"><a href="#pattern_1_dropping_constant_factors" class="header-anchor">Pattern 1: Dropping constant factors</a></h3>
+<p><strong>If you have:</strong></p>
+\[n \geq \frac{5 \ln(3/\delta)}{\varepsilon^2}\]
+<p><strong>You can write:</strong></p>
+\[n = O(1/\varepsilon^2)\]
+<p><strong>Because:</strong> The 5 and the 3 are <strong>constants</strong> that don&#39;t affect the <strong>rate of growth</strong></p>
+<h3 id="pattern_2_dropping_lower-order_terms"><a href="#pattern_2_dropping_lower-order_terms" class="header-anchor">Pattern 2: Dropping lower-order terms</a></h3>
+<p><strong>If you have:</strong></p>
+\[n = \frac{1}{\varepsilon^2} + \frac{10}{\varepsilon} + 7\]
+<p><strong>You can write:</strong></p>
+\[n = O(1/\varepsilon^2)\]
+<p><strong>Because:</strong> When \(\varepsilon\) is small:</p>
+<ul>
+<li><p>\(1/\varepsilon^2\)<strong>dominates</strong> &#40;e.g., if \(\varepsilon = 0.01\), this is \(10,000\)&#41;</p>
+</li>
+<li><p>\(10/\varepsilon\) is <strong>negligible</strong> &#40;this is only \(1,000\)&#41;</p>
+</li>
+<li><p>\(7\) is <strong>tiny</strong> &#40;just \(7\)&#33;&#41;</p>
+</li>
+</ul>
+<p><strong>The rule:</strong> Keep only the <strong>fastest-growing</strong> term</p>
+<h3 id="pattern_3_logarithms_are_often_free"><a href="#pattern_3_logarithms_are_often_free" class="header-anchor">Pattern 3: Logarithms are often &quot;free&quot;</a></h3>
+<p><strong>If you have:</strong></p>
+\[n = \frac{\log N}{\varepsilon}\]
+<p><strong>You might write:</strong></p>
+\[n = O(1/\varepsilon)\]
+<p><strong>or more carefully:</strong></p>
+\[n = O((1/\varepsilon) \log N)\]
+<p><strong>Why the ambiguity?</strong> It depends on context:</p>
+<ul>
+<li><p>If \(N\) is <strong>fixed</strong> &#40;not growing&#41;, \(\log N\) is just a constant</p>
+</li>
+<li><p>If \(N\) is <strong>variable</strong>, we include it</p>
+</li>
+</ul>
+<h3 id="pattern_4_products_and_sums"><a href="#pattern_4_products_and_sums" class="header-anchor">Pattern 4: Products and sums</a></h3>
+<p><strong>Products:</strong> \(O(f) \cdot O(g) = O(f \cdot g)\)</p>
+<p>Example:</p>
+\[n = O(1/\varepsilon) \cdot O(\log N) = O\left(\frac{\log N}{\varepsilon}\right)\]
+<p><strong>Sums:</strong> \(O(f) + O(g) = O(\max\{f, g\})\)</p>
+<p>Example:</p>
+\[n = O(1/\varepsilon) + O(1/\varepsilon^2) = O(1/\varepsilon^2)\]
+<p>&#40;The \(1/\varepsilon^2\) term <strong>dominates</strong>&#41;</p>
+<h2 id="the_approximation_dance"><a href="#the_approximation_dance" class="header-anchor">The Approximation Dance</a></h2>
+<p>One of the key moves in the article is using <strong>approximations</strong> to get cleaner bounds. Here&#39;s how to think about it:</p>
+<h3 id="the_ln1-varepsilon_approx_-varepsilon_approximation"><a href="#the_ln1-varepsilon_approx_-varepsilon_approximation" class="header-anchor">The \(\ln(1-\varepsilon) \approx -\varepsilon\) approximation</a></h3>
+<p><strong>Exact:</strong></p>
+\[\ln(1-\varepsilon) = -\varepsilon - \frac{\varepsilon^2}{2} - \frac{\varepsilon^3}{3} - \cdots\]
+<p><strong>Approximation:</strong></p>
+\[\ln(1-\varepsilon) \approx -\varepsilon\]
+<p><strong>When is this good?</strong></p>
+<ul>
+<li><p>When \(\varepsilon\) is <strong>small</strong> &#40;say \(\varepsilon < 0.1\)&#41;</p>
+</li>
+<li><p>The error is \(O(\varepsilon^2)\), which is <strong>negligible</strong> compared to the main term</p>
+</li>
+</ul>
+<p><strong>Why use it?</strong></p>
+\[(1-\varepsilon)^n = e^{n\ln(1-\varepsilon)} \approx e^{-n\varepsilon}\]
+<p>This is <strong>much easier</strong> to work with than \((1-\varepsilon)^n\)&#33;</p>
+<p><strong>The Landau version:</strong></p>
+\[\ln(1-\varepsilon) = -\varepsilon + O(\varepsilon^2)\]
+<p>or even more precisely:</p>
+\[\ln(1-\varepsilon) = -\varepsilon + o(\varepsilon)\]
+<p>&#40;The remaining terms are <strong>strictly smaller</strong> than \(\varepsilon\)&#41;</p>
+<h3 id="the_inequality_version_1-varepsilonn_leq_e-nvarepsilon"><a href="#the_inequality_version_1-varepsilonn_leq_e-nvarepsilon" class="header-anchor">The inequality version: \((1-\varepsilon)^n \leq e^{-n\varepsilon}\)</a></h3>
+<p>The article mentions this comes from <strong>convexity</strong>. Here&#39;s the intuition:</p>
+<p>Since \(\ln(1-\varepsilon) \leq -\varepsilon\) for all \(\varepsilon \in [0,1)\), we have:</p>
+\[(1-\varepsilon)^n = e^{n\ln(1-\varepsilon)} \leq e^{-n\varepsilon}\]
+<p>This is an <strong>inequality</strong>, not just an approximation&#33; So it gives us a <strong>rigorous upper bound</strong>.</p>
+<p><strong>Landau interpretation:</strong></p>
+\[(1-\varepsilon)^n = e^{-n\varepsilon}(1 + O(\varepsilon))\]
+<p>for small \(\varepsilon\). The \(O(\varepsilon)\) term captures the &quot;error&quot; in the approximation.</p>
+<h2 id="practical_examples_from_the_article"><a href="#practical_examples_from_the_article" class="header-anchor">Practical Examples from the Article</a></h2>
+<h3 id="example_1_pattern_1_transition"><a href="#example_1_pattern_1_transition" class="header-anchor">Example 1: Pattern 1 transition</a></h3>
+<p><strong>Start with:</strong></p>
+\[\mathbb{P}[\text{miss all}] = (1-\varepsilon)^n\]
+<p><strong>Approximate:</strong></p>
+\[(1-\varepsilon)^n \approx e^{-n\varepsilon}\]
+<p><strong>Write the constraint:</strong></p>
+\[e^{-n\varepsilon} \leq \delta\]
+<p><strong>Solve:</strong></p>
+\[n \geq \frac{\ln(1/\delta)}{\varepsilon}\]
+<p><strong>Extract Landau notation:</strong></p>
+\[n = O(1/\varepsilon)\]
+<p><strong>What we dropped:</strong></p>
+<ul>
+<li><p>Constant factors &#40;the &quot;1&quot; in \(\ln(1/\delta)\) becomes \(O(1)\)&#41;</p>
+</li>
+<li><p>Logarithmic dependence on \(\delta\) &#40;if \(\delta\) is fixed, this is \(O(1)\)&#41;</p>
+</li>
+</ul>
+<h3 id="example_2_comparing_pattern_1_and_chernoff"><a href="#example_2_comparing_pattern_1_and_chernoff" class="header-anchor">Example 2: Comparing Pattern 1 and Chernoff</a></h3>
+<p><strong>Pattern 1:</strong></p>
+\[n = O(1/\varepsilon)\]
+<p><strong>Chernoff:</strong></p>
+\[n = O(1/\varepsilon^2)\]
+<p><strong>What&#39;s going on?</strong></p>
+<ul>
+<li><p>Pattern 1: &quot;Did we find <strong>anything at all</strong>?&quot; → Linear scaling</p>
+</li>
+<li><p>Chernoff: &quot;Is our <strong>sample frequency close</strong> to the true frequency?&quot; → Quadratic scaling</p>
+</li>
+</ul>
+<p><strong>The intuition:</strong></p>
+<ul>
+<li><p>Finding <strong>one</strong> thing is &quot;easy&quot; → \(O(1/\varepsilon)\)</p>
+</li>
+<li><p><strong>Estimating</strong> the frequency accurately is &quot;harder&quot; → \(O(1/\varepsilon^2)\)</p>
+</li>
+</ul>
+<p>The <strong>variance</strong> of a Bernoulli is proportional to \(\varepsilon(1-\varepsilon)\), so to get error \(\varepsilon\) in our estimate, we need \(O(1/\varepsilon^2)\) samples.</p>
+<h3 id="example_3_when_n_appears"><a href="#example_3_when_n_appears" class="header-anchor">Example 3: When \(N\) appears</a></h3>
+<p><strong>Pattern 3 &#40;False positives&#41;:</strong></p>
+\[n \geq \frac{\ln(N/\delta)}{2\varepsilon^2}\]
+<p><strong>Extract:</strong></p>
+\[n = O\left(\frac{\log N}{\varepsilon^2}\right)\]
+<p><strong>Why \(\log N\)?</strong> We&#39;re doing a <strong>union bound</strong> over \(N\) items:</p>
+\[\mathbb{P}[\text{any false positive}] \leq N \cdot \mathbb{P}[\text{single false positive}]\]
+<p>That \(N\) multiplier gives us an extra \(\log N\) in the sample complexity&#33;</p>
+<p><strong>But notice:</strong> Even if \(N = 10^9\) &#40;a billion&#41;, \(\log N \approx 30\), so this is <strong>way better</strong> than the naive \(O(N)\) exhaustive search.</p>
+<h2 id="the_big_takeaway"><a href="#the_big_takeaway" class="header-anchor">The Big Takeaway</a></h2>
+<p>Landau notation is your <strong>abstraction layer</strong> for understanding:</p>
+<ol>
+<li><p><strong>Scaling behavior</strong>: How do requirements grow as parameters change?</p>
+</li>
+<li><p><strong>Bottlenecks</strong>: Which terms <strong>dominate</strong> and which are <strong>negligible</strong>?</p>
+</li>
+<li><p><strong>Comparisons</strong>: Is algorithm A <strong>fundamentally better</strong> than algorithm B?</p>
+</li>
+</ol>
+<p><strong>The workflow:</strong></p>
+<ol>
+<li><p>Derive the <strong>exact</strong> bound &#40;with all constants&#41;</p>
+</li>
+<li><p>Identify the <strong>dominant term&#40;s&#41;</strong></p>
+</li>
+<li><p>Write the Landau notation to <strong>abstract away</strong> the details</p>
+</li>
+<li><p>Use this to <strong>compare</strong> different approaches</p>
+</li>
+</ol>
+<p><strong>In proofs:</strong></p>
+<ul>
+<li><p>You <strong>don&#39;t</strong> write \(O(\cdot)\) until you&#39;ve <strong>solved</strong> for the quantity</p>
+</li>
+<li><p>Once you have the solution, you <strong>extract</strong> the dominant terms</p>
+</li>
+<li><p>The Landau notation is the <strong>conclusion</strong>, not the intermediate steps</p>
+</li>
+</ul>
+<p><strong>Reading tip:</strong> When you see \(n = O(1/\varepsilon^2)\) in the article, mentally translate it as:</p>
+<blockquote>
+<p>&quot;The sample size needs to be <strong>roughly</strong> \(C/\varepsilon^2\) for some constant \(C\). The exact value of \(C\) depends on our confidence level \(\delta\) and might be 2 or 5 or 10, but who cares? The key point is it scales <strong>quadratically</strong> with \(1/\varepsilon\).&quot;</p>
+</blockquote>
+<p>That&#39;s the <strong>spirit</strong> of Landau notation—focusing on the <strong>shape</strong> of the relationship rather than the exact numbers.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

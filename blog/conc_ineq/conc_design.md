@@ -1,6 +1,6 @@
 @def title = "Design Patterns for Concentration Inequalities in Sample Complexity"
 @def published = "8 December 2025"
-@def tags = ["machine-learning"]
+@def tags = ["machine-learning", "concentration-inequalities"]
 
 # Design Patterns for Concentration Inequalities in Sample Complexity
 
