@@ -1,5 +1,5 @@
 @def title = "Understanding Landau Notation in Concentration Inequalities"
-@def published = "9 December 2025"
+@def published = "8 December 2025"
 @def tags = ["machine-learning", "concentration-inequalities"]
 
 # Understanding Landau Notation in Concentration Inequalities

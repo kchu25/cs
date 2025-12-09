@@ -78,6 +78,34 @@
 \[\frac{\varepsilon}{n} \lesssim \varepsilon^2\]
 \[n \gtrsim \frac{1}{\varepsilon}\]
 <p>Wait, that gives \(1/\varepsilon\), not \(1/\varepsilon^2\)&#33; What happened?</p>
+<blockquote>
+<p><strong>About that weird notation \(\lesssim\):</strong></p>
+<p>You&#39;ll see \(\lesssim\) &#40;and its friends \(\gtrsim\), \(\approx\)&#41; used in asymptotic analysis. Here&#39;s what they mean:</p>
+<ul>
+<li><p>\(a \lesssim b\) means &quot;\(a\) is less than or equal to \(b\)<strong>up to constant factors</strong>&quot;</p>
+<ul>
+<li><p>Formally: \(a \leq C \cdot b\) for some constant \(C\)</p>
+</li>
+<li><p>Example: \(2n \lesssim n\) because \(2n \leq 2 \cdot n\) &#40;constant is 2&#41;</p>
+</li>
+</ul>
+</li>
+<li><p>\(a \gtrsim b\) means &quot;\(a\) is greater than or equal to \(b\) up to constant factors&quot;</p>
+<ul>
+<li><p>Formally: \(a \geq c \cdot b\) for some constant \(c > 0\)</p>
+</li>
+</ul>
+</li>
+<li><p>\(a \approx b\) means &quot;approximately equal, up to constant factors&quot;</p>
+<ul>
+<li><p>Combines both: \(c_1 \cdot b \leq a \leq c_2 \cdot b\)</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>This notation is useful because in big-O analysis, we often don&#39;t care about constants—we only care about how things scale. So \(\lesssim\) is a way of saying &quot;ignoring constants, this is at most...&quot; while keeping the inequality precise.</p>
+<p>In my derivation above, when I write \(\sqrt{\varepsilon/n} \lesssim \varepsilon\), I mean &quot;the standard deviation should be at most \(\varepsilon\) times some constant.&quot; This is an informal way of setting up the scaling argument before we make it rigorous with Hoeffding.</p>
+</blockquote>
 <p>The subtlety: To <strong>guarantee</strong> &#40;with high probability&#41; that our deviation is at most \(\varepsilon\), we need to go several standard deviations out. Hoeffding tells us the exponential tail decay, and when you work through the math with \(\delta\) confidence, you get the \(1/\varepsilon^2\) dependence.</p>
 <p>Think of it this way:</p>
 <ul>
@@ -203,7 +231,7 @@
 <div class="page-foot">
     Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
     <br>
-    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 08, 2025.
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 09, 2025.
     <br>
     Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
 </div>

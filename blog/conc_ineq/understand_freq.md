@@ -1,4 +1,4 @@
-@def title = "Understanding "Frequency" in ε² and Logarithmic Sample Complexity"
+@def title = "Understanding \"Frequency\" in ε² and Logarithmic Sample Complexity"
 @def published = "8 December 2025"
 @def tags = ["machine-learning", "concentration-inequalities"]
 

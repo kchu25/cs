@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Novel Methods for CNN Filter Diversity</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="novel_methods_for_cnn_filter_diversity"><a href="#novel_methods_for_cnn_filter_diversity" class="header-anchor">Novel Methods for CNN Filter Diversity</a></h1>
+<p>You&#39;re right that adding explicit regularization terms is inelegant. Here are architectural and algorithmic tricks that encourage filter diversity without modifying the loss function:</p>
+<h2 id="orthogonal_weight_initialization"><a href="#orthogonal_weight_initialization" class="header-anchor"><ol>
+<li><p>Orthogonal Weight Initialization</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Start with orthogonal filters and maintain approximate orthogonality through dynamics.</p>
+<ul>
+<li><p><strong>Method</strong>: Use orthogonal initialization &#40;e.g., <code>torch.nn.init.orthogonal_</code>&#41; for convolutional kernels</p>
+</li>
+<li><p><strong>Why it works</strong>: Gradient descent tends to preserve orthogonality structure when starting from orthogonal configurations</p>
+</li>
+<li><p><strong>Enhancement</strong>: Use Spectral Normalization layers to constrain filter norms, which naturally encourages diversity in directions</p>
+</li>
+</ul>
+<pre><code class="language-python"># Flatten conv filters to 2D and orthogonalize
+W_flat &#61; W.reshape&#40;num_filters, -1&#41;
+W_orth &#61; torch.nn.init.orthogonal_&#40;W_flat&#41;</code></pre>
+<h2 id="ol_start2_dropout_on_filter_indices_filter_dropout"><a href="#ol_start2_dropout_on_filter_indices_filter_dropout" class="header-anchor"><ol start="2">
+<li><p>Dropout on Filter Indices &#40;Filter Dropout&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Similar to Gumbel-Softmax inducing sparsity, randomly drop entire filters during training.</p>
+<ul>
+<li><p><strong>Method</strong>: During each forward pass, randomly set entire filters &#40;not just activations&#41; to zero with probability \(p\)</p>
+</li>
+<li><p><strong>Effect</strong>: Forces remaining filters to be more diverse and informative since they can&#39;t rely on redundant partners</p>
+</li>
+<li><p><strong>Advantage</strong>: No objective modification, purely architectural</p>
+</li>
+</ul>
+<p><strong>Implementation Details</strong>:</p>
+<p>This is a <strong>hard mask</strong> &#40;binary: 0 or 1/\((1-p)\)&#41; created by Bernoulli sampling. Each filter is either fully on or fully off.</p>
+<pre><code class="language-julia">using Flux
+
+struct FilterDropout&#123;T&#125;
+    conv::T
+    drop_prob::Float32
+end
+
+function &#40;m::FilterDropout&#41;&#40;x&#41;
+    out &#61; m.conv&#40;x&#41;
+    
+    if Flux.trainmode&#40;&#41;  # Only during training
+        num_filters &#61; size&#40;m.conv.weight, 4&#41;  # Last dim in Flux conv weights
+        
+        # Hard mask: Bernoulli &#40;binary 0 or 1&#41;
+        mask &#61; rand&#40;Float32, 1, 1, num_filters, 1&#41; .&gt; m.drop_prob
+        mask &#61; mask ./ &#40;1 - m.drop_prob&#41;  # Inverted dropout scaling
+        
+        # Broadcast mask over batch and spatial dimensions
+        return out .* mask
+    else
+        return out  # No dropout at test time
+    end
+end
+
+# Usage:
+# conv &#61; Conv&#40;&#40;3, 3&#41;, 32 &#61;&gt; 64, relu&#41;
+# filter_dropout_conv &#61; FilterDropout&#40;conv, 0.3&#41;</code></pre>
+<p><strong>Soft mask alternative</strong> &#40;continuous relaxation&#41;:</p>
+<pre><code class="language-julia">function &#40;m::FilterDropout&#41;&#40;x; τ&#61;0.5&#41;
+    out &#61; m.conv&#40;x&#41;
+    
+    if Flux.trainmode&#40;&#41;
+        num_filters &#61; size&#40;m.conv.weight, 4&#41;
+        
+        # Soft mask: Gumbel-Softmax style
+        logits &#61; randn&#40;Float32, 1, 1, num_filters, 1&#41;
+        gumbel_noise &#61; -log.&#40;-log.&#40;rand&#40;Float32, size&#40;logits&#41;...&#41;&#41;&#41;
+        
+        # Soft approximation to Bernoulli
+        soft_mask &#61; sigmoid.&#40;&#40;logits .&#43; gumbel_noise&#41; ./ τ&#41;
+        
+        return out .* soft_mask
+    else
+        return out
+    end
+end</code></pre>
+<p><strong>Hard vs Soft tradeoffs</strong>:</p>
+<ul>
+<li><p><strong>Hard</strong>: True discrete dropout, stronger diversity pressure, non-differentiable</p>
+</li>
+<li><p><strong>Soft</strong>: Differentiable, gentler, can anneal temperature \(\tau\) during training</p>
+</li>
+<li><p><strong>Hybrid</strong>: Start soft &#40;high \(\tau\)&#41;, anneal to hard &#40;low \(\tau\)&#41;</p>
+</li>
+</ul>
+<h3 id="why_dropping_redundant_filters_creates_a_representational_gap"><a href="#why_dropping_redundant_filters_creates_a_representational_gap" class="header-anchor">Why Dropping Redundant Filters Creates a Representational Gap</a></h3>
+<h4 id="intuitive_explanation"><a href="#intuitive_explanation" class="header-anchor">Intuitive Explanation</a></h4>
+<p>Imagine you have two filters that learn nearly identical edge detectors &#40;redundant&#41;. In a normal network:</p>
+<ul>
+<li><p>Both filters fire on edges → their outputs get summed/combined in later layers</p>
+</li>
+<li><p>The network &quot;double counts&quot; this edge information</p>
+</li>
+<li><p>If one disappears, the other compensates perfectly</p>
+</li>
+</ul>
+<p>With filter dropout during training &#40;assuming \(p=0.5\) dropout probability&#41;:</p>
+<ul>
+<li><p>25&#37; of the time, filter A is dropped, B is kept → only filter B detects edges</p>
+</li>
+<li><p>25&#37; of the time, filter B is dropped, A is kept → only filter A detects edges  </p>
+</li>
+<li><p>25&#37; of the time, both are present &#40;redundant&#41;</p>
+</li>
+<li><p>25&#37; of the time, both are dropped → <strong>representational gap&#33;</strong></p>
+</li>
+</ul>
+<p><strong>The key insight</strong>: If filters are redundant, the network is fragile to dropout. </p>
+<p><strong>Performance impact comparison</strong> &#40;with \(p=0.5\) dropout, quantified by signal strength&#41;:</p>
+<p><em>Redundant filters</em> &#40;\(f_1 \approx f_2\), both detect the same edges&#41;:</p>
+<ul>
+<li><p>25&#37;: both present → signal strength &#61; 2.0 &#40;both fire&#41;</p>
+</li>
+<li><p>50&#37;: one dropped → signal strength &#61; 1.0 &#40;half the filters&#41;  </p>
+</li>
+<li><p>25&#37;: both dropped → signal strength &#61; 0.0 &#40;no detection&#41;</p>
+</li>
+<li><p><strong>Expected signal: \(0.25(2.0) + 0.5(1.0) + 0.25(0.0) = 1.0\)</strong></p>
+</li>
+<li><p><strong>Variance: \(0.25(1.0)^2 + 0.5(0.0)^2 + 0.25(1.0)^2 = 0.5\)</strong> &#40;high variance&#33;&#41;</p>
+</li>
+</ul>
+<p><em>Diverse filters</em> &#40;\(f_1\) detects vertical, \(f_2\) detects horizontal&#41;:</p>
+<ul>
+<li><p>25&#37;: both present → signal strength &#61; 2.0 &#40;vertical &#43; horizontal&#41;</p>
+</li>
+<li><p>25&#37;: only \(f_1\) → signal strength &#61; 1.0 &#40;vertical only, but still useful&#41;</p>
+</li>
+<li><p>25&#37;: only \(f_2\) → signal strength &#61; 1.0 &#40;horizontal only, but still useful&#41;</p>
+</li>
+<li><p>25&#37;: both dropped → signal strength &#61; 0.0 &#40;no detection&#41;</p>
+</li>
+<li><p><strong>Expected signal: \(0.25(2.0) + 0.5(1.0) + 0.25(0.0) = 1.0\)</strong> &#40;same&#33;&#41;</p>
+</li>
+<li><p><strong>Variance: \(0.25(1.0)^2 + 0.5(0.0)^2 + 0.25(1.0)^2 = 0.5\)</strong> &#40;same variance&#33;&#41;</p>
+</li>
+</ul>
+<p>Wait, the variances are equal? The crucial difference is in <strong>information content</strong>, not just signal strength:</p>
+<p><em>Redundant filters</em>:</p>
+<ul>
+<li><p>When one drops: lose 50&#37; of edge information</p>
+</li>
+<li><p>Information is duplicated, so partial dropout &#61; severe information loss</p>
+</li>
+</ul>
+<p><em>Diverse filters</em>:</p>
+<ul>
+<li><p>When one drops: lose only one type of edge &#40;vertical OR horizontal&#41;</p>
+</li>
+<li><p>Information is complementary, so you retain different useful features</p>
+</li>
+</ul>
+<p>The gradient signal encourages diversity because <strong>the loss is more sensitive to redundant dropouts</strong> - losing half of redundant information hurts the task more than losing one of two complementary features.</p>
+<h4 id="quantitative_analysis_via_cooperative_game_theory"><a href="#quantitative_analysis_via_cooperative_game_theory" class="header-anchor">Quantitative Analysis via Cooperative Game Theory</a></h4>
+<p><strong>Setup</strong>: View filters as players in a cooperative game where the &quot;value&quot; \(V(S)\) represents the performance &#40;inverse of loss&#41; when filter set \(S\) is active. Higher value &#61; better performance.</p>
+<p><strong>Expected value under dropout</strong>: For two filters with dropout probability \(p\):</p>
+\[\mathbb{E}[V] = p^2 V(\emptyset) + 2p(1-p)\left[\frac{V(\{f_1\}) + V(\{f_2\})}{2}\right] + (1-p)^2 V(\{f_1, f_2\})\]
+<p><strong>Shapley value perspective</strong>: The marginal contribution of filter \(f_1\) is:</p>
+\[\phi(f_1) = \frac{1}{2}[V(\{f_1, f_2\}) - V(\{f_2\})] + \frac{1}{2}[V(\{f_1\}) - V(\emptyset)]\]
+<hr />
+<p><strong>Redundant case</strong> &#40;\(f_1 \approx f_2\)&#41;: Filters detect the same features &#40;e.g., both detect all edges&#41;</p>
+<p><em>Cooperative game values</em>:</p>
+<ul>
+<li><p>\(V(\{f_1, f_2\}) = 10\) &#40;both present: full edge detection&#41;</p>
+</li>
+<li><p>\(V(\{f_1\}) = V(\{f_2\}) = 5\) &#40;one present: half signal strength, same edge types&#41;</p>
+</li>
+<li><p>\(V(\emptyset) = 0\) &#40;none present: no edge detection&#41;</p>
+</li>
+</ul>
+<p><em>Marginal contributions</em>:</p>
+<ul>
+<li><p>Adding \(f_2\) when \(f_1\) present: \(V(\{f_1, f_2\}) - V(\{f_1\}) = 10 - 5 = 5\)</p>
+</li>
+<li><p>Adding \(f_1\) when nothing present: \(V(\{f_1\}) - V(\emptyset) = 5 - 0 = 5\)</p>
+</li>
+<li><p><strong>Shapley value</strong>: \(\phi(f_1) = \frac{1}{2}(5 + 5) = 5\)</p>
+</li>
+</ul>
+<p><em>Key insight</em>: Each filter contributes the same marginal value &#40;5&#41; regardless of whether the other filter is present. They are <strong>perfect substitutes</strong> - interchangeable and redundant.</p>
+<p><em>Expected value under dropout</em> &#40;\(p=0.5\)&#41;:</p>
+\[\mathbb{E}[V] = 0.25(0) + 0.5(5) + 0.25(10) = 5.0\]
+<hr />
+<p><strong>Diverse case</strong> &#40;\(f_1 \perp f_2\)&#41;: Filters detect complementary features &#40;e.g., \(f_1\) &#61; vertical, \(f_2\) &#61; horizontal&#41;</p>
+<p><em>Cooperative game values</em>:</p>
+<ul>
+<li><p>\(V(\{f_1, f_2\}) = 10\) &#40;both present: complete edge detection&#41;</p>
+</li>
+<li><p>\(V(\{f_1\}) = 3\) &#40;only vertical edges: incomplete&#41;</p>
+</li>
+<li><p>\(V(\{f_2\}) = 3\) &#40;only horizontal edges: incomplete&#41;</p>
+</li>
+<li><p>\(V(\emptyset) = 0\) &#40;no edge detection&#41;</p>
+</li>
+</ul>
+<p><em>Marginal contributions</em>:</p>
+<ul>
+<li><p>Adding \(f_2\) when \(f_1\) present: \(V(\{f_1, f_2\}) - V(\{f_1\}) = 10 - 3 = 7\)</p>
+</li>
+<li><p>Adding \(f_1\) when nothing present: \(V(\{f_1\}) - V(\emptyset) = 3 - 0 = 3\)</p>
+</li>
+<li><p><strong>Shapley value</strong>: \(\phi(f_1) = \frac{1}{2}(7 + 3) = 5\)</p>
+</li>
+</ul>
+<p><em>Key insight</em>: Each filter contributes MORE value when the other is present &#40;7 vs 3&#41;. They are <strong>complements</strong> - each filter is more valuable in the presence of the other because they provide non-overlapping information.</p>
+<p><em>Expected value under dropout</em> &#40;\(p=0.5\)&#41;:</p>
+\[\mathbb{E}[V] = 0.25(0) + 0.5(3) + 0.25(10) = 4.0\]
+<hr />
+<p><strong>Wait, diverse filters have LOWER expected value?</strong></p>
+<p>Yes&#33; This is the key insight. With the same Shapley values &#40;\(\phi = 5\) for both cases&#41;, diverse filters actually have <strong>lower expected value under dropout</strong> because losing one filter hurts more &#40;drops to 3 instead of 5&#41;.</p>
+<p><strong>So why does the network learn diverse filters?</strong></p>
+<p>The answer lies in the <strong>gradient structure</strong>, not expected value:</p>
+<ol>
+<li><p><strong>Information content</strong>: Diverse filters provide gradients in orthogonal directions. Even when one drops, the remaining filter provides unique gradient information that drives learning.</p>
+</li>
+<li><p><strong>Robustness to complete failure</strong>: The \(p^2 V(\emptyset)\) term &#40;both dropped&#41; affects both equally, but diverse filters ensure that when learning happens &#40;75&#37; of the time&#41;, the gradients are maximally informative.</p>
+</li>
+<li><p><strong>Task decomposition</strong>: Real tasks benefit from orthogonal feature decomposition. A classifier using both vertical and horizontal edges can make finer distinctions than one using 2x the same edge detector.</p>
+</li>
+</ol>
+<p>The game theory framing shows that <strong>diversity emerges not from maximizing expected dropout performance, but from maximizing gradient information and task-relevant feature coverage</strong>.</p>
+<h4 id="connection_to_explaining_away_berksons_paradox"><a href="#connection_to_explaining_away_berksons_paradox" class="header-anchor">Connection to Explaining Away &#40;Berkson&#39;s Paradox&#41;</a></h4>
+<p>Filter dropout implicitly encourages <strong>explaining away</strong>, a phenomenon from probabilistic reasoning where observing one cause makes another cause less probable.</p>
+<p><strong>Explaining away structure</strong>: Suppose two filters \(f_1\) and \(f_2\) both contribute to explaining some output feature \(y\). In a Bayesian network:</p>
+<ul>
+<li><p>\(P(f_1 \text{ active} | y \text{ observed})\) is high when \(f_2\) is absent</p>
+</li>
+<li><p>But \(P(f_1 \text{ active} | y \text{ observed}, f_2 \text{ active})\) drops because \(f_2\) already explains \(y\)</p>
+</li>
+</ul>
+<p><strong>How filter dropout induces this</strong>:</p>
+<p>When both filters can explain the same output:</p>
+<ul>
+<li><p>During training, dropout randomly removes \(f_1\) or \(f_2\)</p>
+</li>
+<li><p>The network must produce correct output \(y\) even when one filter is missing</p>
+</li>
+<li><p>If \(f_1\) and \(f_2\) are redundant &#40;both explain \(y\) the same way&#41;, the gradient updates make them compete</p>
+</li>
+<li><p>If \(f_1\) and \(f_2\) are diverse &#40;each explains different aspects of \(y\)&#41;, they become complementary</p>
+</li>
+</ul>
+<p><strong>Mathematical formulation</strong>: Consider the gradient update when \(f_2\) is dropped: \(\nabla_{f_1} L = \frac{\partial L}{\partial y} \cdot \frac{\partial y}{\partial f_1}\)</p>
+<p>If \(f_1\) and \(f_2\) are redundant, \(\frac{\partial y}{\partial f_1}\) is similar whether \(f_2\) is present or not. But the network must rely entirely on \(f_1\) when \(f_2\) drops, forcing \(f_1\) to &quot;take responsibility&quot; for the full explanation. This creates pressure for specialization:</p>
+<ul>
+<li><p><strong>Without dropout</strong>: Both filters can partially explain \(y\), leading to credit assignment ambiguity</p>
+</li>
+<li><p><strong>With dropout</strong>: Each filter must be prepared to fully explain its unique contribution, forcing them apart</p>
+</li>
+</ul>
+<p>This is exactly the explaining away structure: when one filter is known to be absent &#40;dropped&#41;, the other must explain more. The gradient signal learns to partition the explanation space between filters rather than having them redundantly cover the same space.</p>
+<p><strong>Analogy to Bayesian inference</strong>: In a noisy-OR model, if both \(f_1\) and \(f_2\) can cause \(y\), and we observe \(y\), then learning that \(f_1\) is active reduces our belief that \(f_2\) was necessary. Filter dropout implements this by forcing the network to learn: &quot;if \(f_1\) is dropped, \(f_2\) must handle its part; if \(f_2\) is dropped, \(f_1\) must handle its part&quot; - naturally leading to partitioned, complementary representations.</p>
+<h4 id="empirical_evidence"><a href="#empirical_evidence" class="header-anchor">Empirical Evidence</a></h4>
+<p>Research on orthogonal regularization &#40;OrthoReg&#41; shows that reducing filter correlation improves generalization even when dropout and batch normalization are present, suggesting that different regularizers address complementary aspects of redundancy.</p>
+<p>Studies of ResNet34 on ImageNet show that pairwise filter similarities increase with network depth in standard CNNs, and that orthogonal convolutional layers consistently improve classification accuracy.</p>
+<p>The existence of redundancy in CNNs is well-documented, with training typically distributing redundancy randomly across filters such that removing any single filter triggers information loss.</p>
+<p><strong>Connection to information theory</strong>: The efficient coding hypothesis from neuroscience suggests that early visual structures minimize redundancy to maximize information efficiency. Filter dropout implements this principle stochastically: redundant representations are penalized through increased loss variance during training.</p>
+<p><strong>Analogy</strong>: It&#39;s like having two employees doing the same job - if both call in sick randomly, you&#39;re in trouble&#33; Better to have them specialize in different skills.</p>
+<h2 id="ol_start3_maxout_networks_competitive_filters"><a href="#ol_start3_maxout_networks_competitive_filters" class="header-anchor"><ol start="3">
+<li><p>Maxout Networks / Competitive Filters</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Force filters to compete through max-pooling over filter groups.</p>
+\[y_i = \max_{j \in \mathcal{G}_i} (W_j * x + b_j)\]
+<p>where \(\mathcal{G}_i\) is the \(i\)-th group of filters.</p>
+<ul>
+<li><p><strong>Why it works</strong>: Filters within a group must specialize to different features to &quot;win&quot; the max operation</p>
+</li>
+<li><p><strong>Natural diversity</strong>: Competition inherently discourages redundancy</p>
+</li>
+</ul>
+<h2 id="ol_start4_discrete_filter_selection_via_straight-through_estimator"><a href="#ol_start4_discrete_filter_selection_via_straight-through_estimator" class="header-anchor"><ol start="4">
+<li><p>Discrete Filter Selection via Straight-Through Estimator</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Learn to select from a discrete set of basis filters, analogous to Gumbel-Softmax.</p>
+<p><strong>Architecture</strong>:</p>
+<ul>
+<li><p>Maintain a learnable dictionary \(\mathbf{D} = \{d_1, ..., d_K\}\) of basis filters</p>
+</li>
+<li><p>Each &quot;filter&quot; is a weighted combination: \(W_i = \sum_{k=1}^K \alpha_{ik} d_k\)</p>
+</li>
+<li><p>Use straight-through estimator for \(\alpha\):</p>
+<ul>
+<li><p><strong>Forward</strong>: \(\alpha_{ik} = \mathbb{1}[\text{argmax}_k(\text{logits}_{ik}) = k]\) &#40;one-hot&#41;</p>
+</li>
+<li><p><strong>Backward</strong>: Use softmax gradients</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Result</strong>: Forces filters to select distinct combinations of bases</p>
+<h2 id="ol_start5_dpp-based_sampling_determinantal_point_process"><a href="#ol_start5_dpp-based_sampling_determinantal_point_process" class="header-anchor"><ol start="5">
+<li><p>DPP-Based Sampling &#40;Determinantal Point Process&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Sample filter updates that maximize diversity via DPP kernels.</p>
+<p>During training, instead of updating all filters, probabilistically select which filters to update based on DPP sampling where the kernel measures similarity:</p>
+\[P(\text{update filter set } S) \propto \det(K_S)\]
+<p>where \(K_{ij} = \text{similarity}(W_i, W_j)\)</p>
+<ul>
+<li><p><strong>Effect</strong>: Naturally discourages similar filters through the determinant structure</p>
+</li>
+<li><p><strong>Implementation</strong>: Use DPP sampling every few batches to select active filter subset</p>
+</li>
+</ul>
+<h2 id="ol_start6_mixup_on_filter_space"><a href="#ol_start6_mixup_on_filter_space" class="header-anchor"><ol start="6">
+<li><p>Mixup on Filter Space</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Mixup operates on data space; apply it to filter space.</p>
+<p>During training, create virtual filters:</p>
+\[\tilde{W}_i = \lambda W_i + (1-\lambda) W_j, \quad \lambda \sim \text{Beta}(\alpha, \alpha)\]
+<p>Use \(\tilde{W}_i\) for forward pass but update \(W_i\) and \(W_j\) separately.</p>
+<ul>
+<li><p><strong>Effect</strong>: Encourages filters to occupy distinct regions since interpolations must also be useful</p>
+</li>
+<li><p><strong>No loss modification</strong>: Pure data augmentation analog</p>
+</li>
+</ul>
+<h2 id="ol_start7_architectural_grouped_convolutions_with_cross-group_interaction"><a href="#ol_start7_architectural_grouped_convolutions_with_cross-group_interaction" class="header-anchor"><ol start="7">
+<li><p>Architectural: Grouped Convolutions with Cross-Group Interaction</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Partition filters into groups, force diversity through information bottleneck.</p>
+<ul>
+<li><p>Use grouped convolutions &#40;like ResNeXt&#41; where each group processes different channels</p>
+</li>
+<li><p>Add a single 1×1 &quot;mixing&quot; layer between groups</p>
+</li>
+<li><p><strong>Result</strong>: Within-group filters must be diverse to maximize information through the bottleneck</p>
+</li>
+</ul>
+<h2 id="ol_start8_codebook_quantization_vq-vae_style"><a href="#ol_start8_codebook_quantization_vq-vae_style" class="header-anchor"><ol start="8">
+<li><p>Codebook Quantization &#40;VQ-VAE style&#41;</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Discretize filters to a learned codebook.</p>
+\[W_i = \text{codebook}[\text{argmin}_k \|W_i^{\text{temp}} - c_k\|]\]
+<ul>
+<li><p>Replace each filter with its nearest codebook vector</p>
+</li>
+<li><p>Use straight-through estimator for gradients</p>
+</li>
+<li><p><strong>Natural diversity</strong>: Finite codebook forces distinct representatives</p>
+</li>
+</ul>
+<h2 id="ol_start9_temperature-annealed_competition"><a href="#ol_start9_temperature-annealed_competition" class="header-anchor"><ol start="9">
+<li><p>Temperature-Annealed Competition</p>
+</li>
+</ol>
+</a></h2>
+<p><strong>Key Idea</strong>: Add a temperature parameter to filter activations that anneals during training.</p>
+<p>Replace standard convolution output with:</p>
+\[y = \sum_i \frac{\exp((W_i * x)/\tau)}{\sum_j \exp((W_j * x)/\tau)} \cdot (W_i * x)\]
+<ul>
+<li><p>Start with high \(\tau\) &#40;soft competition&#41;</p>
+</li>
+<li><p>Anneal to low \(\tau\) &#40;hard competition&#41;</p>
+</li>
+<li><p><strong>Effect</strong>: At low temperature, filters must specialize to &quot;win&quot; for different inputs</p>
+</li>
+</ul>
+<h2 id="comparison_summary"><a href="#comparison_summary" class="header-anchor">Comparison Summary</a></h2>
+<table><tr><th align="right">Method</th><th align="right">Implementation Complexity</th><th align="right">Diversity Strength</th><th align="right">Preserves Architecture</th></tr><tr><td align="right">Orthogonal Init</td><td align="right">Low</td><td align="right">Medium</td><td align="right">Yes</td></tr><tr><td align="right">Filter Dropout</td><td align="right">Low</td><td align="right">Medium</td><td align="right">Yes</td></tr><tr><td align="right">Maxout</td><td align="right">Medium</td><td align="right">High</td><td align="right">No &#40;new arch&#41;</td></tr><tr><td align="right">Discrete Selection</td><td align="right">High</td><td align="right">High</td><td align="right">Moderate</td></tr><tr><td align="right">DPP Sampling</td><td align="right">High</td><td align="right">Very High</td><td align="right">Yes</td></tr><tr><td align="right">Filter Mixup</td><td align="right">Low</td><td align="right">Medium</td><td align="right">Yes</td></tr><tr><td align="right">Grouped Conv</td><td align="right">Low</td><td align="right">Medium</td><td align="right">No &#40;new arch&#41;</td></tr><tr><td align="right">Codebook</td><td align="right">Medium</td><td align="right">High</td><td align="right">Yes</td></tr><tr><td align="right">Temp Competition</td><td align="right">Medium</td><td align="right">High</td><td align="right">Moderate</td></tr></table>
+<p>The <strong>Filter Mixup</strong> and <strong>Orthogonal Initialization</strong> are the easiest to implement. <strong>Maxout</strong> and <strong>Discrete Filter Selection</strong> provide the strongest diversity guarantees with moderate effort.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 09, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

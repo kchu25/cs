@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding "Frequency" in ε² and Logarithmic Sample Complexity</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_frequency_in_ε_and_logarithmic_sample_complexity"><a href="#understanding_frequency_in_ε_and_logarithmic_sample_complexity" class="header-anchor">Understanding &quot;Frequency&quot; in ε² and Logarithmic Sample Complexity</a></h1>
+<p>You&#39;re essentially correct, but let me clarify the nuances.</p>
+<h2 id="the_two_types_of_frequency"><a href="#the_two_types_of_frequency" class="header-anchor">The Two Types of Frequency</a></h2>
+<p>In this context, there are <strong>two related but distinct concepts</strong>:</p>
+<h3 id="true_frequency_varepsilon"><a href="#true_frequency_varepsilon" class="header-anchor"><ol>
+<li><p><strong>True Frequency</strong> &#40;\(\varepsilon\)&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>This is the <strong>proportion in the underlying population/distribution</strong> that you&#39;re sampling from.</p>
+<ul>
+<li><p>For example: &quot;1&#37; of all configurations are good&quot; means \(\varepsilon = 0.01\)</p>
+</li>
+<li><p>This is a <strong>fixed, unknown parameter</strong> of the population</p>
+</li>
+<li><p>It&#39;s what we&#39;re trying to learn about</p>
+</li>
+</ul>
+<h3 id="ol_start2_empirical_frequency_hatvarepsilon"><a href="#ol_start2_empirical_frequency_hatvarepsilon" class="header-anchor"><ol start="2">
+<li><p><strong>Empirical Frequency</strong> &#40;\(\hat{\varepsilon}\)&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>This is the <strong>proportion in your sample</strong> that you actually observed.</p>
+<ul>
+<li><p>Defined as \(\hat{\varepsilon} = \frac{X}{n}\) where \(X\) is the count of good items in your \(n\) samples</p>
+</li>
+<li><p>This is a <strong>random variable</strong> that varies from sample to sample</p>
+</li>
+<li><p>It&#39;s our <strong>estimate</strong> of the true frequency \(\varepsilon\)</p>
+</li>
+</ul>
+<h2 id="the_key_distinction_in_the_article"><a href="#the_key_distinction_in_the_article" class="header-anchor">The Key Distinction in the Article</a></h2>
+<p>The article discusses two different problems:</p>
+<h3 id="problem_1_finding_at_least_one_good_item"><a href="#problem_1_finding_at_least_one_good_item" class="header-anchor">Problem 1: Finding at least one good item</a></h3>
+<ul>
+<li><p><strong>Question</strong>: &quot;Did I find anything?&quot;</p>
+</li>
+<li><p><strong>Sample complexity</strong>: \(n = O(1/\varepsilon)\)</p>
+</li>
+<li><p><strong>What matters</strong>: Only the true frequency \(\varepsilon\) &#40;how dense good items are&#41;</p>
+</li>
+<li><p><strong>Why</strong>: We just need \(P(X \geq 1)\) to be high, which requires \(n\varepsilon \gtrsim \ln(1/\delta)\)</p>
+</li>
+</ul>
+<h3 id="problem_2_estimating_the_frequency_accurately"><a href="#problem_2_estimating_the_frequency_accurately" class="header-anchor">Problem 2: Estimating the frequency accurately</a></h3>
+<ul>
+<li><p><strong>Question</strong>: &quot;How close is \(\hat{\varepsilon}\) to \(\varepsilon\)?&quot;</p>
+</li>
+<li><p><strong>Sample complexity</strong>: \(n = O(1/\varepsilon^2)\)</p>
+</li>
+<li><p><strong>What matters</strong>: The deviation \(|\hat{\varepsilon} - \varepsilon|\)</p>
+</li>
+<li><p><strong>Why</strong>: We need concentration around the mean, which requires controlling variance</p>
+</li>
+</ul>
+<h2 id="the_nuance_youre_asking_about"><a href="#the_nuance_youre_asking_about" class="header-anchor">The Nuance You&#39;re Asking About</a></h2>
+<p>When the article says &quot;frequency&quot; without qualification, it typically means:</p>
+<ul>
+<li><p><strong>The true frequency \(\varepsilon\)</strong> of the underlying population</p>
+</li>
+</ul>
+<p>However, the <strong>whole point</strong> of sampling is to estimate this true frequency using the empirical frequency \(\hat{\varepsilon}\) from our sample.</p>
+<h3 id="example_to_illustrate"><a href="#example_to_illustrate" class="header-anchor">Example to Illustrate</a></h3>
+<p>Suppose:</p>
+<ul>
+<li><p>Population: 1 million configurations, 10,000 are &quot;good&quot; → true frequency \(\varepsilon = 0.01\)</p>
+</li>
+<li><p>You sample \(n = 500\) configurations randomly</p>
+</li>
+<li><p>You observe \(X = 7\) good ones → empirical frequency \(\hat{\varepsilon} = 7/500 = 0.014\)</p>
+</li>
+</ul>
+<p>The concentration inequalities tell you:</p>
+<ul>
+<li><p><strong>With high probability</strong>, \(\hat{\varepsilon}\) will be close to \(\varepsilon\)</p>
+</li>
+<li><p>The sample size needed depends on <strong>both</strong> your desired accuracy and the true \(\varepsilon\)</p>
+</li>
+</ul>
+<h2 id="the_varepsilon2_factor_explained"><a href="#the_varepsilon2_factor_explained" class="header-anchor">The \(\varepsilon^2\) Factor Explained</a></h2>
+<p>The \(\varepsilon^2\) appears because:</p>
+\[\text{Var}(\hat{\varepsilon}) = \text{Var}(X/n) = \frac{1}{n^2} \cdot \text{Var}(X) = \frac{1}{n^2} \cdot n\varepsilon(1-\varepsilon) = \frac{\varepsilon(1-\varepsilon)}{n}\]
+<p>The standard deviation is \(\sqrt{\varepsilon/n}\) &#40;roughly&#41;. To make the standard deviation smaller than your tolerance \(\varepsilon\) itself:</p>
+\[\sqrt{\frac{\varepsilon}{n}} \lesssim \varepsilon \implies n \gtrsim \frac{1}{\varepsilon}\]
+<p>But for <strong>exponential concentration</strong> &#40;high confidence via Hoeffding&#41;, you get:</p>
+\[n \geq \frac{\ln(2/\delta)}{2\varepsilon^2}\]
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ul>
+<li><p><strong>&quot;Frequency&quot; usually refers to the true population parameter \(\varepsilon\)</strong></p>
+</li>
+<li><p>But we estimate it using the <strong>empirical frequency</strong> \(\hat{\varepsilon}\) from our sample</p>
+</li>
+<li><p>The relationship between them is governed by concentration inequalities</p>
+</li>
+<li><p>The sample complexity depends on <strong>how accurately</strong> you need \(\hat{\varepsilon}\) to approximate \(\varepsilon\)</p>
+</li>
+</ul>
+<p>So yes, you&#39;re right that it refers to frequency in the population, but the entire framework is about relating the sampled &#40;empirical&#41; frequency to the true &#40;population&#41; frequency&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 09, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
