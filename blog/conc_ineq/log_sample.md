@@ -1,5 +1,5 @@
 @def title = "Understanding ε² and Logarithmic Sample Complexity"
-@def published = "9 December 2025"
+@def published = "8 December 2025"
 @def tags = ["machine-learning", "concentration-inequalities"]
 
 # Understanding ε² and Logarithmic Sample Complexity
