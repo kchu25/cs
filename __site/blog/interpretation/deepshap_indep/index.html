@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Making the SHAP Approximation Intuitive</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_shaps_independence_assumption"><a href="#understanding_shaps_independence_assumption" class="header-anchor">Understanding SHAP&#39;s Independence Assumption</a></h1>
+<p>Hey&#33; Let me clarify the core confusion about DeepSHAP and how independence makes it work. I&#39;ll focus on making the independence assumption crystal clear.</p>
+<h2 id="the_setup_what_were_trying_to_compute"><a href="#the_setup_what_were_trying_to_compute" class="header-anchor">The Setup: What We&#39;re Trying to Compute</a></h2>
+<p>The true Shapley value for feature \(i\) is:</p>
+\[\phi_i^{\text{Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p>This has two expectations:</p>
+<ul>
+<li><p><strong>Inner</strong>: average over all coalitions \(S\) &#40;exponentially many&#33;&#41;</p>
+</li>
+<li><p><strong>Outer</strong>: average over reference samples \(r\)</p>
+</li>
+</ul>
+<p>Your question: How can one backprop &#40;DeepLIFT&#41; approximate this exponential average?</p>
+<p><strong>Answer</strong>: Independence makes all coalition terms equal, so the exponential average reduces to a single calculation.</p>
+<hr />
+<h2 id="understanding_independence_-_the_source_of_confusion"><a href="#understanding_independence_-_the_source_of_confusion" class="header-anchor">Understanding &quot;Independence&quot; - The Source of Confusion</a></h2>
+<p>There are TWO different things called &quot;independence&quot; here, which causes confusion:</p>
+<h3 id="independence_in_the_reference_distribution_probabilistic"><a href="#independence_in_the_reference_distribution_probabilistic" class="header-anchor"><ol>
+<li><p>Independence in the Reference Distribution &#40;Probabilistic&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>When we write \(r \sim \mathcal{R}\), we&#39;re sampling from a reference distribution. The assumption is:</p>
+\[p(r_1, r_2, \ldots, r_n) = p(r_1) \cdot p(r_2) \cdots p(r_n)\]
+<p><strong>What this means</strong>: When sampling references, we draw each feature independently from its marginal distribution.</p>
+<p><strong>Example</strong>: If training data has height and weight correlated, we&#39;re assuming we can sample heights and weights independently &#40;which is unrealistic but makes computation easier&#41;.</p>
+<p><strong>This is about how we construct \(r\)</strong>.</p>
+<h3 id="ol_start2_independence_in_the_model_functional"><a href="#ol_start2_independence_in_the_model_functional" class="header-anchor"><ol start="2">
+<li><p>Independence in the Model &#40;Functional&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>The model \(f(x_1, \ldots, x_n)\) has &quot;independent features&quot; if:</p>
+\[\frac{\partial^2 f}{\partial x_i \partial x_j} = 0 \text{ for all } i \neq j\]
+<p><strong>What this means</strong>: The model has no interaction terms. The effect of feature \(i\) doesn&#39;t depend on the value of feature \(j\).</p>
+<p><strong>This is about the structure of \(f\)</strong>.</p>
+<h3 id="how_theyre_related"><a href="#how_theyre_related" class="header-anchor">How They&#39;re Related</a></h3>
+<p>Both are required for DeepSHAP to approximate Shapley values:</p>
+<ul>
+<li><p><strong>Probabilistic independence</strong>: lets us sample references efficiently</p>
+</li>
+<li><p><strong>Functional independence</strong>: makes coalition averaging collapse to a single term</p>
+</li>
+</ul>
+<p>The functional independence is the key one for understanding why one backprop works&#33;</p>
+<hr />
+<h2 id="the_key_insight_functional_independence_makes_coalitions_irrelevant"><a href="#the_key_insight_functional_independence_makes_coalitions_irrelevant" class="header-anchor">The Key Insight: Functional Independence Makes Coalitions Irrelevant</a></h2>
+<p>Let me show you EXACTLY what independence means and what gets &quot;canceled.&quot;</p>
+<h3 id="notation_breakdown"><a href="#notation_breakdown" class="header-anchor">Notation Breakdown</a></h3>
+\[\frac{\partial f}{\partial x_i}(x_S, z_i, r_{\overline{S \cup \{i\}}})\]
+<p>This means:</p>
+<ul>
+<li><p>For features \(j \in S\): use \(x_j\) </p>
+</li>
+<li><p>For feature \(i\): use \(z_i\)</p>
+</li>
+<li><p>For features \(j \notin S\) and \(j \neq i\): use \(r_j\)</p>
+</li>
+</ul>
+<p><strong>Concrete example with \(n=5\) features, \(S = \{2, 5\}\), \(i=3\):</strong></p>
+\[\frac{\partial f}{\partial x_3}(\underbrace{r_1}_{\text{not in } S}, \underbrace{x_2}_{\text{in } S}, \underbrace{z_3}_{i}, \underbrace{r_4}_{\text{not in } S}, \underbrace{x_5}_{\text{in } S})\]
+<p>Different coalitions give different combinations of which features are at \(x\) vs \(r\).</p>
+<hr />
+<h2 id="example_1_linear_model_perfect_independence"><a href="#example_1_linear_model_perfect_independence" class="header-anchor">Example 1: Linear Model &#40;Perfect Independence&#41;</a></h2>
+\[f(x) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \beta_4 x_4 + \beta_5 x_5\]
+<p>The gradient with respect to \(x_3\) is:</p>
+\[\frac{\partial f}{\partial x_3} = \beta_3\]
+<p><strong>Key observation</strong>: This is a CONSTANT. It doesn&#39;t depend on any feature values at all&#33;</p>
+<p>So:</p>
+<ul>
+<li><p>Coalition \(S = \{2, 5\}\): \(\frac{\partial f}{\partial x_3}(r_1, x_2, z_3, r_4, x_5) = \beta_3\)</p>
+</li>
+<li><p>Coalition \(S = \emptyset\): \(\frac{\partial f}{\partial x_3}(r_1, r_2, z_3, r_4, r_5) = \beta_3\)</p>
+</li>
+<li><p>Coalition \(S = \{1,2,4,5\}\): \(\frac{\partial f}{\partial x_3}(x_1, x_2, z_3, x_4, x_5) = \beta_3\)</p>
+</li>
+</ul>
+<p><strong>All gradients equal \(\beta_3\)&#33;</strong> The coalition \(S\) is completely irrelevant.</p>
+<h3 id="what_this_means_for_shapley"><a href="#what_this_means_for_shapley" class="header-anchor">What This Means for Shapley</a></h3>
+<p>For any coalition \(S\) and reference \(r\):</p>
+\[f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}}) - f(x_S, r_{\bar{S}}) = \int_{r_3}^{x_3} \frac{\partial f}{\partial x_3} dz_3 = \beta_3 (x_3 - r_3)\]
+<p>Every coalition gives the same marginal contribution: \(\beta_3 (x_3 - r_3)\)</p>
+<p>Therefore:</p>
+\[\mathbb{E}_S[\text{marginal}] = \beta_3 (x_3 - r_3)\]
+<p><strong>The exponential average reduced to a single calculation&#33;</strong></p>
+<hr />
+<h2 id="example_2_model_with_interactions_independence_violated"><a href="#example_2_model_with_interactions_independence_violated" class="header-anchor">Example 2: Model with Interactions &#40;Independence VIOLATED&#41;</a></h2>
+\[f(x) = \beta_1 x_1 + \beta_2 x_2 + \beta_{12} x_1 x_2\]
+<p>The gradient with respect to \(x_1\) is:</p>
+\[\frac{\partial f}{\partial x_1} = \beta_1 + \beta_{12} x_2\]
+<p><strong>Key observation</strong>: This DEPENDS on \(x_2\)&#33;</p>
+<p>So:</p>
+<ul>
+<li><p>Coalition \(S = \emptyset\): \(\frac{\partial f}{\partial x_1}(z_1, r_2) = \beta_1 + \beta_{12} r_2\)</p>
+</li>
+<li><p>Coalition \(S = \{2\}\): \(\frac{\partial f}{\partial x_1}(z_1, x_2) = \beta_1 + \beta_{12} x_2\)</p>
+</li>
+</ul>
+<p><strong>Different coalitions give different gradients&#33;</strong> If \(x_2 \neq r_2\), these are not equal.</p>
+<h3 id="what_this_means_for_shapley__2"><a href="#what_this_means_for_shapley__2" class="header-anchor">What This Means for Shapley</a></h3>
+<p>The marginal contributions are:</p>
+<ul>
+<li><p>Empty coalition: \((\beta_1 + \beta_{12} r_2)(x_1 - r_1)\)</p>
+</li>
+<li><p>With feature 2: \((\beta_1 + \beta_{12} x_2)(x_1 - r_1)\)</p>
+</li>
+</ul>
+<p>These are DIFFERENT. You must actually compute and average them. No shortcut&#33;</p>
+<hr />
+<h2 id="example_3_neural_network_approximate_independence"><a href="#example_3_neural_network_approximate_independence" class="header-anchor">Example 3: Neural Network &#40;Approximate Independence&#41;</a></h2>
+\[f(x) = \text{ReLU}(w_1 x_1 + w_2 x_2 + w_3 x_3 + b)\]
+<p>In regions where the ReLU is active &#40;\(w_1 x_1 + w_2 x_2 + w_3 x_3 + b > 0\)&#41;:</p>
+\[\frac{\partial f}{\partial x_1} = w_1\]
+<p><strong>Key observation</strong>: Within a linear region, gradient is constant &#40;like the linear model&#41;&#33;</p>
+<p>So:</p>
+<ul>
+<li><p>Coalition \(S = \{2\}\): \(\frac{\partial f}{\partial x_1}(z_1, x_2, r_3) = w_1\) &#40;if active&#41;</p>
+</li>
+<li><p>Coalition \(S = \{3\}\): \(\frac{\partial f}{\partial x_1}(z_1, r_2, x_3) = w_1\) &#40;if active&#41;</p>
+</li>
+</ul>
+<p><strong>Approximately equal</strong> as long as both points lie in the same linear region.</p>
+<h3 id="the_catch"><a href="#the_catch" class="header-anchor">The Catch</a></h3>
+<p>Different coalitions might activate different neurons, putting you in different linear regions. Then the gradients differ and independence is violated.</p>
+<p><strong>DeepLIFT&#39;s approximation</strong>: Assumes you stay in the same linear regions, so gradients are approximately equal across coalitions.</p>
+<hr />
+<h2 id="the_mathematical_statement_of_functional_independence"><a href="#the_mathematical_statement_of_functional_independence" class="header-anchor">The Mathematical Statement of Functional Independence</a></h2>
+<p><strong>Independence means</strong>: The gradient with respect to \(x_i\) can be written as:</p>
+\[\frac{\partial f}{\partial x_i}(x_1, \ldots, x_n) = g_i(x_i)\]
+<p>A function that ONLY depends on \(x_i\), not on any other feature&#33;</p>
+<p><strong>Consequence</strong>: </p>
+\[\frac{\partial f}{\partial x_i}(x_S, z_i, r_{\overline{S \cup \{i\}}}) = g_i(z_i) = \frac{\partial f}{\partial x_i}(r_1, \ldots, r_{i-1}, z_i, r_{i+1}, \ldots, r_n)\]
+<p>The stuff that varies with coalition &#40;\(x_S\) vs \(r_{\overline{S \cup \{i\}}}\)&#41; doesn&#39;t appear in the gradient because it only depends on \(z_i\).</p>
+<p><strong>This is what &quot;cancels out&quot;</strong>: All the coalition-specific feature values drop out of the gradient expression.</p>
+<hr />
+<h2 id="how_this_makes_deepshap_work"><a href="#how_this_makes_deepshap_work" class="header-anchor">How This Makes DeepSHAP Work</a></h2>
+<h3 id="step_1_for_a_fixed_reference_r"><a href="#step_1_for_a_fixed_reference_r" class="header-anchor">Step 1: For a Fixed Reference \(r\)</a></h3>
+<p>The marginal contribution in coalition \(S\) is:</p>
+\[\Delta_i(S) = \int_0^1 \frac{\partial f}{\partial x_i}(x_S, r_i + t(x_i - r_i), r_{\overline{S \cup \{i\}}}) dt \cdot (x_i - r_i)\]
+<p><strong>Under independence</strong>, gradient doesn&#39;t depend on coalition:</p>
+\[\Delta_i(S) = \int_0^1 g_i(r_i + t(x_i - r_i)) dt \cdot (x_i - r_i)\]
+<p>This is the SAME for all coalitions \(S\)&#33;</p>
+<h3 id="step_2_coalition_average_collapses"><a href="#step_2_coalition_average_collapses" class="header-anchor">Step 2: Coalition Average Collapses</a></h3>
+\[\mathbb{E}_{S \sim \pi}[\Delta_i(S)] = \int_0^1 g_i(r_i + t(x_i - r_i)) dt \cdot (x_i - r_i)\]
+<p>We computed an expectation over \(2^{n-1}\) coalitions, but got a single value because all terms were identical.</p>
+<h3 id="step_3_deeplift_approximates_this"><a href="#step_3_deeplift_approximates_this" class="header-anchor">Step 3: DeepLIFT Approximates This</a></h3>
+<p>DeepLIFT integrates along the full path from \(r\) to \(x\):</p>
+\[\phi_i(x, r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x - r)) dt\]
+<p>Under independence, this approximately equals:</p>
+\[\int_0^1 g_i(r_i + t(x_i - r_i)) dt\]
+<p>Because the gradient only depends on \(x_i\), not on where the other features are along the path.</p>
+<h3 id="step_4_multiple_references"><a href="#step_4_multiple_references" class="header-anchor">Step 4: Multiple References</a></h3>
+<p>Finally, we average over references:</p>
+\[\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[\phi_i(x, r) \cdot (x_i - r_i)] \approx \frac{1}{K} \sum_{k=1}^K \phi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\]
+<hr />
+<h2 id="summary_what_independence_does"><a href="#summary_what_independence_does" class="header-anchor">Summary: What Independence Does</a></h2>
+<p><strong>Functional independence</strong> &#40;\(\frac{\partial^2 f}{\partial x_i \partial x_j} = 0\)&#41; means:</p>
+<ol>
+<li><p>The gradient \(\frac{\partial f}{\partial x_i}\) only depends on \(x_i\), not other features</p>
+</li>
+<li><p>Therefore, all \(2^{n-1}\) coalitions give the same marginal contribution</p>
+</li>
+<li><p>The coalition expectation \(\mathbb{E}_S[\cdot]\) reduces from &quot;average over exponentially many terms&quot; to &quot;evaluate one term&quot;</p>
+</li>
+<li><p>DeepLIFT&#39;s single path integral gives that one value</p>
+</li>
+<li><p>Multiple references approximate the outer expectation \(\mathbb{E}_r[\cdot]\)</p>
+</li>
+</ol>
+<p><strong>Without independence</strong>: Different coalitions give different gradients → must actually compute exponentially many terms → DeepSHAP is just an approximation.</p>
+<p><strong>With independence</strong>: All coalitions give same gradient → exponential computation reduces to single calculation → DeepSHAP is theoretically justified.</p>
+<hr />
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>The confusion comes from mixing probabilistic independence &#40;how we sample \(r\)&#41; with functional independence &#40;structure of \(f\)&#41;.</p>
+<p><strong>The key for understanding DeepSHAP</strong>: Focus on functional independence. It makes the gradient independent of coalition membership, which collapses the exponential Shapley average to a single term that DeepLIFT can compute in one backward pass.</p>
+<p>Does this make it clearer?</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 19, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
