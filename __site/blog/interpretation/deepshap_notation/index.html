@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding DeepSHAP Notation and Reference Averaging</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_deepshap_notation_and_reference_averaging"><a href="#understanding_deepshap_notation_and_reference_averaging" class="header-anchor">Understanding DeepSHAP Notation and Reference Averaging</a></h1>
+<h2 id="question_1_why_the_subscript_x_in_f_xs"><a href="#question_1_why_the_subscript_x_in_f_xs" class="header-anchor">Question 1: Why the subscript \(x\) in \(f_x(S)\)?</a></h2>
+<h3 id="what_it_means"><a href="#what_it_means" class="header-anchor">What it means</a></h3>
+<p>The subscript \(x\) indicates <strong>which input we&#39;re explaining</strong>. The function \(f_x(S)\) means:</p>
+<blockquote>
+<p>&quot;The expected model output when features in coalition \(S\) are set to their values from input \(x\), and features outside \(S\) are drawn from the reference distribution.&quot;</p>
+</blockquote>
+<p>Mathematically:</p>
+\[f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
+<h3 id="why_we_need_this"><a href="#why_we_need_this" class="header-anchor">Why we need this</a></h3>
+<p>We&#39;re computing Shapley values <strong>for a specific input</strong> \(x\). Different inputs will have different Shapley values&#33; The subscript reminds us that we&#39;re always measuring contributions relative to explaining \(f(x)\).</p>
+<h3 id="concrete_example"><a href="#concrete_example" class="header-anchor">Concrete Example</a></h3>
+<p>Suppose \(x = (10, 20, 30)\) &#40;three features&#41;.</p>
+<p><strong>For coalition</strong> \(S = \{1, 3\}\):</p>
+\[f_x(\{1,3\}) = \mathbb{E}_r[f(10, r_2, 30)]\]
+<ul>
+<li><p>Features 1 and 3 are <strong>locked</strong> to their values in \(x\): \((10, \_, 30)\)</p>
+</li>
+<li><p>Feature 2 varies according to the reference distribution \(r_2\)</p>
+</li>
+</ul>
+<p><strong>For a different input</strong> \(x' = (5, 15, 25)\):</p>
+\[f_{x'}(\{1,3\}) = \mathbb{E}_r[f(5, r_2, 25)]\]
+<ul>
+<li><p>Now features 1 and 3 use values from \(x'\): \((5, \_, 25)\)</p>
+</li>
+<li><p>Same coalition, but different &quot;locked&quot; values&#33;</p>
+</li>
+</ul>
+<p>The subscript \(x\) tracks which input we&#39;re explaining.</p>
+<hr />
+<h2 id="question_2_why_can_marginal_contribution_be_written_as_sum_over_references"><a href="#question_2_why_can_marginal_contribution_be_written_as_sum_over_references" class="header-anchor">Question 2: Why can marginal contribution be written as sum over references?</a></h2>
+<h3 id="the_true_marginal_contribution"><a href="#the_true_marginal_contribution" class="header-anchor">The True Marginal Contribution</a></h3>
+<p>From the Shapley formula, the marginal contribution of feature \(i\) is:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+<p>This averages over <strong>coalitions</strong> \(S\) &#40;all possible subsets of features&#41;.</p>
+<h3 id="expanding_with_references"><a href="#expanding_with_references" class="header-anchor">Expanding with References</a></h3>
+<p>Since \(f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\), we can write:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[\underbrace{f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})}_{\text{feature } i \text{ present}} - \underbrace{f(x_S, r_{\bar{S}})}_{\text{feature } i \text{ absent}}]\]
+<h3 id="why_this_is_a_sum_over_references"><a href="#why_this_is_a_sum_over_references" class="header-anchor">Why This is a &quot;Sum&quot; Over References</a></h3>
+<p>Each term in this double expectation involves:</p>
+<ol>
+<li><p>A specific <strong>coalition</strong> \(S\) &#40;which features are active&#41;</p>
+</li>
+<li><p>A specific <strong>reference sample</strong> \(r\) &#40;providing values for inactive features&#41;</p>
+</li>
+</ol>
+<p>When you sample different \(r\) values, you create different &quot;background contexts&quot; against which feature \(i\)&#39;s contribution is measured.</p>
+<h3 id="the_key_insight_reference_diversity_creates_coalition_diversity"><a href="#the_key_insight_reference_diversity_creates_coalition_diversity" class="header-anchor">The Key Insight: Reference Diversity Creates Coalition Diversity</a></h3>
+<p>By varying \(r\), you <strong>implicitly sample different coalitions</strong>:</p>
+<ul>
+<li><p>When \(r_j \approx x_j\) for feature \(j\): it&#39;s &quot;almost as if&quot; feature \(j\) is in the coalition &#40;present&#41;</p>
+</li>
+<li><p>When \(r_j \ll x_j\) or \(r_j \gg x_j\): feature \(j\) is clearly &quot;absent&quot; from the coalition</p>
+</li>
+<li><p>Averaging over many diverse references effectively samples the space of possible coalition configurations</p>
+</li>
+</ul>
+<h3 id="example_how_one_reference_relates_to_multiple_coalitions"><a href="#example_how_one_reference_relates_to_multiple_coalitions" class="header-anchor">Example: How One Reference Relates to Multiple Coalitions</a></h3>
+<p>Suppose we have 3 features and:</p>
+<ul>
+<li><p>Input: \(x = (10, 20, 30)\)</p>
+</li>
+<li><p>Reference: \(r = (9, 5, 31)\)</p>
+</li>
+</ul>
+<p>When computing \(f(x) - f(r)\) with this reference:</p>
+<ul>
+<li><p>Feature 1: \(x_1 - r_1 = 10 - 9 = 1\) &#40;small difference → nearly &quot;absent&quot;&#41;</p>
+</li>
+<li><p>Feature 2: \(x_2 - r_2 = 20 - 5 = 15\) &#40;large difference → clearly &quot;present&quot;&#41;</p>
+</li>
+<li><p>Feature 3: \(x_3 - r_3 = 30 - 31 = -1\) &#40;small difference → nearly &quot;absent&quot;&#41;</p>
+</li>
+</ul>
+<p>This reference effectively captures scenarios where feature 2 is active but features 1 and 3 are not, corresponding roughly to coalition \(S = \{2\}\).</p>
+<h3 id="why_deeplifts_single_x_r_pair_works"><a href="#why_deeplifts_single_x_r_pair_works" class="header-anchor">Why DeepLIFT&#39;s Single \((x, r)\) Pair Works</a></h3>
+<p>For one reference \(r\), DeepLIFT computes:</p>
+\[C_{\Delta x_i \Delta f}(x, r) = \phi_i(x, r) \cdot (x_i - r_i)\]
+<p>This linearization captures the contribution of feature \(i\) along the path from \(r\) to \(x\).</p>
+<p><strong>By averaging over multiple references:</strong></p>
+\[\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
+<p>You&#39;re averaging these different paths, which approximates the coalition-weighted average that the Shapley formula requires.</p>
+<h3 id="the_mathematical_connection"><a href="#the_mathematical_connection" class="header-anchor">The Mathematical Connection</a></h3>
+<p>The approximation works because:</p>
+\[\mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)] \approx \mathbb{E}_{r \sim \mathcal{R}}\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p>The left side averages DeepLIFT contributions over references. The right side is the exact Shapley value &#40;by swapping the order of expectations&#41;.</p>
+<p><strong>The bridge:</strong> DeepLIFT&#39;s multiplier-based linearization implicitly performs the coalition sampling that Shapley requires, but does it through the network structure rather than explicit enumeration of \(2^n\) coalitions.</p>
+<hr />
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ol>
+<li><p><strong>The subscript \(x\)</strong> reminds us we&#39;re explaining a specific input \(x\)—different inputs have different Shapley values.</p>
+</li>
+<li><p><strong>Reference averaging</strong> works because:</p>
+<ul>
+<li><p>Different references create different &quot;background contexts&quot;</p>
+</li>
+<li><p>This implicitly samples different feature coalitions</p>
+</li>
+<li><p>Averaging over references ≈ averaging over coalitions &#40;the Shapley formula&#41;</p>
+</li>
+<li><p>DeepLIFT&#39;s linearization &#43; reference averaging &#61; computational shortcut to Shapley values</p>
+</li>
+</ul>
+</li>
+</ol>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 19, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
