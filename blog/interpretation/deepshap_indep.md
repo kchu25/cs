@@ -1,4 +1,4 @@
-@def title = "Making the SHAP Approximation Intuitive"
+@def title = "Understanding SHAP's Independence Assumption"
 @def published = "19 December 2025"
 @def tags = ["interpretation"]
 
