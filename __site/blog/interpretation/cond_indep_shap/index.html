@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>The Conditional Independence Assumption in DeepSHAP</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="the_conditional_independence_assumption_in_deepshap"><a href="#the_conditional_independence_assumption_in_deepshap" class="header-anchor">The Conditional Independence Assumption in DeepSHAP</a></h1>
+<h2 id="a_critical_notational_pitfall_read_this_first"><a href="#a_critical_notational_pitfall_read_this_first" class="header-anchor">A Critical Notational Pitfall &#40;READ THIS FIRST&#33;&#41;</a></h2>
+<p>Before diving into the independence assumption, there&#39;s a common confusion in the notation that needs clearing up.</p>
+<h3 id="the_misleading_expression"><a href="#the_misleading_expression" class="header-anchor">The Misleading Expression</a></h3>
+<p>You might see:</p>
+\(\frac{f(x) - f(r)}{x_i - r_i} \cdot (x_i - r_i)\)
+<p><strong>STOP&#33;</strong> If you algebraically cancel the \((x_i - r_i)\) terms, you get:</p>
+\(f(x) - f(r)\)
+<p>This would mean feature \(i\) alone explains the <em>entire</em> output difference&#33; That&#39;s clearly wrong—all other features would have zero contribution.</p>
+<h3 id="what_deeplift_actually_computes"><a href="#what_deeplift_actually_computes" class="header-anchor">What DeepLIFT Actually Computes</a></h3>
+<p>DeepLIFT computes coefficients \(\phi_i(x, r)\) via a <strong>backward pass with multipliers</strong>, NOT by simple division. The coefficients satisfy:</p>
+\(f(x) - f(r) = \sum_{i=1}^{n} \phi_i(x, r) \cdot (x_i - r_i)\)
+<p><strong>Key point:</strong> Each \(\phi_i(x, r)\) is computed through the chain rule:</p>
+\(\phi_i(x, r) = \sum_{\text{paths from } i \text{ to output}} \prod_{\text{edges in path}} m_{\text{edge}}\)
+<p>where \(m_{\text{edge}}\) are the multipliers computed layer-by-layer.</p>
+<h3 id="why_the_confusion"><a href="#why_the_confusion" class="header-anchor">Why the Confusion?</a></h3>
+<p>The notation \(\phi_i(x, r) \cdot (x_i - r_i)\) looks like it could be written as \(\frac{f(x) - f(r)}{x_i - r_i} \cdot (x_i - r_i)\), but:</p>
+<ul>
+<li><p><strong>Wrong interpretation:</strong> \(\phi_i(x, r) = \frac{f(x) - f(r)}{x_i - r_i}\) &#40;simple ratio - INCORRECT&#33;&#41;</p>
+</li>
+<li><p><strong>Correct interpretation:</strong> \(\phi_i(x, r)\) is computed via multiplier backpropagation such that \(\sum_i \phi_i(x, r) \cdot (x_i - r_i) = f(x) - f(r)\)</p>
+</li>
+</ul>
+<p><strong>Analogy:</strong> It&#39;s like saying &quot;find numbers \(a, b, c\) such that \(a + b + c = 10\)&quot; vs &quot;each of \(a, b, c\) equals 10.&quot; The first distributes the total; the second makes no sense.</p>
+<h3 id="the_correct_picture"><a href="#the_correct_picture" class="header-anchor">The Correct Picture</a></h3>
+<p>For a simple network: \(f(x) = \text{ReLU}(w_1 x_1 + w_2 x_2)\)</p>
+<p>If \(x = (2, 3)\) and \(r = (0, 0)\), and both neurons activate:</p>
+<ul>
+<li><p>DeepLIFT gives: \(\phi_1(x,r) = w_1\) and \(\phi_2(x,r) = w_2\)</p>
+</li>
+<li><p>Contributions: \(C_1 = w_1 \cdot 2\) and \(C_2 = w_2 \cdot 3\)</p>
+</li>
+<li><p>Sum: \(w_1 \cdot 2 + w_2 \cdot 3 = f(2,3) - f(0,0)\) ✓</p>
+</li>
+</ul>
+<p>Notice: \(\phi_1 \neq \frac{f(x) - f(r)}{x_1 - r_1} = \frac{w_1 \cdot 2 + w_2 \cdot 3}{2}\)</p>
+<p>The multipliers \(w_1\) and \(w_2\) are determined by the network structure, not by simple division&#33;</p>
+<hr />
+<h2 id="the_central_mystery"><a href="#the_central_mystery" class="header-anchor">The Central Mystery</a></h2>
+<p>The document claims that under conditional independence:</p>
+\[\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})] \approx \frac{f(x) - f(r)}{x_i - r_i} \cdot (x_i - r_i)\]
+<p>This is indeed a <strong>big assumption</strong> and the &quot;≈&quot; is doing <em>a lot</em> of work. Let&#39;s unpack why this might hold and what the original papers actually say.</p>
+<h2 id="what_conditional_independence_really_means"><a href="#what_conditional_independence_really_means" class="header-anchor">What Conditional Independence Really Means</a></h2>
+<h3 id="the_formal_statement"><a href="#the_formal_statement" class="header-anchor">The Formal Statement</a></h3>
+<p><strong>The assumption:</strong> Features \(X_1, \ldots, X_n\) are conditionally independent given a reference sample \(r \sim \mathcal{R}\).</p>
+<p><strong>Mathematically:</strong> For any two features \(i, j\):</p>
+\[P(X_i, X_j | r) = P(X_i | r) \cdot P(X_j | r)\]
+<h3 id="unpacking_this_carefully"><a href="#unpacking_this_carefully" class="header-anchor">Unpacking This Carefully</a></h3>
+<p>This is <strong>NOT</strong> saying features are globally independent&#33; It&#39;s saying:</p>
+<p><strong>Given that you&#39;ve fixed a particular reference sample \(r\)</strong>, the features have no residual correlations.</p>
+<p><strong>Concrete example - Height and Weight:</strong></p>
+<ul>
+<li><p><strong>Global independence &#40;FALSE&#41;:</strong> Height and weight are clearly correlated in the population</p>
+</li>
+<li><p><strong>Conditional independence &#40;THE CLAIM&#41;:</strong> Given a baseline person with height 5&#39;8&quot; and weight 160lbs, if you sample other people from the population, the variation in their heights doesn&#39;t tell you about variation in their weights</p>
+</li>
+</ul>
+<p><strong>Why this is weird:</strong> In reality, even conditional on a reference, features remain correlated&#33; If your reference is a 160lb person, other people&#39;s heights still correlate with their weights.</p>
+<h3 id="what_this_means_for_the_reference_distribution"><a href="#what_this_means_for_the_reference_distribution" class="header-anchor">What This Means for the Reference Distribution</a></h3>
+<p>When we write \(r \sim \mathcal{R}\), we&#39;re sampling reference points. The conditional independence assumption says:</p>
+\[p(r_i, r_j) = p(r_i) \cdot p(r_j) \text{ for all } i, j\]
+<p><strong>In practice:</strong></p>
+<ul>
+<li><p>If \(\mathcal{R}\) &#61; &quot;all training samples,&quot; this assumes training features are independent &#40;almost never true&#33;&#41;</p>
+</li>
+<li><p>If \(\mathcal{R}\) &#61; &quot;a single baseline&quot; &#40;e.g., all zeros&#41;, you&#39;re not sampling at all—you&#39;ve just fixed one reference</p>
+</li>
+</ul>
+<h2 id="why_this_assumption_matters_the_coalition_distribution_problem"><a href="#why_this_assumption_matters_the_coalition_distribution_problem" class="header-anchor">Why This Assumption Matters: The Coalition Distribution Problem</a></h2>
+<h3 id="the_core_issue"><a href="#the_core_issue" class="header-anchor">The Core Issue</a></h3>
+<p>When computing Shapley values, we need to evaluate:</p>
+\[f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
+<p><strong>What this expectation means:</strong></p>
+<ul>
+<li><p>Keep features in coalition \(S\) from input \(x\)</p>
+</li>
+<li><p>Replace features NOT in \(S\) with values from sampled reference \(r\)</p>
+</li>
+<li><p>Average over many reference samples</p>
+</li>
+</ul>
+<p><strong>The problem:</strong> The distribution of \(r_{\bar{S}}\) &#40;absent features&#41; might depend on \(S\) &#40;which features are present&#41;&#33;</p>
+<h3 id="example_the_correlation_problem"><a href="#example_the_correlation_problem" class="header-anchor">Example: The Correlation Problem</a></h3>
+<p>Imagine predicting house prices with features: &#91;Square Footage, Number of Bedrooms&#93;.</p>
+<ul>
+<li><p><strong>Input:</strong> \(x = (2000 \text{ sqft}, 4 \text{ beds})\)</p>
+</li>
+<li><p><strong>Coalition \(S = \{1\}\):</strong> Keep square footage from \(x\), sample bedrooms from references</p>
+</li>
+</ul>
+<p><strong>Under independence:</strong> When you sample references, you might get:</p>
+<ul>
+<li><p>\(r^{(1)} = (1200, 2)\) → evaluate \(f(2000, 2)\)</p>
+</li>
+<li><p>\(r^{(2)} = (3500, 6)\) → evaluate \(f(2000, 6)\)  </p>
+</li>
+<li><p>\(r^{(3)} = (800, 1)\) → evaluate \(f(2000, 1)\)</p>
+</li>
+</ul>
+<p><strong>The problem:</strong> A 2000 sqft house with 1 bedroom is unrealistic&#33; But the independence assumption treats all combinations as equally valid.</p>
+<p><strong>Under dependence &#40;reality&#41;:</strong> References should respect the correlation:</p>
+<ul>
+<li><p>Larger houses tend to have more bedrooms</p>
+</li>
+<li><p>When we condition on 2000 sqft, we should sample bedrooms from &#123;2, 3, 4&#125;, not &#123;1, 6&#125;</p>
+</li>
+</ul>
+<h3 id="why_this_matters_for_the_shapley_formula"><a href="#why_this_matters_for_the_shapley_formula" class="header-anchor">Why This Matters for the Shapley Formula</a></h3>
+<p>The Shapley value is:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p><strong>Under independence:</strong> The inner expectation \(\mathbb{E}_{r}[...]\) gives the same result regardless of which coalition \(S\) you&#39;re considering, because \(r_{\bar{S}}\) is always drawn from the same marginal distribution.</p>
+<p><strong>Under dependence:</strong> Different coalitions \(S\) would require different conditional distributions for \(r_{\bar{S}}\), because the present features in \(S\) should inform what values are realistic for the absent features.</p>
+<p><strong>The consequence:</strong> When features are dependent, the true Shapley value &#40;with proper conditional distributions&#41; ≠ the naive Shapley value &#40;with independence assumption&#41;.</p>
+<h2 id="the_mathematical_argument_for_why_theyre_equal"><a href="#the_mathematical_argument_for_why_theyre_equal" class="header-anchor">The Mathematical Argument for Why They&#39;re &quot;Equal&quot;</a></h2>
+<h3 id="step_1_the_true_shapley_value_with_references"><a href="#step_1_the_true_shapley_value_with_references" class="header-anchor">Step 1: The True Shapley Value with References</a></h3>
+\[\phi_i = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(n-|S|-1)!}{n!} \mathbb{E}_r[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p>This is a weighted sum over \(2^{n-1}\) coalitions.</p>
+<h3 id="step_2_the_deeplift_linearization"><a href="#step_2_the_deeplift_linearization" class="header-anchor">Step 2: The DeepLIFT Linearization</a></h3>
+<p>For a single \((x, r)\) pair, DeepLIFT computes:</p>
+\(f(x) - f(r) = \sum_{i=1}^n \phi_i(x, r) \cdot (x_i - r_i)\)
+<p>This is <strong>exact</strong> for this pair—it&#39;s a linear decomposition of the difference.</p>
+<p><strong>CRITICAL NOTATION CLARIFICATION:</strong> The coefficient \(\phi_i(x, r)\) is NOT the simple ratio \(\frac{f(x) - f(r)}{x_i - r_i}\)&#33; If it were, we&#39;d have:</p>
+\(\frac{f(x) - f(r)}{x_i - r_i} \cdot (x_i - r_i) = f(x) - f(r)\)
+<p>This would mean feature \(i\) alone explains the entire output difference, which is nonsense&#33;</p>
+<p>Instead, \(\phi_i(x, r)\) is computed via the <strong>multiplier backward pass</strong> through the network, satisfying:</p>
+\(\sum_{i=1}^n \phi_i(x, r) \cdot (x_i - r_i) = f(x) - f(r)\)
+<p>Each \(\phi_i(x, r)\) gets a portion of the total difference, determined by the chain rule through network layers.</p>
+<h3 id="step_3_the_key_claim_independence-based"><a href="#step_3_the_key_claim_independence-based" class="header-anchor">Step 3: The Key Claim &#40;Independence-Based&#41;</a></h3>
+<p><strong>Under conditional independence</strong>, for any fixed \(r\):</p>
+\[\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})] \approx \phi_i(x, r) \cdot (x_i - r_i)\]
+<p><strong>Why would this be true?</strong> Let me break down the left-hand side:</p>
+<p><strong>Left side expanded:</strong></p>
+<ul>
+<li><p>For coalition \(S = \emptyset\): marginal effect is \(f(x_{\{i\}}, r_{\bar{\{i\}}}) - f(r)\)</p>
+</li>
+<li><p>For coalition \(S = \{j\}\): marginal effect is \(f(x_{\{i,j\}}, r_{\overline{\{i,j\}}}) - f(x_{\{j\}}, r_{\bar{\{j\}}})\)</p>
+</li>
+<li><p>... and so on for all coalitions</p>
+</li>
+<li><p>Take weighted average</p>
+</li>
+</ul>
+<p><strong>Right side:</strong> DeepLIFT finds a single coefficient \(\phi_i(x,r)\) such that when multiplied by \((x_i - r_i)\), it explains the total change \(f(x) - f(r)\).</p>
+<h3 id="step_4_the_detailed_derivation_-_why_independence_gives_the_approximation"><a href="#step_4_the_detailed_derivation_-_why_independence_gives_the_approximation" class="header-anchor">Step 4: The Detailed Derivation - Why Independence Gives the Approximation</a></h3>
+<p>Let me derive step-by-step why conditional independence leads to:</p>
+\(\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})] \approx \phi_i(x,r) \cdot (x_i - r_i)\)
+<h4 id="part_1_expanding_the_left_side"><a href="#part_1_expanding_the_left_side" class="header-anchor">Part 1: Expanding the Left Side</a></h4>
+<p>The Shapley formula averages over all coalitions. Let&#39;s write this out explicitly for feature \(i\):</p>
+\(\mathbb{E}_{S \sim \pi}[\Delta_i(S)] = \sum_{S \subseteq F \setminus \{i\}} w(S) \cdot [f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
+<p>where \(w(S) = \frac{|S|!(n-|S|-1)!}{n!}\) are Shapley weights.</p>
+<p><strong>What this means:</strong> For each possible coalition \(S\) &#40;not containing \(i\)&#41;, measure how much feature \(i\) contributes when added to \(S\).</p>
+<h4 id="part_2_using_the_fundamental_theorem_of_calculus"><a href="#part_2_using_the_fundamental_theorem_of_calculus" class="header-anchor">Part 2: Using the Fundamental Theorem of Calculus</a></h4>
+<p>For any coalition \(S\), we can write:</p>
+\(f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}}) = \int_0^1 \frac{\partial f}{\partial z_i}(x_S, z_i, r_{\overline{S \cup \{i\}}}) \bigg|_{z_i = r_i + t(x_i - r_i)} dt \cdot (x_i - r_i)\)
+<p><strong>What this says:</strong> The marginal contribution of feature \(i\) in coalition \(S\) can be written as an integral of the partial derivative as we interpolate \(z_i\) from \(r_i\) to \(x_i\).</p>
+<p><strong>In simpler notation:</strong></p>
+\(\Delta_i(S) = (x_i - r_i) \int_0^1 \frac{\partial f}{\partial x_i}(x_S, r_i + t(x_i - r_i), r_{\overline{S \cup \{i\}}}) dt\)
+<h4 id="part_3_the_key_independence_assumption"><a href="#part_3_the_key_independence_assumption" class="header-anchor">Part 3: The Key Independence Assumption</a></h4>
+<p><strong>Under conditional independence:</strong> The partial derivative \(\frac{\partial f}{\partial x_i}\) does NOT depend on which other features come from \(x\) vs \(r\) &#40;which coalition \(S\) we&#39;re in&#41;.</p>
+<p><strong>Formally:</strong> For conditionally independent features:</p>
+\(\frac{\partial f}{\partial x_i}(x_S, z_i, r_{\overline{S \cup \{i\}}}) \approx \frac{\partial f}{\partial x_i}(r_1, \ldots, r_{i-1}, z_i, r_{i+1}, \ldots, r_n)\)
+<p><strong>Why?</strong> Because the gradient doesn&#39;t depend on the values of other features if there are no interaction terms. </p>
+<p><strong>In other words:</strong> The effect of changing \(x_i\) is the same regardless of whether other features are at their \(x\) values or \(r\) values.</p>
+<h4 id="part_4_simplifying_the_coalition_average"><a href="#part_4_simplifying_the_coalition_average" class="header-anchor">Part 4: Simplifying the Coalition Average</a></h4>
+<p>Now substitute this into the coalition average:</p>
+\(\mathbb{E}_{S \sim \pi}[\Delta_i(S)] = \mathbb{E}_{S \sim \pi}\left[(x_i - r_i) \int_0^1 \frac{\partial f}{\partial x_i}(x_S, r_i + t(x_i - r_i), r_{\overline{S \cup \{i\}}}) dt\right]\)
+<p><strong>Under independence</strong>, the gradient doesn&#39;t depend on \(S\), so we can pull it out:</p>
+\(= (x_i - r_i) \int_0^1 \frac{\partial f}{\partial x_i}(r_1, \ldots, r_{i-1}, r_i + t(x_i - r_i), r_{i+1}, \ldots, r_n) dt\)
+<p><strong>This is just the derivative integrated from \(r\) to \(x\) along feature \(i\) only&#33;</strong></p>
+<h4 id="part_5_connecting_to_the_total_change"><a href="#part_5_connecting_to_the_total_change" class="header-anchor">Part 5: Connecting to the Total Change</a></h4>
+<p>By the fundamental theorem of calculus, this integral is:</p>
+\(\int_0^1 \frac{\partial f}{\partial x_i}(r + t(x_i - r_i)\mathbf{e}_i) dt = \frac{f(r + (x_i - r_i)\mathbf{e}_i) - f(r)}{x_i - r_i}\)
+<p>where \(\mathbf{e}_i\) is the unit vector in direction \(i\).</p>
+<p><strong>But wait&#33;</strong> We want to relate this to the FULL change \(f(x) - f(r)\), not just the change along feature \(i\).</p>
+<h4 id="part_6_the_multi-dimensional_taylor_expansion"><a href="#part_6_the_multi-dimensional_taylor_expansion" class="header-anchor">Part 6: The Multi-Dimensional Taylor Expansion</a></h4>
+<p>Under independence, we can write:</p>
+\(f(x) - f(r) = \sum_{j=1}^n \int_0^1 \frac{\partial f}{\partial x_j}(r + t(x-r)) dt \cdot (x_j - r_j)\)
+<p>This decomposes the total change into contributions from each feature.</p>
+<p><strong>The key insight:</strong> Under independence &#40;no interaction terms&#41;, each integral gives:</p>
+\(\phi_j(x,r) = \int_0^1 \frac{\partial f}{\partial x_j}(r + t(x-r)) dt\)
+<p>And these satisfy:</p>
+\(f(x) - f(r) = \sum_{j=1}^n \phi_j(x,r) \cdot (x_j - r_j)\)
+<h4 id="part_7_the_final_connection"><a href="#part_7_the_final_connection" class="header-anchor">Part 7: The Final Connection</a></h4>
+<p>Going back to our coalition average:</p>
+\(\mathbb{E}_{S \sim \pi}[\Delta_i(S)] = (x_i - r_i) \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x_i - r_i)\mathbf{e}_i) dt\)
+<p><strong>Under independence</strong>, this approximately equals:</p>
+\(\approx (x_i - r_i) \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) dt = \phi_i(x,r) \cdot (x_i - r_i)\)
+<p><strong>Why the approximation?</strong> In the first integral, we only vary \(x_i\). In the second, we vary ALL features simultaneously. Under independence, these give similar results because the gradient w.r.t. \(x_i\) doesn&#39;t depend on other features.</p>
+<h4 id="part_8_what_deeplift_actually_computes"><a href="#part_8_what_deeplift_actually_computes" class="header-anchor">Part 8: What DeepLIFT Actually Computes</a></h4>
+<p>DeepLIFT&#39;s multiplier backward pass computes an approximation to:</p>
+\(\phi_i(x,r) \approx \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) dt\)
+<p>For piecewise linear networks &#40;ReLU&#41;, this becomes:</p>
+\(\phi_i(x,r) = \sum_{\text{linear regions}} \frac{\partial f}{\partial x_i}\bigg|_{\text{region}} \cdot \text{(fraction of path in region)}\)
+<p>The multipliers track which neurons activate and weight the gradients accordingly.</p>
+<h3 id="why_this_is_still_an_approximation"><a href="#why_this_is_still_an_approximation" class="header-anchor">Why This Is Still an Approximation</a></h3>
+<p>Even with the derivation above, there are gaps:</p>
+<ol>
+<li><p><strong>Non-additive interactions:</strong> If \(\frac{\partial f}{\partial x_i}\) depends on \(x_j\) &#40;interaction terms&#41;, then \(\frac{\partial f}{\partial x_i}(x_S, z_i, r_{\overline{S \cup \{i\}}})\) DOES depend on coalition \(S\), and we can&#39;t pull it out of the expectation.</p>
+</li>
+<li><p><strong>Path dependence:</strong> Integrating along &quot;feature \(i\) only&quot; vs &quot;all features together&quot; gives different results when there are interaction terms.</p>
+</li>
+<li><p><strong>Discrete approximation:</strong> DeepLIFT uses piecewise linear approximation, not true integration.</p>
+</li>
+</ol>
+<p><strong>Bottom line:</strong> Under independence, the coalition-averaged marginal effect equals the path-integrated gradient, which DeepLIFT approximates. Without independence, these diverge.</p>
+<h3 id="step_5_the_formal_connection_via_linearity"><a href="#step_5_the_formal_connection_via_linearity" class="header-anchor">Step 5: The Formal Connection via Linearity</a></h3>
+<p>If \(f\) were perfectly linear:</p>
+\[f(x) = \beta_0 + \sum_i \beta_i x_i\]
+<p>Then:</p>
+<ul>
+<li><p>DeepLIFT gives: \(\phi_i(x,r) = \beta_i\)</p>
+</li>
+<li><p>Shapley gives: \(\phi_i = \beta_i \cdot (x_i - r_i)\) averaged over references</p>
+</li>
+</ul>
+<p>They match exactly&#33;</p>
+<p><strong>For nonlinear \(f\):</strong> DeepLIFT approximates \(f\) as locally linear around each \((x,r)\) pair. The multipliers capture the &quot;effective gradients&quot; through the network.</p>
+<h3 id="step_6_averaging_over_references"><a href="#step_6_averaging_over_references" class="header-anchor">Step 6: Averaging Over References</a></h3>
+<p>When we take \(\mathbb{E}_{r \sim \mathcal{R}}[\phi_i(x,r) \cdot (x_i - r_i)]\):</p>
+<p><strong>Under independence:</strong> Different references \(r^{(1)}, r^{(2)}, \ldots\) give different &quot;baseline contexts,&quot; and averaging over them approximates averaging over coalitions because the coalition distribution doesn&#39;t depend on which features are present.</p>
+<p><strong>Under dependence:</strong> This breaks down because the distribution of absent features should depend on which features are present, but DeepLIFT treats them as independent samples.</p>
+<h2 id="why_neural_networks_make_this_worse_and_better"><a href="#why_neural_networks_make_this_worse_and_better" class="header-anchor">Why Neural Networks Make This Worse &#40;and Better&#41;</a></h2>
+<h3 id="the_nonlinearity_problem"><a href="#the_nonlinearity_problem" class="header-anchor">The Nonlinearity Problem</a></h3>
+<p>Deep networks are highly nonlinear. The function \(f(x_S, r_{\bar{S}})\) can be wildly different for different coalitions \(S\), even with the same reference \(r\).</p>
+<p><strong>Example - Image Classification:</strong></p>
+<ul>
+<li><p>Coalition \(S\) &#61; &quot;top-left pixel only&quot; → probably outputs uniform distribution &#40;no info&#41;</p>
+</li>
+<li><p>Coalition \(S\) &#61; &quot;all pixels except one&quot; → probably outputs correct class</p>
+</li>
+<li><p>The marginal contribution of one pixel depends HEAVILY on context</p>
+</li>
+</ul>
+<p>DeepLIFT&#39;s linearization \(f(x) - f(r) = \sum \phi_i (x_i - r_i)\) can&#39;t capture these extreme nonlinear interactions well.</p>
+<h3 id="the_multiplier_magic_why_it_still_works"><a href="#the_multiplier_magic_why_it_still_works" class="header-anchor">The Multiplier Magic &#40;Why It Still Works&#41;</a></h3>
+<p>DeepLIFT&#39;s multipliers track contribution flow through the network:</p>
+\[m_{\Delta s_j \Delta t} = \frac{\partial C_{\Delta s_j \Delta t}}{\partial \Delta s_j}\]
+<p>For ReLU networks:</p>
+\[m_{\Delta x_i \Delta y} = \prod_{\text{edges on path}} \mathbb{1}[\text{neuron activated}]\]
+<p><strong>Key insight:</strong> The backward pass automatically accounts for which neurons activated, which implicitly samples &quot;important&quot; computational paths through the network.</p>
+<p><strong>This is similar to coalition sampling:</strong> Different neurons activating &#61; different features being &quot;present&quot; in the computation.</p>
+<h3 id="why_multiple_references_help"><a href="#why_multiple_references_help" class="header-anchor">Why Multiple References Help</a></h3>
+<p>With one reference \(r^{(1)}\):</p>
+<ul>
+<li><p>DeepLIFT gives one linearization</p>
+</li>
+<li><p>Might be a poor approximation if \(r^{(1)}\) is far from \(x\)</p>
+</li>
+</ul>
+<p>With many references \(r^{(1)}, \ldots, r^{(K)}\):</p>
+<ul>
+<li><p>Each gives a different linearization</p>
+</li>
+<li><p>Averaging smooths out local approximation errors</p>
+</li>
+<li><p>Different references activate different parts of the network</p>
+</li>
+</ul>
+<p><strong>Analogy:</strong> Each reference &quot;samples&quot; a different subset of feature interactions, and averaging approximates the full coalition average.</p>
+<h2 id="the_reality_check_when_does_this_fail"><a href="#the_reality_check_when_does_this_fail" class="header-anchor">The Reality Check: When Does This Fail?</a></h2>
+<h3 id="strong_feature_dependencies"><a href="#strong_feature_dependencies" class="header-anchor">Strong Feature Dependencies</a></h3>
+<p><strong>Example 1 - Natural Language:</strong></p>
+<ul>
+<li><p>Input: &quot;This movie is not good&quot;</p>
+</li>
+<li><p>Features: &#91;&quot;not&quot;, &quot;good&quot;&#93;</p>
+</li>
+<li><p>Independence assumption: effect&#40;&quot;not&quot;&#41; &#43; effect&#40;&quot;good&quot;&#41; &#61; negative &#43; positive &#61; ???</p>
+</li>
+<li><p>Reality: &quot;not good&quot; has a combined meaning that&#39;s not additive</p>
+</li>
+</ul>
+<p><strong>Example 2 - Pixels in Images:</strong></p>
+<ul>
+<li><p>A single red pixel means nothing</p>
+</li>
+<li><p>A cluster of red pixels forming a stop sign is meaningful</p>
+</li>
+<li><p>The features &#40;pixels&#41; have strong spatial correlations</p>
+</li>
+</ul>
+<p><strong>What happens:</strong> DeepSHAP treats these as independent, computing:</p>
+\[\phi_{\text{not}}(x, r) + \phi_{\text{good}}(x, r)\]
+<p>But the true Shapley value should account for their interaction:</p>
+\[\phi_{\text{not}} + \phi_{\text{good}} + \phi_{\text{not,good}}^{\text{interaction}}\]
+<h3 id="unrealistic_reference_distribution"><a href="#unrealistic_reference_distribution" class="header-anchor">Unrealistic Reference Distribution</a></h3>
+<p>If your reference distribution \(\mathcal{R}\) is poorly chosen:</p>
+<p><strong>Example - All zeros:</strong> \(r = (0, 0, \ldots, 0)\)</p>
+<ul>
+<li><p>A 0 sqft house with 0 bedrooms is nonsensical</p>
+</li>
+<li><p>The baseline \(f(r)\) might give garbage output</p>
+</li>
+<li><p>The linearization \(f(x) - f(r)\) is approximating a meaningless difference</p>
+</li>
+</ul>
+<p><strong>Better choice:</strong> Sample references from training data</p>
+<ul>
+<li><p>More realistic baselines</p>
+</li>
+<li><p>But still assumes features are independent within training distribution &#40;often false&#41;</p>
+</li>
+</ul>
+<h3 id="interventional_vs_observational"><a href="#interventional_vs_observational" class="header-anchor">Interventional vs Observational</a></h3>
+<p>The independence assumption makes DeepSHAP compute <strong>observational</strong> Shapley values:</p>
+<ul>
+<li><p>&quot;What if I observe feature \(i = x_i\) and other features follow their natural distribution?&quot;</p>
+</li>
+</ul>
+<p>But we often want <strong>interventional</strong> Shapley values:</p>
+<ul>
+<li><p>&quot;What if I forcibly set feature \(i = x_i\), holding the causal mechanism fixed?&quot;</p>
+</li>
+</ul>
+<p>These differ when features are causally related&#33;</p>
+<p><strong>Example - Medical data:</strong></p>
+<ul>
+<li><p>Observational: &quot;Patients with high blood pressure tend to take medication&quot;</p>
+</li>
+<li><p>Interventional: &quot;If we give medication, blood pressure drops&quot;</p>
+</li>
+</ul>
+<p>The independence assumption conflates these&#33;</p>
+<h2 id="what_the_papers_actually_say"><a href="#what_the_papers_actually_say" class="header-anchor">What the Papers Actually Say</a></h2>
+<h3 id="deeplift_paper_shrikumar_et_al_2017"><a href="#deeplift_paper_shrikumar_et_al_2017" class="header-anchor">DeepLIFT Paper &#40;Shrikumar et al., 2017&#41;</a></h3>
+<p><strong>Direct quotes:</strong></p>
+<ul>
+<li><p>&quot;We propose a method for decomposing the output prediction of a neural network on a specific input by backpropagating the contributions of all neurons&quot;</p>
+</li>
+<li><p>Does NOT claim to compute Shapley values</p>
+</li>
+<li><p>Shows empirically that it satisfies &quot;summation-to-delta&quot; property</p>
+</li>
+</ul>
+<p><strong>No mention of:</strong> Conditional independence, Shapley values, or coalitions.</p>
+<h3 id="shap_paper_lundberg_lee_2017"><a href="#shap_paper_lundberg_lee_2017" class="header-anchor">SHAP Paper &#40;Lundberg &amp; Lee, 2017&#41;</a></h3>
+<p><strong>Section 3.3 - DeepSHAP:</strong></p>
+<p>&quot;DeepLIFT with a reference distribution computes approximate SHAP values... The approximation is exact when:</p>
+<ol>
+<li><p>The model is linear</p>
+</li>
+<li><p>The input features are independent&quot;</p>
+</li>
+</ol>
+<p><strong>Section 5.2 - Computational Efficiency:</strong></p>
+<p>&quot;DeepSHAP is orders of magnitude faster than Kernel SHAP while providing similar accuracy&quot;</p>
+<p><strong>They explicitly acknowledge:</strong> It&#39;s an approximation, not exact for nonlinear models with dependent features.</p>
+<h3 id="follow-up_work_sundararajan_et_al_2017_-_integrated_gradients"><a href="#follow-up_work_sundararajan_et_al_2017_-_integrated_gradients" class="header-anchor">Follow-up Work &#40;Sundararajan et al., 2017 - Integrated Gradients&#41;</a></h3>
+<p>Shows that path methods &#40;like DeepLIFT&#41; satisfy completeness &#40;summation-to-delta&#41; but don&#39;t necessarily give true Shapley values unless you integrate over all paths, which is equivalent to sampling all coalitions.</p>
+<h2 id="the_bottom_line_its_a_practical_compromise"><a href="#the_bottom_line_its_a_practical_compromise" class="header-anchor">The Bottom Line: It&#39;s a Practical Compromise</a></h2>
+<h3 id="what_were_really_doing"><a href="#what_were_really_doing" class="header-anchor">What We&#39;re Really Doing</a></h3>
+<p>The equation:</p>
+\[\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})] \approx \phi_i(x,r) \cdot (x_i - r_i)\]
+<p>is <strong>not mathematically rigorous</strong> for real-world scenarios. It&#39;s justified by:</p>
+<ol>
+<li><p><strong>Theoretical result:</strong> Exact under independence &#43; linearity &#40;rarely satisfied&#41;</p>
+</li>
+<li><p><strong>Empirical observation:</strong> Works &quot;well enough&quot; in practice &#40;vague but true&#41;</p>
+</li>
+<li><p><strong>Computational necessity:</strong> True Shapley requires \(O(2^n)\) evaluations &#40;intractable&#41;</p>
+</li>
+<li><p><strong>Intuition:</strong> Multipliers approximate marginal effects through the network</p>
+</li>
+</ol>
+<h3 id="why_we_accept_it_anyway"><a href="#why_we_accept_it_anyway" class="header-anchor">Why We Accept It Anyway</a></h3>
+<ul>
+<li><p><strong>Speed:</strong> DeepSHAP is 1000x faster than kernel SHAP</p>
+</li>
+<li><p><strong>Smoothness:</strong> Neural networks are locally smooth, so linearization isn&#39;t terrible</p>
+</li>
+<li><p><strong>Averaging:</strong> Multiple references average out some errors</p>
+</li>
+<li><p><strong>Interpretability:</strong> Even approximate attributions are useful for debugging models</p>
+</li>
+</ul>
+<h3 id="when_to_worry"><a href="#when_to_worry" class="header-anchor">When to Worry</a></h3>
+<p>Use exact methods &#40;kernel SHAP, sampling-based Shapley&#41; when:</p>
+<ul>
+<li><p>Features have strong interactions &#40;e.g., language, structured data&#41;</p>
+</li>
+<li><p>You need provably correct attributions &#40;legal, medical applications&#41;</p>
+</li>
+<li><p>The model is extremely nonlinear</p>
+</li>
+<li><p>The reference distribution is clearly wrong</p>
+</li>
+</ul>
+<p>Accept DeepSHAP&#39;s approximation when:</p>
+<ul>
+<li><p>You need speed &#40;billions of predictions to explain&#41;</p>
+</li>
+<li><p>Features are weakly correlated</p>
+</li>
+<li><p>Model is reasonably smooth</p>
+</li>
+<li><p>You&#39;re okay with &quot;directionally correct&quot; explanations</p>
+</li>
+</ul>
+<h2 id="the_honest_technical_answer"><a href="#the_honest_technical_answer" class="header-anchor">The Honest Technical Answer</a></h2>
+<p>The conditional independence assumption \(P(X_i, X_j | r) = P(X_i | r) \cdot P(X_j | r)\) does three things:</p>
+<ol>
+<li><p><strong>Makes coalition averaging &#61; path averaging:</strong> Under independence, averaging marginal effects over coalitions gives the same result as averaging along interpolation paths</p>
+</li>
+<li><p><strong>Justifies single-reference linearization:</strong> Each DeepLIFT linearization approximates the coalition-averaged effect for that reference</p>
+</li>
+<li><p><strong>Enables fast computation:</strong> Instead of \(2^n\) coalition evaluations, we do \(K\) forward-backward passes &#40;typically \(K \approx 10-100\)&#41;</p>
+</li>
+</ol>
+<p><strong>But in reality:</strong></p>
+<ul>
+<li><p>Features ARE correlated</p>
+</li>
+<li><p>Models ARE nonlinear  </p>
+</li>
+<li><p>References ARE imperfect samples</p>
+</li>
+<li><p>Approximation quality varies wildly by domain</p>
+</li>
+</ul>
+<p>The papers are surprisingly honest about this—they prove exactness under idealized assumptions, then empirically show &quot;good enough&quot; performance in practice, while acknowledging limitations.</p>
+<p><strong>DeepSHAP is best understood as:</strong> A fast, heuristic approximation to Shapley values that works well when features are weakly interacting and the model is locally smooth. Not a theorem, but a useful tool.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 19, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
