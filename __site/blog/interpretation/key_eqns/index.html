@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>SHAP: Key Equations in Aas, Jullum, and Løland (2021)</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h3 id="key_equations_in_aas_jullum_and_løland_2021"><a href="#key_equations_in_aas_jullum_and_løland_2021" class="header-anchor">Key Equations in Aas, Jullum, and Løland &#40;2021&#41;</a></h3>
+<p><strong>Important correction:</strong> The Aas et al. paper focuses on <strong>Kernel SHAP</strong>, not DeepSHAP specifically. However, the independence assumption they discuss applies to both methods.</p>
+<p>The paper formalizes the distinction between conditional and marginal expectations. Look at these specific equations:</p>
+<p><strong>Equation &#40;8&#41;</strong> - The true Shapley value using conditional expectations:</p>
+\(v(S) = \mathbb{E}[f(x_S, X_{\bar{S}}) | X_S = x_S]\)
+<p>This integrates over the <strong>conditional distribution</strong> \(p(x_{\bar{S}} | x_S)\), which respects feature dependencies.</p>
+<p><strong>Section 2.3.2</strong> - What Kernel SHAP does:</p>
+<p>The paper states that Kernel SHAP &quot;assumes feature independence, replacing \(p(x_{\bar{S}} | x_S)\) by \(p(x_{\bar{S}})\) in &#40;8&#41;.&quot;</p>
+<p>This gives the <strong>interventional</strong> Shapley value:</p>
+\(v(S) = \mathbb{E}_{X_{\bar{S}}}[f(x_S, X_{\bar{S}})]\)
+<p>where the expectation is over the <strong>marginal distribution</strong> of absent features.</p>
+<p><strong>Does this apply to DeepSHAP?</strong></p>
+<p>Yes, but indirectly. Both Kernel SHAP and DeepSHAP make the same fundamental independence assumption:</p>
+<ul>
+<li><p><strong>Kernel SHAP</strong>: Explicitly samples from the marginal distribution</p>
+</li>
+<li><p><strong>DeepSHAP</strong>: Averages DeepLIFT contributions over reference samples drawn from the marginal distribution</p>
+</li>
+</ul>
+<p>The Aas paper&#39;s critique applies to both: they&#39;re computing &quot;interventional&quot; Shapley values &#40;assuming independence&#41; rather than true conditional Shapley values.</p>
+<p>However, Aas et al. don&#39;t provide the specific mathematical derivation of how DeepLIFT&#39;s multipliers relate to coalition sampling. Their focus is on fixing the independence problem for model-agnostic methods, not explaining the internal mechanics of DeepSHAP.</p>
+<hr />
+<h2 id="critical_sourcing_disclaimer"><a href="#critical_sourcing_disclaimer" class="header-anchor">CRITICAL SOURCING DISCLAIMER</a></h2>
+<p><strong>I need to be honest about my sources here:</strong></p>
+<h3 id="what_i_can_verify"><a href="#what_i_can_verify" class="header-anchor">What I CAN verify:</a></h3>
+<ol>
+<li><p>✓ Lundberg&#39;s 2017 NIPS paper exists and is sparse on DeepSHAP details</p>
+</li>
+<li><p>✓ Aas et al. &#40;2021&#41; discusses conditional vs marginal expectations for Kernel SHAP</p>
+</li>
+<li><p>✓ The independence assumption is a known issue in the SHAP literature</p>
+</li>
+</ol>
+<h3 id="what_i_cannot_directly_verify_from_papers"><a href="#what_i_cannot_directly_verify_from_papers" class="header-anchor">What I CANNOT directly verify from papers:</a></h3>
+<ol>
+<li><p>✗ The exact &quot;double expectation&quot; formula \(\mathbb{E}_S \mathbb{E}_r\) for DeepSHAP specifically</p>
+</li>
+<li><p>✗ Which paper first presented this formulation</p>
+</li>
+<li><p>✗ Whether the original document you provided is accurately representing published work</p>
+</li>
+</ol>
+<h3 id="the_honest_truth"><a href="#the_honest_truth" class="header-anchor">The honest truth:</a></h3>
+<p>The &quot;double expectation&quot; framework I&#39;ve been explaining appears in the document you provided, but <strong>I cannot trace it to a specific published paper</strong>. It may be:</p>
+<ul>
+<li><p>A pedagogical explanation created by the document&#39;s author</p>
+</li>
+<li><p>Standard folklore in the ML interpretation community</p>
+</li>
+<li><p>Derived from multiple sources without explicit citation</p>
+</li>
+<li><p>An interpretation that&#39;s not formally published</p>
+</li>
+</ul>
+<p><strong>What you should do:</strong></p>
+<ol>
+<li><p>Read Lundberg&#39;s 2017 paper Section 4.2 yourself</p>
+</li>
+<li><p>Check the Chen et al. &#40;2022&#41; Nature Communications paper</p>
+</li>
+<li><p>Look for the original DeepLIFT paper &#40;Shrikumar et al. 2017&#41;</p>
+</li>
+<li><p>Don&#39;t trust my explanation without verifying against primary sources</p>
+</li>
+</ol>
+<p>I apologize for presenting this as if it were well-established when I cannot actually cite specific equations from specific papers that support the &quot;double expectation&quot; view of DeepSHAP.# Understanding DeepSHAP Notation and Reference Averaging</p>
+<h2 id="question_1_why_the_subscript_x_in_f_xs"><a href="#question_1_why_the_subscript_x_in_f_xs" class="header-anchor">Question 1: Why the subscript \(x\) in \(f_x(S)\)?</a></h2>
+<h3 id="what_it_means"><a href="#what_it_means" class="header-anchor">What it means</a></h3>
+<p>The subscript \(x\) indicates <strong>which input we&#39;re explaining</strong>. The function \(f_x(S)\) means:</p>
+<blockquote>
+<p>&quot;The expected model output when features in coalition \(S\) are set to their values from input \(x\), and features outside \(S\) are drawn from the reference distribution.&quot;</p>
+</blockquote>
+<p>Mathematically:</p>
+\[f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
+<h3 id="why_we_need_this"><a href="#why_we_need_this" class="header-anchor">Why we need this</a></h3>
+<p>We&#39;re computing Shapley values <strong>for a specific input</strong> \(x\). Different inputs will have different Shapley values&#33; The subscript reminds us that we&#39;re always measuring contributions relative to explaining \(f(x)\).</p>
+<h3 id="concrete_example"><a href="#concrete_example" class="header-anchor">Concrete Example</a></h3>
+<p>Suppose \(x = (10, 20, 30)\) &#40;three features&#41;.</p>
+<p><strong>For coalition</strong> \(S = \{1, 3\}\):</p>
+\[f_x(\{1,3\}) = \mathbb{E}_r[f(10, r_2, 30)]\]
+<ul>
+<li><p>Features 1 and 3 are <strong>locked</strong> to their values in \(x\): \((10, \_, 30)\)</p>
+</li>
+<li><p>Feature 2 varies according to the reference distribution \(r_2\)</p>
+</li>
+</ul>
+<p><strong>For a different input</strong> \(x' = (5, 15, 25)\):</p>
+\[f_{x'}(\{1,3\}) = \mathbb{E}_r[f(5, r_2, 25)]\]
+<ul>
+<li><p>Now features 1 and 3 use values from \(x'\): \((5, \_, 25)\)</p>
+</li>
+<li><p>Same coalition, but different &quot;locked&quot; values&#33;</p>
+</li>
+</ul>
+<p>The subscript \(x\) tracks which input we&#39;re explaining.</p>
+<hr />
+<h2 id="question_2_why_can_marginal_contribution_be_written_as_sum_over_references"><a href="#question_2_why_can_marginal_contribution_be_written_as_sum_over_references" class="header-anchor">Question 2: Why can marginal contribution be written as sum over references?</a></h2>
+<h3 id="the_true_marginal_contribution"><a href="#the_true_marginal_contribution" class="header-anchor">The True Marginal Contribution</a></h3>
+<p>From the Shapley formula, the marginal contribution of feature \(i\) is:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+<p>This averages over <strong>coalitions</strong> \(S\) &#40;all possible subsets of features&#41;.</p>
+<h3 id="expanding_with_references"><a href="#expanding_with_references" class="header-anchor">Expanding with References</a></h3>
+<p>Since \(f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\), we can write:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[\underbrace{f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})}_{\text{feature } i \text{ present}} - \underbrace{f(x_S, r_{\bar{S}})}_{\text{feature } i \text{ absent}}]\]
+<h3 id="why_this_is_a_sum_over_references"><a href="#why_this_is_a_sum_over_references" class="header-anchor">Why This is a &quot;Sum&quot; Over References</a></h3>
+<p>Each term in this double expectation involves:</p>
+<ol>
+<li><p>A specific <strong>coalition</strong> \(S\) &#40;which features are active&#41;</p>
+</li>
+<li><p>A specific <strong>reference sample</strong> \(r\) &#40;providing values for inactive features&#41;</p>
+</li>
+</ol>
+<p>When you sample different \(r\) values, you create different &quot;background contexts&quot; against which feature \(i\)&#39;s contribution is measured.</p>
+<h3 id="the_key_insight_reference_diversity_creates_coalition_diversity"><a href="#the_key_insight_reference_diversity_creates_coalition_diversity" class="header-anchor">The Key Insight: Reference Diversity Creates Coalition Diversity</a></h3>
+<p>By varying \(r\), you <strong>implicitly sample different coalitions</strong>:</p>
+<ul>
+<li><p>When \(r_j \approx x_j\) for feature \(j\): it&#39;s &quot;almost as if&quot; feature \(j\) is in the coalition &#40;present&#41;</p>
+</li>
+<li><p>When \(r_j \ll x_j\) or \(r_j \gg x_j\): feature \(j\) is clearly &quot;absent&quot; from the coalition</p>
+</li>
+<li><p>Averaging over many diverse references effectively samples the space of possible coalition configurations</p>
+</li>
+</ul>
+<h3 id="example_how_one_reference_relates_to_multiple_coalitions"><a href="#example_how_one_reference_relates_to_multiple_coalitions" class="header-anchor">Example: How One Reference Relates to Multiple Coalitions</a></h3>
+<p>Suppose we have 3 features and:</p>
+<ul>
+<li><p>Input: \(x = (10, 20, 30)\)</p>
+</li>
+<li><p>Reference: \(r = (9, 5, 31)\)</p>
+</li>
+</ul>
+<p>When computing \(f(x) - f(r)\) with this reference:</p>
+<ul>
+<li><p>Feature 1: \(x_1 - r_1 = 10 - 9 = 1\) &#40;small difference → nearly &quot;absent&quot;&#41;</p>
+</li>
+<li><p>Feature 2: \(x_2 - r_2 = 20 - 5 = 15\) &#40;large difference → clearly &quot;present&quot;&#41;</p>
+</li>
+<li><p>Feature 3: \(x_3 - r_3 = 30 - 31 = -1\) &#40;small difference → nearly &quot;absent&quot;&#41;</p>
+</li>
+</ul>
+<p>This reference effectively captures scenarios where feature 2 is active but features 1 and 3 are not, corresponding roughly to coalition \(S = \{2\}\).</p>
+<h3 id="why_deeplifts_single_x_r_pair_works"><a href="#why_deeplifts_single_x_r_pair_works" class="header-anchor">Why DeepLIFT&#39;s Single \((x, r)\) Pair Works</a></h3>
+<p>For one reference \(r\), DeepLIFT computes:</p>
+\[C_{\Delta x_i \Delta f}(x, r) = \phi_i(x, r) \cdot (x_i - r_i)\]
+<p>This linearization captures the contribution of feature \(i\) along the path from \(r\) to \(x\).</p>
+<p><strong>By averaging over multiple references:</strong></p>
+\[\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
+<p>You&#39;re averaging these different paths, which approximates the coalition-weighted average that the Shapley formula requires.</p>
+<h3 id="the_mathematical_connection"><a href="#the_mathematical_connection" class="header-anchor">The Mathematical Connection</a></h3>
+<p>The approximation works because:</p>
+\[\mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)] \approx \mathbb{E}_{r \sim \mathcal{R}}\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p>The left side averages DeepLIFT contributions over references. The right side is the exact Shapley value &#40;by swapping the order of expectations&#41;.</p>
+<p><strong>The bridge:</strong> DeepLIFT&#39;s multiplier-based linearization implicitly performs the coalition sampling that Shapley requires, but does it through the network structure rather than explicit enumeration of \(2^n\) coalitions.</p>
+<hr />
+<h2 id="the_independence_assumption_deepshaps_critical_cheat"><a href="#the_independence_assumption_deepshaps_critical_cheat" class="header-anchor">The Independence Assumption: DeepSHAP&#39;s Critical &quot;Cheat&quot;</a></h2>
+<h3 id="yes_deepshap_is_absolutely_cheating"><a href="#yes_deepshap_is_absolutely_cheating" class="header-anchor">Yes, DeepSHAP is Absolutely Cheating</a></h3>
+<p>You&#39;re exactly right&#33; The independence assumption is where DeepSHAP makes a <strong>huge</strong> simplification that fundamentally changes what&#39;s being computed.</p>
+<h3 id="what_true_shapley_values_require"><a href="#what_true_shapley_values_require" class="header-anchor">What True Shapley Values Require</a></h3>
+<p>The <strong>correct</strong> way to define \(f_x(S)\) for coalition \(S\) is:</p>
+\[f_x(S) = \mathbb{E}_{x_{\bar{S}} \sim P(x_{\bar{S}} | x_S)}[f(x_S, x_{\bar{S}})]\]
+<p>This means: &quot;When features in \(S\) are fixed to their values in \(x\), what&#39;s the expected output over the <strong>conditional distribution</strong> of the remaining features?&quot;</p>
+<p>This respects feature dependencies&#33; If you know that temperature &#61; 90°F, you should sample humidity from \(P(\text{humidity} | \text{temp}=90)\), not from the marginal distribution \(P(\text{humidity})\).</p>
+<h3 id="what_deepshap_actually_does"><a href="#what_deepshap_actually_does" class="header-anchor">What DeepSHAP Actually Does</a></h3>
+<p>DeepSHAP instead uses:</p>
+\[f_x(S) \approx \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
+<p>where \(\mathcal{R}\) is just the marginal distribution &#40;or a sample from training data&#41;.</p>
+<p><strong>The problem:</strong> This treats absent features as <strong>independent</strong> from present features. You&#39;re replacing missing features with values from \(r\) that have no relationship to the features you&#39;ve fixed&#33;</p>
+<h3 id="concrete_example_of_where_this_breaks"><a href="#concrete_example_of_where_this_breaks" class="header-anchor">Concrete Example of Where This Breaks</a></h3>
+<p><strong>Scenario:</strong> Predicting house price with features:</p>
+<ul>
+<li><p>\(x_1\) &#61; square footage &#61; 3000 sq ft</p>
+</li>
+<li><p>\(x_2\) &#61; number of bedrooms &#61; 2</p>
+</li>
+</ul>
+<p>These are <strong>highly correlated</strong>: large houses usually have more bedrooms.</p>
+<p><strong>What should happen</strong> &#40;true Shapley&#41;:</p>
+<ul>
+<li><p>For coalition \(S = \{1\}\) &#40;only square footage present&#41;: </p>
+<ul>
+<li><p>Sample bedrooms from \(P(\text{bedrooms} | \text{sqft}=3000)\)</p>
+</li>
+<li><p>This will give mostly 3-5 bedrooms &#40;appropriate for 3000 sq ft&#41;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>What DeepSHAP does:</strong></p>
+<ul>
+<li><p>For coalition \(S = \{1\}\): </p>
+<ul>
+<li><p>Sample bedrooms from \(P(\text{bedrooms})\) ignoring square footage</p>
+</li>
+<li><p>Might get 1 bedroom or 7 bedrooms paired with 3000 sq ft</p>
+</li>
+<li><p>Creates <strong>impossible or highly unlikely combinations</strong>&#33;</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="why_this_matters"><a href="#why_this_matters" class="header-anchor">Why This Matters</a></h3>
+<p>When features are correlated, DeepSHAP:</p>
+<ol>
+<li><p><strong>Evaluates the model on unrealistic inputs</strong> like &#40;3000 sq ft, 1 bedroom&#41;</p>
+</li>
+<li><p><strong>Attributes importance incorrectly</strong> because it&#39;s measuring contributions in regions of feature space that never occur in reality</p>
+</li>
+<li><p><strong>Violates the spirit of Shapley values</strong>, which should measure marginal contributions given realistic scenarios</p>
+</li>
+</ol>
+<h3 id="the_mathematical_sleight_of_hand"><a href="#the_mathematical_sleight_of_hand" class="header-anchor">The Mathematical Sleight of Hand</a></h3>
+<p>The approximation in Step 4 of the original document:</p>
+\[\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})] \approx C_{\Delta x_i \Delta f}(x, r)\]
+<p>This is only valid when features are <strong>conditionally independent</strong>. For correlated features, this approximation can be arbitrarily bad&#33;</p>
+<h3 id="why_do_people_still_use_it"><a href="#why_do_people_still_use_it" class="header-anchor">Why Do People Still Use It?</a></h3>
+<ol>
+<li><p><strong>Computational tractability:</strong> Computing true conditional distributions is extremely hard</p>
+</li>
+<li><p><strong>&quot;Good enough&quot; in practice:</strong> For weakly correlated features, the error might be acceptable</p>
+</li>
+<li><p><strong>No better alternatives:</strong> Other fast approximations have their own problems</p>
+</li>
+<li><p><strong>Lack of awareness:</strong> Many users don&#39;t realize this assumption is being made</p>
+</li>
+</ol>
+<h3 id="the_honest_truth__2"><a href="#the_honest_truth__2" class="header-anchor">The honest truth:</a></h3>
+<p><strong>DeepSHAP does NOT compute true Shapley values.</strong></p>
+<p>What it computes are &quot;Shapley values&quot; for a <strong>different problem</strong>—one where:</p>
+<ul>
+<li><p>Features are assumed independent</p>
+</li>
+<li><p>The model is evaluated on unrealistic feature combinations</p>
+</li>
+<li><p>The definition of &quot;marginal contribution&quot; is fundamentally altered</p>
+</li>
+</ul>
+<p>These are not approximations of true Shapley values. They are <strong>exact solutions to the wrong problem.</strong></p>
+<p>When features are correlated, calling these &quot;Shapley values&quot; is misleading. You&#39;re getting precise answers to a question you didn&#39;t actually ask.</p>
+<h3 id="better_alternatives"><a href="#better_alternatives" class="header-anchor">Better Alternatives?</a></h3>
+<ul>
+<li><p><strong>Conditional sampling methods:</strong> Sample from \(P(x_{\bar{S}} | x_S)\) using generative models &#40;expensive&#33;&#41;</p>
+</li>
+<li><p><strong>Interventional SHAP:</strong> Use causal models to define interventions &#40;requires domain knowledge&#41;</p>
+</li>
+<li><p><strong>Accept the limitations:</strong> Use DeepSHAP but interpret results cautiously when you know features are correlated</p>
+</li>
+</ul>
+<hr />
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ol>
+<li><p><strong>The subscript \(x\)</strong> reminds us we&#39;re explaining a specific input \(x\)—different inputs have different Shapley values.</p>
+</li>
+<li><p><strong>Reference averaging</strong> works by creating different &quot;background contexts&quot; that implicitly sample coalitions.</p>
+</li>
+<li><p><strong>BUT—and this is crucial—</strong> DeepSHAP fundamentally assumes features are independent, which is almost never true in practice. It&#39;s a computational hack that trades correctness for speed. You&#39;re right to call it &quot;cheating&quot;—the math only works under assumptions that are routinely violated in real applications.</p>
+</li>
+</ol>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 19, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
