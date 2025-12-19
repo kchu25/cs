@@ -47,7 +47,7 @@
 </ol>
 </a></h3>
 <p>When we write \(r \sim \mathcal{R}\), we&#39;re sampling from a reference distribution. The assumption is:</p>
-\[p(r_1, r_2, \ldots, r_n) = p(r_1) \cdot p(r_2) \cdots p(r_n)\]
+\(p(r_1, r_2, \ldots, r_n) = p(r_1) \cdot p(r_2) \cdots p(r_n)\)
 <p><strong>What this means</strong>: When sampling references, we draw each feature independently from its marginal distribution.</p>
 <p><strong>Example</strong>: If training data has height and weight correlated, we&#39;re assuming we can sample heights and weights independently &#40;which is unrealistic but makes computation easier&#41;.</p>
 <p><strong>This is about how we construct \(r\)</strong>.</p>
@@ -57,17 +57,28 @@
 </ol>
 </a></h3>
 <p>The model \(f(x_1, \ldots, x_n)\) has &quot;independent features&quot; if:</p>
-\[\frac{\partial^2 f}{\partial x_i \partial x_j} = 0 \text{ for all } i \neq j\]
+\(\frac{\partial^2 f}{\partial x_i \partial x_j} = 0 \text{ for all } i \neq j\)
 <p><strong>What this means</strong>: The model has no interaction terms. The effect of feature \(i\) doesn&#39;t depend on the value of feature \(j\).</p>
 <p><strong>This is about the structure of \(f\)</strong>.</p>
-<h3 id="how_theyre_related"><a href="#how_theyre_related" class="header-anchor">How They&#39;re Related</a></h3>
-<p>Both are required for DeepSHAP to approximate Shapley values:</p>
+<h3 id="critical_point_these_are_not_the_same_thing"><a href="#critical_point_these_are_not_the_same_thing" class="header-anchor">CRITICAL POINT: These Are NOT the Same Thing&#33;</a></h3>
+<p><strong>They don&#39;t imply each other&#33;</strong> This is a key source of confusion:</p>
 <ul>
-<li><p><strong>Probabilistic independence</strong>: lets us sample references efficiently</p>
+<li><p><strong>Probabilistic independence</strong> is an assumption about how we sample reference data</p>
 </li>
-<li><p><strong>Functional independence</strong>: makes coalition averaging collapse to a single term</p>
+<li><p><strong>Functional independence</strong> is a property of the model architecture</p>
 </li>
 </ul>
+<p><strong>The papers DON&#39;T claim that probabilistic independence implies functional independence&#33;</strong> </p>
+<p>What actually happens:</p>
+<ol>
+<li><p>The papers ASSUME functional independence &#40;no interaction terms in the model&#41;</p>
+</li>
+<li><p>Given that assumption, they show DeepLIFT approximates Shapley values</p>
+</li>
+<li><p>Probabilistic independence in references is a separate practical choice for sampling</p>
+</li>
+</ol>
+<p><strong>Reality check</strong>: Most models have interactions &#40;functional dependence&#41;, and most features are correlated &#40;probabilistic dependence&#41;. DeepSHAP is useful despite violating both assumptions, but it&#39;s only theoretically exact when both hold.</p>
 <p>The functional independence is the key one for understanding why one backprop works&#33;</p>
 <hr />
 <h2 id="the_key_insight_functional_independence_makes_coalitions_irrelevant"><a href="#the_key_insight_functional_independence_makes_coalitions_irrelevant" class="header-anchor">The Key Insight: Functional Independence Makes Coalitions Irrelevant</a></h2>
@@ -104,10 +115,32 @@
 <p><strong>All gradients equal \(\beta_3\)&#33;</strong> The coalition \(S\) is completely irrelevant.</p>
 <h3 id="what_this_means_for_shapley"><a href="#what_this_means_for_shapley" class="header-anchor">What This Means for Shapley</a></h3>
 <p>For any coalition \(S\) and reference \(r\):</p>
-\[f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}}) - f(x_S, r_{\bar{S}}) = \int_{r_3}^{x_3} \frac{\partial f}{\partial x_3} dz_3 = \beta_3 (x_3 - r_3)\]
+\(f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}}) - f(x_S, r_{\bar{S}}) = \int_{r_3}^{x_3} \frac{\partial f}{\partial x_3} dz_3 = \beta_3 (x_3 - r_3)\)
+<p><strong>Let me write out the missing steps explicitly:</strong></p>
+<p><strong>Step 1</strong>: What are we computing?</p>
+<ul>
+<li><p>Left side: \(f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}})\) means feature 3 changes from \(r_3\) to \(x_3\), all others stay fixed</p>
+</li>
+<li><p>More explicitly: \(f(\ldots, x_2, x_3, \ldots) - f(\ldots, x_2, r_3, \ldots)\) where the \(\ldots\) represents other features at either \(x\) or \(r\) depending on coalition \(S\)</p>
+</li>
+</ul>
+<p><strong>Step 2</strong>: Apply Fundamental Theorem of Calculus &#40;1D version&#41;</p>
+<p>When we vary only one variable from \(r_3\) to \(x_3\) while holding all others constant:</p>
+\(f(\ldots, x_3, \ldots) - f(\ldots, r_3, \ldots) = \int_{r_3}^{x_3} \frac{\partial f}{\partial z_3}(\ldots, z_3, \ldots) \, dz_3\)
+<p>Here \(z_3\) is a dummy variable of integration representing feature 3&#39;s value as it varies from \(r_3\) to \(x_3\).</p>
+<p><strong>Step 3</strong>: Use the specific form of \(f\) &#40;linear model&#41;</p>
+<p>For our linear model: \(f(x) = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \beta_4 x_4 + \beta_5 x_5\)</p>
+<p>The partial derivative is: \(\frac{\partial f}{\partial z_3} = \beta_3\)</p>
+<p>This is a <strong>constant</strong> - it doesn&#39;t depend on \(z_3\) or any other variable&#33;</p>
+<p><strong>Step 4</strong>: Substitute into the integral</p>
+\(\int_{r_3}^{x_3} \frac{\partial f}{\partial z_3} \, dz_3 = \int_{r_3}^{x_3} \beta_3 \, dz_3\)
+<p><strong>Step 5</strong>: Evaluate the integral</p>
+<p>Since \(\beta_3\) is constant: \(\int_{r_3}^{x_3} \beta_3 \, dz_3 = \beta_3 \cdot z_3 \Big|_{r_3}^{x_3} = \beta_3 (x_3 - r_3)\)</p>
+<p><strong>Putting it all together:</strong></p>
+\(f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}}) - f(x_S, r_{\bar{S}}) = \int_{r_3}^{x_3} \frac{\partial f}{\partial z_3} \, dz_3 = \int_{r_3}^{x_3} \beta_3 \, dz_3 = \beta_3 (x_3 - r_3)\)
+<p><strong>The key point</strong>: Because \(\frac{\partial f}{\partial x_3} = \beta_3\) is constant &#40;independent of all feature values&#41;, the integral gives the same result <strong>regardless of which coalition \(S\) we&#39;re in</strong>. The values of features in \(S\) don&#39;t appear anywhere in this calculation&#33;</p>
 <p>Every coalition gives the same marginal contribution: \(\beta_3 (x_3 - r_3)\)</p>
-<p>Therefore:</p>
-\[\mathbb{E}_S[\text{marginal}] = \beta_3 (x_3 - r_3)\]
+<p>Therefore: \(\mathbb{E}_S[\text{marginal}] = \beta_3 (x_3 - r_3)\)</p>
 <p><strong>The exponential average reduced to a single calculation&#33;</strong></p>
 <hr />
 <h2 id="example_2_model_with_interactions_independence_violated"><a href="#example_2_model_with_interactions_independence_violated" class="header-anchor">Example 2: Model with Interactions &#40;Independence VIOLATED&#41;</a></h2>
@@ -199,7 +232,163 @@
 <h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
 <p>The confusion comes from mixing probabilistic independence &#40;how we sample \(r\)&#41; with functional independence &#40;structure of \(f\)&#41;.</p>
 <p><strong>The key for understanding DeepSHAP</strong>: Focus on functional independence. It makes the gradient independent of coalition membership, which collapses the exponential Shapley average to a single term that DeepLIFT can compute in one backward pass.</p>
-<p>Does this make it clearer?</p>
+<hr />
+<h2 id="what_the_original_shap_paper_actually_shows"><a href="#what_the_original_shap_paper_actually_shows" class="header-anchor">What the Original SHAP Paper Actually Shows</a></h2>
+<p>Now, regarding your question about approximation quality - yes, the original Lundberg &amp; Lee &#40;2017&#41; paper does show some empirical validation:</p>
+<h3 id="computational_experiments_section_51"><a href="#computational_experiments_section_51" class="header-anchor">Computational Experiments &#40;Section 5.1&#41;</a></h3>
+<p>They compared Kernel SHAP vs LIME vs Shapley sampling on decision trees, measuring:</p>
+<ul>
+<li><p><strong>Sample efficiency</strong>: How many model evaluations needed to get accurate estimates</p>
+</li>
+<li><p><strong>Convergence</strong>: How estimates approach true Shapley values with more samples</p>
+</li>
+</ul>
+<p><strong>Result</strong>: Kernel SHAP converges faster than Shapley sampling and gives more accurate estimates than LIME.</p>
+<h3 id="user_studies_section_52"><a href="#user_studies_section_52" class="header-anchor">User Studies &#40;Section 5.2&#41;</a></h3>
+<p>They compared LIME, DeepLIFT, and SHAP with human explanations on simple models:</p>
+<ul>
+<li><p>Simple symptom-based model</p>
+</li>
+<li><p>Max pooling allocation problem</p>
+</li>
+</ul>
+<p><strong>Result</strong>: SHAP values showed &quot;much stronger agreement&quot; with human explanations than other methods.</p>
+<h3 id="mnist_example_section_53"><a href="#mnist_example_section_53" class="header-anchor">MNIST Example &#40;Section 5.3&#41;</a></h3>
+<p>They tested on digit classification &#40;distinguishing 8 from 3&#41;:</p>
+<ul>
+<li><p>Compared original DeepLIFT, modified DeepLIFT &#40;closer to SHAP&#41;, LIME, and Kernel SHAP</p>
+</li>
+<li><p>Masked pixels according to attributions and measured class change</p>
+</li>
+</ul>
+<p><strong>Result</strong>: Methods closer to SHAP values performed better at identifying which pixels matter.</p>
+<h3 id="what_they_dont_show"><a href="#what_they_dont_show" class="header-anchor">What They DON&#39;T Show</a></h3>
+<p><strong>Critically</strong>, the paper does NOT:</p>
+<ul>
+<li><p>Rigorously quantify approximation error for DeepSHAP vs true Shapley values on neural networks</p>
+</li>
+<li><p>Test how well the independence assumption holds in practice</p>
+</li>
+<li><p>Compare DeepSHAP accuracy on models with strong feature interactions</p>
+</li>
+</ul>
+<p>The experiments show that SHAP is better than alternatives, but don&#39;t validate how close DeepSHAP&#39;s approximation is to true Shapley values when functional independence is violated.</p>
+<hr />
+<h2 id="critical_later_work_on_shaps_limitations"><a href="#critical_later_work_on_shaps_limitations" class="header-anchor">Critical Later Work on SHAP&#39;s Limitations</a></h2>
+<p>Since the original 2017 paper, several important critiques have emerged:</p>
+<h3 id="huang_marques-silva_2023_the_inadequacy_of_shapley_values_for_explainability"><a href="#huang_marques-silva_2023_the_inadequacy_of_shapley_values_for_explainability" class="header-anchor"><ol>
+<li><p>Huang &amp; Marques-Silva &#40;2023&#41;: &quot;The Inadequacy of Shapley Values for Explainability&quot;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Key finding</strong>: Systematic analysis showing exact Shapley values can be fundamentally misleading for explainability.</p>
+<p><strong>What they showed</strong>:</p>
+<ul>
+<li><p>Analyzed all Boolean functions with 4 variables</p>
+</li>
+<li><p>Found that 99.67&#37; of functions have at least one instance where an <strong>irrelevant feature</strong> gets non-zero Shapley value</p>
+</li>
+<li><p>Proved that relevant features can get lower Shapley values than irrelevant ones</p>
+</li>
+</ul>
+<p><strong>Their conclusion</strong>: &quot;SHAP scores will necessarily yield misleading information about the relative importance of features.&quot; The problem isn&#39;t just approximation error—even exact Shapley values can mislead.</p>
+<p><strong>Citation</strong>: Huang, X., &amp; Marques-Silva, J. &#40;2023&#41;. &quot;On the failings of Shapley values for explainability.&quot; arXiv:2302.08160</p>
+<h3 id="ol_start2_feature_dependence_issues"><a href="#ol_start2_feature_dependence_issues" class="header-anchor"><ol start="2">
+<li><p>Feature Dependence Issues</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>The problem</strong>: KernelSHAP and other approximation methods assume feature independence when computing conditional expectations:</p>
+\(E[f(z) | z_S] \approx E_{z_{\bar{S}}}[f(z)]\)
+<p><strong>Reality</strong>: Features are almost always correlated in real data.</p>
+<p><strong>Consequence</strong>: SHAP can attribute importance to features that aren&#39;t actually used in realistic scenarios.</p>
+<p><strong>Practical impact</strong>: With highly correlated features &#40;multicollinearity&#41;, SHAP assigns high values to one feature and near-zero to correlated features, even though they carry similar information.</p>
+<p><strong>Sources</strong>: </p>
+<ul>
+<li><p>Aas et al. &#40;2021&#41;: &quot;Explaining individual predictions when features are dependent&quot; - proposed conditional SHAP to address this</p>
+</li>
+<li><p>Multiple practitioner reports in drug development, finance, etc.</p>
+</li>
+</ul>
+<h3 id="ol_start3_interaction_effects_not_captured"><a href="#ol_start3_interaction_effects_not_captured" class="header-anchor"><ol start="3">
+<li><p>Interaction Effects Not Captured</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>The additive assumption</strong>: \(f(x) - f(r) = \sum_i \phi_i (x_i - r_i)\)</p>
+<p><strong>Problem</strong>: This can&#39;t capture feature interactions accurately. If features \(x_i\) and \(x_j\) strongly interact, the contribution of \(x_i\) depends on \(x_j\)&#39;s value, but SHAP averages over all possible \(x_j\) values.</p>
+<p><strong>Example from text</strong>: The phrase &quot;not good&quot; has meaning that&#39;s not the sum of &quot;not&quot; &#43; &quot;good&quot; individually.</p>
+<p><strong>Impact</strong>: SHAP values can be misleading for models with strong non-linear interactions.</p>
+<h3 id="ol_start4_computational_approximation_quality_unknown"><a href="#ol_start4_computational_approximation_quality_unknown" class="header-anchor"><ol start="4">
+<li><p>Computational Approximation Quality Unknown</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>The gap</strong>: While methods like KernelSHAP approximate Shapley values, there&#39;s often no way to know how good the approximation is for a specific instance.</p>
+<p><strong>Recent work</strong>: Alkhatib et al. &#40;2024&#41; proposed using conformal prediction to measure approximation quality, showing that approximation error can be substantial and varies widely across instances.</p>
+<p><strong>Citation</strong>: &quot;Estimating Quality of Approximated Shapley Values Using Conformal Prediction,&quot; COPA 2024.</p>
+<h3 id="ol_start5_treeshap_vs_kernelshap_discrepancies"><a href="#ol_start5_treeshap_vs_kernelshap_discrepancies" class="header-anchor"><ol start="5">
+<li><p>TreeSHAP vs KernelSHAP Discrepancies</p>
+</li>
+</ol>
+</a></h3>
+<p>Different SHAP implementations give different values for the same model because they make different assumptions:</p>
+<ul>
+<li><p><strong>TreeSHAP</strong>: Accounts for tree structure, but makes specific assumptions about feature dependence</p>
+</li>
+<li><p><strong>KernelSHAP</strong>: Model-agnostic but assumes independence</p>
+</li>
+<li><p><strong>DeepSHAP</strong>: Fast but only approximate for non-linear models</p>
+</li>
+</ul>
+<p><strong>Result</strong>: The same prediction can have different explanations depending on which SHAP method you use.</p>
+<h3 id="ol_start6_causal_vs_correlational_confusion"><a href="#ol_start6_causal_vs_correlational_confusion" class="header-anchor"><ol start="6">
+<li><p>Causal vs Correlational Confusion</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>SHAP measures</strong>: Correlation-based feature importance &#40;how features correlate with predictions&#41;</p>
+<p><strong>Users often want</strong>: Causal importance &#40;what happens if we intervene on a feature&#41;</p>
+<p><strong>The gap</strong>: SHAP doesn&#39;t distinguish between:</p>
+<ul>
+<li><p>Direct causal effects</p>
+</li>
+<li><p>Spurious correlations</p>
+</li>
+<li><p>Confounding variables</p>
+</li>
+</ul>
+<p><strong>Example</strong>: A model might rely on a spurious correlation; SHAP will give that feature high importance even though it&#39;s not causally relevant.</p>
+<hr />
+<h2 id="the_honest_assessment"><a href="#the_honest_assessment" class="header-anchor">The Honest Assessment</a></h2>
+<p><strong>What later work shows</strong>:</p>
+<ol>
+<li><p>Even <strong>exact</strong> Shapley values can be misleading &#40;not just approximations&#41;</p>
+</li>
+<li><p>The independence assumption is violated in almost all real applications</p>
+</li>
+<li><p>Approximation quality varies widely and is often unknown</p>
+</li>
+<li><p>Different SHAP implementations give different answers</p>
+</li>
+<li><p>SHAP measures correlation, not causation &#40;despite user expectations&#41;</p>
+</li>
+</ol>
+<p><strong>Why SHAP is still popular</strong>:</p>
+<ul>
+<li><p>Fast tree-based implementations &#40;TreeSHAP&#41;</p>
+</li>
+<li><p>Well-documented Python package</p>
+</li>
+<li><p>Produces seemingly interpretable outputs</p>
+</li>
+<li><p>Better than previous alternatives for many use cases</p>
+</li>
+<li><p>Satisfies useful theoretical properties &#40;when assumptions hold&#41;</p>
+</li>
+</ul>
+<p><strong>The reality</strong>: SHAP is a useful heuristic tool but should not be treated as ground truth for feature importance. Its theoretical guarantees only hold under strong assumptions that are rarely satisfied in practice.</p>
+<p>Does this answer your question about the critical later work?</p>
 <div class="page-foot">
     Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
     <br>

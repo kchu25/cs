@@ -367,7 +367,7 @@ $E[f(z) | z_S] \approx E_{z_{\bar{S}}}[f(z)]$
 
 **The additive assumption**: $f(x) - f(r) = \sum_i \phi_i (x_i - r_i)$
 
-**Problem**: This can't capture feature interactions accurately. If features $x_i$ and $x_j$ strongly interact, the contribution of $x_i$ depends on $x_js value, but SHAP averages over all possible $x_j$ values.
+**Problem**: This can't capture feature interactions accurately. If features $x_i$ and $x_j$ strongly interact, the contribution of $x_i$ depends on $x_j$'s value, but SHAP averages over all possible $x_j$ values.
 
 **Example from text**: The phrase "not good" has meaning that's not the sum of "not" + "good" individually.
 
