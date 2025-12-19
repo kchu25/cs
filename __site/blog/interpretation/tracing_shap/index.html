@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Tracing DeepSHAP to Lundberg's Original Paper</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="tracing_deepshap_to_lundbergs_original_paper"><a href="#tracing_deepshap_to_lundbergs_original_paper" class="header-anchor">Tracing DeepSHAP to Lundberg&#39;s Original Paper</a></h1>
+<h2 id="what_lundberg_actually_said_2017_nips_paper"><a href="#what_lundberg_actually_said_2017_nips_paper" class="header-anchor">What Lundberg Actually Said &#40;2017 NIPS Paper&#41;</a></h2>
+<p>Let me trace the &quot;double expectation&quot; idea back to what Lundberg&#39;s original paper actually contains.</p>
+<h3 id="the_key_quote_from_section_42"><a href="#the_key_quote_from_section_42" class="header-anchor">The Key Quote from Section 4.2</a></h3>
+<p>From the paper &#40;found in the search results&#41;:</p>
+<blockquote>
+<p>&quot;If we interpret the reference value in Equation 3 as representing E&#91;x&#93; in Equation 12, then <strong>DeepLIFT approximates SHAP values assuming that the input features are independent of one another and the deep model is linear.</strong>&quot;</p>
+</blockquote>
+<p>That&#39;s basically it. This is the only explanation Lundberg gives for the connection.</p>
+<h3 id="what_is_equation_12_in_lundbergs_paper"><a href="#what_is_equation_12_in_lundbergs_paper" class="header-anchor">What is &quot;Equation 12&quot; in Lundberg&#39;s Paper?</a></h3>
+<p>From the search results, Equation 12 defines SHAP values using <strong>conditional expectations</strong>:</p>
+\[f_x(z') = f(h_x(z')) = \mathbb{E}[f(z) | z_S]\]
+<p>where \(S\) is the set of non-zero indices in \(z'\) &#40;the features that are &quot;present&quot;&#41;.</p>
+<p>This is saying: the value function for coalition \(S\) should be the <strong>conditional expectation</strong> of the model output given those features.</p>
+<h3 id="what_is_equation_3_deeplift"><a href="#what_is_equation_3_deeplift" class="header-anchor">What is &quot;Equation 3&quot; &#40;DeepLIFT&#41;?</a></h3>
+<p>DeepLIFT computes contributions \(C_{\Delta x_i \Delta y}\) that satisfy:</p>
+\[f(x) - f(r) = \sum_i C_{\Delta x_i \Delta y}\]
+<p>where \(r\) is a <strong>reference value</strong> &#40;single baseline&#41;.</p>
+<h3 id="lundbergs_argument_such_as_it_is"><a href="#lundbergs_argument_such_as_it_is" class="header-anchor">Lundberg&#39;s Argument &#40;Such As It Is&#41;</a></h3>
+<p>Lundberg is saying:</p>
+<ol>
+<li><p>DeepLIFT uses a single reference \(r\)</p>
+</li>
+<li><p>If you interpret this reference as \(\mathbb{E}[x]\) &#40;the expected value&#41;</p>
+</li>
+<li><p>And if features are independent</p>
+</li>
+<li><p>And if the model is locally linear</p>
+</li>
+<li><p>Then DeepLIFT contributions approximate SHAP values</p>
+</li>
+</ol>
+<p><strong>That&#39;s the entire justification.</strong> No derivation of double expectations, no formal proof, just this claim.</p>
+<hr />
+<h2 id="where_does_the_double_expectation_come_from"><a href="#where_does_the_double_expectation_come_from" class="header-anchor">Where Does the &quot;Double Expectation&quot; Come From?</a></h2>
+<p>Based on the search results, here&#39;s what I can trace:</p>
+<h3 id="from_the_shap_documentation"><a href="#from_the_shap_documentation" class="header-anchor">From the SHAP Documentation</a></h3>
+<p>The official SHAP library documentation states:</p>
+<blockquote>
+<p>&quot;By integrating over many background samples, Deep&#91;SHAP&#93; estimates approximate SHAP values such that they sum up to the difference between the expected model output on the passed background samples and the current model output &#40;f&#40;x&#41; - E&#91;f&#40;x&#41;&#93;&#41;.&quot;</p>
+</blockquote>
+<p>This suggests:</p>
+<ul>
+<li><p>DeepSHAP averages over <strong>multiple background samples</strong> &#40;not just one reference&#41;</p>
+</li>
+<li><p>This averaging approximates the expectation \(\mathbb{E}[f(x)]\)</p>
+</li>
+</ul>
+<h3 id="the_implementation_insight"><a href="#the_implementation_insight" class="header-anchor">The Implementation Insight</a></h3>
+<p>From the GitHub SHAP repository description:</p>
+<blockquote>
+<p>&quot;The implementation here differs from the original DeepLIFT by using <strong>a distribution of background samples instead of a single reference value</strong>, and using Shapley equations to linearize components such as max, softmax, products, divisions, etc.&quot;</p>
+</blockquote>
+<p>So DeepSHAP &#61; DeepLIFT &#43; averaging over multiple references.</p>
+<h3 id="the_logic_reconstructed"><a href="#the_logic_reconstructed" class="header-anchor">The Logic &#40;Reconstructed&#41;</a></h3>
+<p>Here&#39;s how the &quot;double expectation&quot; view arises, though <strong>Lundberg never writes it this way explicitly</strong>:</p>
+<p><strong>Step 1:</strong> True SHAP values require computing:</p>
+\[\phi_i = \sum_{S \subseteq N \setminus \{i\}} \text{weight}(S) \cdot [v(S \cup \{i\}) - v(S)]\]
+<p>where \(v(S) = \mathbb{E}[f(z) | z_S]\) is the conditional expectation.</p>
+<p><strong>Step 2:</strong> Under the independence assumption, replace conditional with marginal:</p>
+\[v(S) \approx \mathbb{E}_{z_{\bar{S}}}[f(z_S, z_{\bar{S}})]\]
+<p>This is the first expectation &#40;over missing features&#41;.</p>
+<p><strong>Step 3:</strong> Approximate this expectation by sampling references:</p>
+\[v(S) \approx \frac{1}{|R|} \sum_{r \in R} f(z_S, r_{\bar{S}})\]
+<p><strong>Step 4:</strong> DeepLIFT with reference \(r\) gives you contributions for that specific \(r\).</p>
+<p><strong>Step 5:</strong> Average over multiple references:</p>
+\[\phi_i \approx \frac{1}{|R|} \sum_{r \in R} C_{\Delta x_i \Delta y}(x, r)\]
+<p>This is the second expectation &#40;over references&#41;.</p>
+<p><strong>Combined:</strong> You get \(\mathbb{E}_S \mathbb{E}_r[\ldots]\) where:</p>
+<ul>
+<li><p>First expectation: over coalitions &#40;implicit in the Shapley formula&#41;</p>
+</li>
+<li><p>Second expectation: over reference samples &#40;explicit in DeepSHAP implementation&#41;</p>
+</li>
+</ul>
+<hr />
+<h2 id="is_the_double_expectation_view_correct"><a href="#is_the_double_expectation_view_correct" class="header-anchor">Is the &quot;Double Expectation&quot; View Correct?</a></h2>
+<h3 id="what_we_can_verify"><a href="#what_we_can_verify" class="header-anchor">What we can verify:</a></h3>
+<p><strong>✓ Lundberg says:</strong> DeepLIFT approximates SHAP under independence assumption</p>
+<p><strong>✓ SHAP library implements:</strong> Averaging DeepLIFT over multiple background samples</p>
+<p><strong>✓ Mathematical logic:</strong> Shapley values involve summing over coalitions &#40;first expectation&#41;, and DeepSHAP averages over references &#40;second expectation&#41;</p>
+<h3 id="what_we_cannot_verify_from_lundbergs_paper"><a href="#what_we_cannot_verify_from_lundbergs_paper" class="header-anchor">What we CANNOT verify from Lundberg&#39;s paper:</a></h3>
+<p><strong>✗ Explicit double expectation formula:</strong> Never appears in the 2017 paper</p>
+<p><strong>✗ Formal proof:</strong> That averaging DeepLIFT over references equals \(\mathbb{E}_S[...]\)</p>
+<p><strong>✗ Derivation:</strong> Showing how DeepLIFT&#39;s multipliers relate to coalition sampling</p>
+<h3 id="the_honest_assessment"><a href="#the_honest_assessment" class="header-anchor">The honest assessment:</a></h3>
+<p>The &quot;double expectation&quot; framework is a <strong>pedagogical reconstruction</strong> that makes mathematical sense of what DeepSHAP does, but it&#39;s not how Lundberg originally presented it. The original paper just asserts the connection with minimal justification.</p>
+<p>The framework from your original document is <strong>logically sound</strong> as an explanation of why DeepSHAP works, but it&#39;s not directly traceable to Lundberg&#39;s paper. It appears to be a post-hoc rationalization by the interpretation community.</p>
+<hr />
+<h2 id="what_does_the_2022_nature_communications_paper_say"><a href="#what_does_the_2022_nature_communications_paper_say" class="header-anchor">What Does the 2022 Nature Communications Paper Say?</a></h2>
+<p>From the search results, Chen, Lundberg, and Lee &#40;2022&#41; state:</p>
+<blockquote>
+<p>&quot;DeepSHAP was originally introduced as an adaptation of DeepLIFT in the original SHAP paper <strong>but is briefly and informally introduced</strong>, making it difficult to know exactly what the method entails&quot;</p>
+</blockquote>
+<p>Even the authors themselves admit the original presentation was informal&#33;</p>
+<p>The 2022 paper provides a more rigorous treatment but focuses on extending DeepSHAP to series of models, not on deriving the basic double expectation formula.</p>
+<hr />
+<h2 id="bottom_line"><a href="#bottom_line" class="header-anchor">Bottom Line</a></h2>
+<p><strong>Is the double expectation correct?</strong> </p>
+<p>Probably yes, as a way to understand what DeepSHAP computes.</p>
+<p><strong>Does it come from Lundberg&#39;s 2017 paper?</strong> </p>
+<p>No. The paper just asserts that DeepLIFT approximates SHAP under independence, without this level of mathematical detail.</p>
+<p><strong>Where does it come from?</strong></p>
+<p>It&#39;s a <strong>reasonable reconstruction</strong> by people trying to understand:</p>
+<ol>
+<li><p>What SHAP values actually require &#40;coalition sampling&#41;</p>
+</li>
+<li><p>What DeepLIFT computes &#40;contributions for one reference&#41;</p>
+</li>
+<li><p>What DeepSHAP does &#40;averages over multiple references&#41;</p>
+</li>
+<li><p>How these connect &#40;double expectation interpretation&#41;</p>
+</li>
+</ol>
+<p>The framework is useful for understanding, but it&#39;s not authoritative source material from Lundberg&#39;s original work.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 19, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
