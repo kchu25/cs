@@ -109,11 +109,22 @@ Let me decode this with a concrete example. Say $n=3$ features, $S = \{2\}$, and
 
 Using FTC, we can write this as:
 
-$$f(x_1, x_2, r_3) - f(r_1, x_2, r_3) = \int_{r_1}^{x_1} \frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \, dz_1$$
+$f(x_1, x_2, r_3) - f(r_1, x_2, r_3) = \int_{r_1}^{x_1} \frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \, dz_1$
 
-Parameterizing with $z_1 = r_1 + t(x_1 - r_1)$:
+**Why only $\frac{\partial f}{\partial x_1}$?** Because $x_2$ and $r_3$ are **held constant** in both terms. We're only changing feature 1 from $r_1$ to $x_1$, so only the partial derivative with respect to $x_1$ matters. The derivatives with respect to $x_2$ and $x_3$ would give zero contribution since those variables aren't changing.
 
-$$= \int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \cdot (x_1 - r_1)$$
+**Why integrate from $r_1$ to $x_1$?** Because $z_1$ is a dummy variable that sweeps from the starting point ($r_1$) to the ending point ($x_1$). It's like asking "what's the total change as $x_1$ goes from $r_1$ to $x_1$?"
+
+**Parameterizing with $t$:** We can change variables by setting $z_1 = r_1 + t(x_1 - r_1)$ where $t \in [0,1]$:
+- When $t=0$: $z_1 = r_1$ (start)
+- When $t=1$: $z_1 = x_1$ (end)
+- And $dz_1 = (x_1 - r_1) dt$
+
+So:
+
+$= \int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \cdot (x_1 - r_1)$
+
+The $(x_1 - r_1)$ factor comes from the change of variables (the Jacobian).
 
 ### The Key Observation
 

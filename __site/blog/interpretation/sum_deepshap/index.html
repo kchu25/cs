@@ -91,9 +91,21 @@
 </li>
 </ul>
 <p>Using FTC, we can write this as:</p>
-\[f(x_1, x_2, r_3) - f(r_1, x_2, r_3) = \int_{r_1}^{x_1} \frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \, dz_1\]
-<p>Parameterizing with \(z_1 = r_1 + t(x_1 - r_1)\):</p>
-\[= \int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \cdot (x_1 - r_1)\]
+\(f(x_1, x_2, r_3) - f(r_1, x_2, r_3) = \int_{r_1}^{x_1} \frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \, dz_1\)
+<p><strong>Why only \(\frac{\partial f}{\partial x_1}\)?</strong> Because \(x_2\) and \(r_3\) are <strong>held constant</strong> in both terms. We&#39;re only changing feature 1 from \(r_1\) to \(x_1\), so only the partial derivative with respect to \(x_1\) matters. The derivatives with respect to \(x_2\) and \(x_3\) would give zero contribution since those variables aren&#39;t changing.</p>
+<p><strong>Why integrate from \(r_1\) to \(x_1\)?</strong> Because \(z_1\) is a dummy variable that sweeps from the starting point &#40;\(r_1\)&#41; to the ending point &#40;\(x_1\)&#41;. It&#39;s like asking &quot;what&#39;s the total change as \(x_1\) goes from \(r_1\) to \(x_1\)?&quot;</p>
+<p><strong>Parameterizing with \(t\):</strong> We can change variables by setting \(z_1 = r_1 + t(x_1 - r_1)\) where \(t \in [0,1]\):</p>
+<ul>
+<li><p>When \(t=0\): \(z_1 = r_1\) &#40;start&#41;</p>
+</li>
+<li><p>When \(t=1\): \(z_1 = x_1\) &#40;end&#41;</p>
+</li>
+<li><p>And \(dz_1 = (x_1 - r_1) dt\)</p>
+</li>
+</ul>
+<p>So:</p>
+\(= \int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \cdot (x_1 - r_1)\)
+<p>The \((x_1 - r_1)\) factor comes from the change of variables &#40;the Jacobian&#41;.</p>
 <h3 id="the_key_observation"><a href="#the_key_observation" class="header-anchor">The Key Observation</a></h3>
 <p>Notice that for coalition \(S = \{2\}\), the gradient is evaluated at points like:</p>
 <ul>
