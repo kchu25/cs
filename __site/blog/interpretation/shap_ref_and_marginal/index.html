@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why the DeepSHAP Double Expectation Formula Holds</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_the_deepshap_double_expectation_formula_holds"><a href="#why_the_deepshap_double_expectation_formula_holds" class="header-anchor">Why the DeepSHAP Double Expectation Formula Holds</a></h1>
+<h2 id="the_equation_in_question"><a href="#the_equation_in_question" class="header-anchor">The Equation in Question</a></h2>
+\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p>This follows <strong>mathematically</strong> from the definition of \(f_x(S)\), but you&#39;re right to question <strong>why we need a distribution of references</strong>.</p>
+<h2 id="the_mathematical_reason_why_it_holds"><a href="#the_mathematical_reason_why_it_holds" class="header-anchor">The Mathematical Reason &#40;Why It Holds&#41;</a></h2>
+<h3 id="definition_of_f_xs"><a href="#definition_of_f_xs" class="header-anchor">Definition of \(f_x(S)\)</a></h3>
+<p>By definition:</p>
+\[f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
+<p>This says: &quot;When features in \(S\) are set to their values from \(x\), and features outside \(S\) are drawn from the reference distribution \(\mathcal{R}\), what&#39;s the expected output?&quot;</p>
+<h3 id="standard_shapley_formula"><a href="#standard_shapley_formula" class="header-anchor">Standard Shapley Formula</a></h3>
+\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+<h3 id="substitution"><a href="#substitution" class="header-anchor">Substitution</a></h3>
+<p>Simply substitute the definition:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}\left[\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})] - \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\right]\]
+<p>By linearity of expectation:</p>
+\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+<p><strong>That&#39;s it.</strong> The equation holds by pure substitution and linearity of expectation.</p>
+<h2 id="but_why_cant_reference_just_be_zero"><a href="#but_why_cant_reference_just_be_zero" class="header-anchor">But Why Can&#39;t Reference Just Be Zero?</a></h2>
+<p>Good question&#33; Let&#39;s think about what the reference distribution \(\mathcal{R}\) actually represents.</p>
+<h3 id="what_does_f_xs_mean"><a href="#what_does_f_xs_mean" class="header-anchor">What Does \(f_x(S)\) Mean?</a></h3>
+<p>\(f_x(S)\) is supposed to answer: <strong>&quot;What&#39;s the expected model output when only features in \(S\) are &#39;present&#39;?&quot;</strong></p>
+<p>But what does &quot;absent&quot; mean? We need to provide <em>some</em> value for the absent features. The choice of reference distribution \(\mathcal{R}\) determines what &quot;absent&quot; means.</p>
+<h3 id="could_we_use_a_single_reference_eg_zero"><a href="#could_we_use_a_single_reference_eg_zero" class="header-anchor">Could We Use a Single Reference &#40;e.g., Zero&#41;?</a></h3>
+<p><strong>Yes, mathematically you could&#33;</strong> If \(\mathcal{R}\) is a point mass at zero &#40;i.e., \(r = 0\) always&#41;, then:</p>
+\[f_x(S) = f(x_S, 0_{\bar{S}})\]
+<p>The equation would still hold. But there are problems:</p>
+<ol>
+<li><p><strong>Zero might not be meaningful</strong>: For many features, zero isn&#39;t a &quot;neutral&quot; or &quot;absent&quot; value</p>
+<ul>
+<li><p>Image pixels: zero &#61; black, which is meaningful</p>
+</li>
+<li><p>Age: zero &#61; newborn, not &quot;absent&quot;</p>
+</li>
+<li><p>One-hot encoded features: zero might be impossible</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Single reference &#61; poor approximation</strong>: Using one reference gives you only one &quot;background&quot; against which to measure feature importance. This can be misleading if the model behaves differently in different contexts.</p>
+</li>
+</ol>
+<h3 id="why_use_a_distribution_of_references"><a href="#why_use_a_distribution_of_references" class="header-anchor">Why Use a Distribution of References?</a></h3>
+<p>The key insight: <strong>different references create different &quot;baseline&quot; contexts</strong>.</p>
+<h4 id="example_feature_interactions"><a href="#example_feature_interactions" class="header-anchor">Example: Feature Interactions</a></h4>
+<p>Suppose you have two features \(x_1\) and \(x_2\), and \(f(x_1, x_2) = x_1 \cdot x_2\).</p>
+<p><strong>With single reference</strong> \(r = (0, 0)\):</p>
+<ul>
+<li><p>\(f_x(\{1\}) = f(x_1, 0) = 0\) &#40;regardless of \(x_1\)&#33;&#41;</p>
+</li>
+<li><p>This suggests feature 1 has no contribution, which is wrong</p>
+</li>
+</ul>
+<p><strong>With multiple references</strong> from \(\mathcal{R}\):</p>
+<ul>
+<li><p>Some references have \(r_2 > 0\), so \(f(x_1, r_2) = x_1 \cdot r_2 \neq 0\)</p>
+</li>
+<li><p>Averaging over references captures the true contribution of \(x_1\)</p>
+</li>
+</ul>
+<h4 id="the_distribution_matters_for_fairness"><a href="#the_distribution_matters_for_fairness" class="header-anchor">The Distribution Matters for Fairness</a></h4>
+<p>Shapley values have a key property: they satisfy <strong>efficiency</strong> &#40;the sum of attributions equals the prediction difference&#41;.</p>
+\[\sum_i \phi_i = f(x) - \mathbb{E}_{r \sim \mathcal{R}}[f(r)]\]
+<p>The choice of \(\mathcal{R}\) determines what &quot;baseline&quot; we&#39;re measuring against. Using a distribution &#40;e.g., the training data distribution&#41; means:</p>
+<ul>
+<li><p>We&#39;re measuring each feature&#39;s contribution relative to &quot;typical&quot; values</p>
+</li>
+<li><p>Not relative to one arbitrary choice like zero</p>
+</li>
+</ul>
+<h3 id="so_why_not_just_one_reference"><a href="#so_why_not_just_one_reference" class="header-anchor">So Why Not Just One Reference?</a></h3>
+<p><strong>You could use one reference</strong>, and the math would still work. But:</p>
+<ol>
+<li><p><strong>DeepLIFT</strong> &#40;the predecessor to DeepSHAP&#41; uses a single reference and computes contributions along the path from \(r\) to \(x\)</p>
+</li>
+<li><p><strong>DeepSHAP</strong> averages over multiple references to get a better approximation because:</p>
+<ul>
+<li><p>Different references reveal different aspects of feature importance</p>
+</li>
+<li><p>Averaging reduces the bias from any single reference choice</p>
+</li>
+<li><p>It better approximates the true Shapley value &#40;which implicitly integrates over all possible &quot;backgrounds&quot;&#41;</p>
+</li>
+</ul>
+</li>
+</ol>
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ul>
+<li><p><strong>Mathematically</strong>, the equation holds by substitution &#43; linearity of expectation, regardless of what \(\mathcal{R}\) is</p>
+</li>
+<li><p><strong>You could</strong> use a single reference &#40;including zero&#41;, and the equation would still be valid</p>
+</li>
+<li><p><strong>But using multiple references</strong> gives a better approximation because:</p>
+<ul>
+<li><p>It captures how features contribute in different contexts</p>
+</li>
+<li><p>It reduces bias from arbitrary reference choices</p>
+</li>
+<li><p>It better represents the &quot;expected&quot; behavior when features are &quot;absent&quot;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>The distribution isn&#39;t mathematically necessary for the equation to hold—it&#39;s necessary for the Shapley values to be <strong>meaningful and accurate</strong>.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 20, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
