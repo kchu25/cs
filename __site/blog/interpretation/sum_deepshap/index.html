@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why the Sum Disappears in DeepSHAP</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_the_sum_disappears_in_deepshap"><a href="#why_the_sum_disappears_in_deepshap" class="header-anchor">Why the Sum Disappears in DeepSHAP</a></h1>
+<h2 id="your_question"><a href="#your_question" class="header-anchor">Your Question</a></h2>
+<p>The Fundamental Theorem of Calculus &#40;multivariate version&#41; tells us:</p>
+\[f(\mathbf{x}) - f(\mathbf{r}) = \int_0^1 \left( \sum_{i=1}^n \frac{\partial f}{\partial x_i}(\gamma(t)) \cdot (x_i - r_i) \right) dt\]
+<p>which can be rewritten as:</p>
+\[f(\mathbf{x}) - f(\mathbf{r}) = \sum_{i=1}^n \underbrace{\left( \int_0^1 \frac{\partial f}{\partial x_i}(\mathbf{r} + t(\mathbf{x} - \mathbf{r})) \, dt \right)}_{\phi_i(\mathbf{x}, \mathbf{r})} (x_i - r_i)\]
+<p>So the FTC has a <strong>sum over all features</strong>. But when we compute the Shapley value for a single feature \(i\), we&#39;re only looking at:</p>
+\[\mathbb{E}_{S \sim \pi}[\text{marginal contribution of } i] \approx \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\]
+<p><strong>Where did the sum go?</strong> Why are we only looking at one term?</p>
+<h2 id="the_answer_were_computing_one_features_attribution_at_a_time"><a href="#the_answer_were_computing_one_features_attribution_at_a_time" class="header-anchor">The Answer: We&#39;re Computing One Feature&#39;s Attribution at a Time</a></h2>
+<p>The sum doesn&#39;t actually &quot;disappear&quot; - we&#39;re just computing <strong>one term of the sum for each feature separately</strong>.</p>
+<p>Let me be super explicit about what&#39;s happening.</p>
+<h3 id="what_the_ftc_gives_us"><a href="#what_the_ftc_gives_us" class="header-anchor">What the FTC Gives Us</a></h3>
+<p>The multivariate FTC decomposes the <strong>total change</strong> \(f(\mathbf{x}) - f(\mathbf{r})\) into contributions from all features:</p>
+\[\underbrace{f(\mathbf{x}) - f(\mathbf{r})}_{\text{total change}} = \underbrace{\phi_1(\mathbf{x}, \mathbf{r}) \cdot (x_1 - r_1)}_{\text{feature 1's contribution}} + \underbrace{\phi_2(\mathbf{x}, \mathbf{r}) \cdot (x_2 - r_2)}_{\text{feature 2's contribution}} + \cdots + \underbrace{\phi_n(\mathbf{x}, \mathbf{r}) \cdot (x_n - r_n)}_{\text{feature n's contribution}}\]
+<p>Each \(\phi_i(\mathbf{x}, \mathbf{r})\) is defined as:</p>
+\[\phi_i(\mathbf{x}, \mathbf{r}) = \int_0^1 \frac{\partial f}{\partial x_i}(\mathbf{r} + t(\mathbf{x} - \mathbf{r})) \, dt\]
+<p>This is the <strong>coefficient</strong> that tells us how much feature \(i\) contributes per unit change \((x_i - r_i)\).</p>
+<h3 id="what_the_shapley_value_computes"><a href="#what_the_shapley_value_computes" class="header-anchor">What the Shapley Value Computes</a></h3>
+<p>The Shapley value for feature \(i\) is:</p>
+\[\phi_i^{\text{Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[\text{marginal contribution of feature } i \text{ in coalition } S]\]
+<p>This is computing <strong>just feature \(i\)&#39;s contribution</strong>, not all features at once.</p>
+<p>The key equation &#40;Equation 3&#41; says:</p>
+\[\mathbb{E}_{S \sim \pi}[\text{marginal contribution of } i \text{ w.r.t. reference } r] \approx \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\]
+<p>Notice: This is computing <strong>one term</strong> from the FTC sum - specifically, the term for feature \(i\).</p>
+<h3 id="so_wheres_the_sum"><a href="#so_wheres_the_sum" class="header-anchor">So Where&#39;s the Sum?</a></h3>
+<p>The sum is still there&#33; If you want attributions for <strong>all features</strong>, you compute:</p>
+<ul>
+<li><p>For feature 1: \(\phi_1(\mathbf{x}, \mathbf{r}) \cdot (x_1 - r_1)\)</p>
+</li>
+<li><p>For feature 2: \(\phi_2(\mathbf{x}, \mathbf{r}) \cdot (x_2 - r_2)\)</p>
+</li>
+<li><p>...</p>
+</li>
+<li><p>For feature \(n\): \(\phi_n(\mathbf{x}, \mathbf{r}) \cdot (x_n - r_n)\)</p>
+</li>
+</ul>
+<p>And these will sum to the total change: \(f(\mathbf{x}) - f(\mathbf{r})\)</p>
+<p><strong>The equation is not saying the sum disappears. It&#39;s saying that for each individual feature \(i\), its Shapley value &#40;which averages over coalitions&#41; approximately equals its DeepLIFT coefficient &#40;which comes from the FTC&#41;.</strong></p>
+<h2 id="why_this_might_be_confusing"><a href="#why_this_might_be_confusing" class="header-anchor">Why This Might Be Confusing</a></h2>
+<p>I think the confusion comes from two different perspectives:</p>
+<h3 id="perspective_1_the_ftc_total_decomposition"><a href="#perspective_1_the_ftc_total_decomposition" class="header-anchor">Perspective 1: The FTC &#40;Total Decomposition&#41;</a></h3>
+<p>The FTC gives you a <strong>complete decomposition</strong> of \(f(\mathbf{x}) - f(\mathbf{r})\) into \(n\) terms:</p>
+\[f(\mathbf{x}) - f(\mathbf{r}) = \sum_{i=1}^n \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\]
+<p>This is about <strong>all features together</strong> summing to the total change.</p>
+<h3 id="perspective_2_the_shapley_value_individual_feature"><a href="#perspective_2_the_shapley_value_individual_feature" class="header-anchor">Perspective 2: The Shapley Value &#40;Individual Feature&#41;</a></h3>
+<p>The Shapley value focuses on <strong>one feature at a time</strong>:</p>
+\[\phi_i^{\text{Shapley}} = \text{(average marginal contribution of feature } i \text{ over all coalitions and references)}\]
+<p>DeepSHAP claims that for each feature \(i\):</p>
+\[\phi_i^{\text{Shapley}} \approx \mathbb{E}_{r \sim \mathcal{R}}[\phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)]\]
+<p>This is saying: &quot;Feature \(i\)&#39;s Shapley value equals its DeepLIFT coefficient &#40;on average over references&#41;.&quot;</p>
+<p><strong>You repeat this for each feature separately.</strong> The sum is implicit - you&#39;re computing \(n\) separate equations, one for each \(i\).</p>
+<h2 id="the_coalition_averaging_question"><a href="#the_coalition_averaging_question" class="header-anchor">The Coalition Averaging Question</a></h2>
+<p>Now let me address the deeper question: <strong>Why does the coalition averaging &#40;Shapley&#41; equal the single-path integral &#40;DeepLIFT&#41; for each feature?</strong></p>
+<h3 id="whats_different_for_each_coalition"><a href="#whats_different_for_each_coalition" class="header-anchor">What&#39;s Different for Each Coalition</a></h3>
+<p>For a coalition \(S\), the marginal contribution of feature \(i\) is:</p>
+\[\text{Marginal}_{S,i} = f(\mathbf{x}_{S \cup \{i\}}, \mathbf{r}_{\overline{S \cup \{i\}}}) - f(\mathbf{x}_S, \mathbf{r}_{\bar{S}})\]
+<p>Let me decode this with a concrete example. Say \(n=3\) features, \(S = \{2\}\), and we want feature 1&#39;s contribution:</p>
+<ul>
+<li><p><strong>First term:</strong> \(f(x_1, x_2, r_3)\) - features 1,2 at input, feature 3 at reference</p>
+</li>
+<li><p><strong>Second term:</strong> \(f(r_1, x_2, r_3)\) - only feature 2 at input, features 1,3 at reference</p>
+</li>
+<li><p><strong>Marginal contribution:</strong> The difference &#61; effect of adding feature 1</p>
+</li>
+</ul>
+<p>Using FTC, we can write this as:</p>
+\[f(x_1, x_2, r_3) - f(r_1, x_2, r_3) = \int_{r_1}^{x_1} \frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \, dz_1\]
+<p>Parameterizing with \(z_1 = r_1 + t(x_1 - r_1)\):</p>
+\[= \int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \cdot (x_1 - r_1)\]
+<h3 id="the_key_observation"><a href="#the_key_observation" class="header-anchor">The Key Observation</a></h3>
+<p>Notice that for coalition \(S = \{2\}\), the gradient is evaluated at points like:</p>
+<ul>
+<li><p>\((r_1 + t(x_1 - r_1), \, x_2, \, r_3)\) </p>
+</li>
+</ul>
+<p>Feature 1 interpolates, feature 2 stays at \(x_2\), feature 3 stays at \(r_3\).</p>
+<p>For a different coalition \(S = \{3\}\), the gradient is evaluated at:</p>
+<ul>
+<li><p>\((r_1 + t(x_1 - r_1), \, r_2, \, x_3)\)</p>
+</li>
+</ul>
+<p>Feature 1 interpolates, feature 2 stays at \(r_2\), feature 3 stays at \(x_3\).</p>
+<h3 id="under_independence"><a href="#under_independence" class="header-anchor">Under Independence</a></h3>
+<p>If features are independent, then \(\frac{\partial f}{\partial x_1}\)<strong>doesn&#39;t depend on the values of features 2 and 3</strong>. So:</p>
+\[\frac{\partial f}{\partial x_1}(z_1, x_2, r_3) \approx \frac{\partial f}{\partial x_1}(z_1, r_2, x_3) \approx \frac{\partial f}{\partial x_1}(z_1, x_2, x_3) \approx \cdots\]
+<p>All these gradients are approximately the same as:</p>
+\[\frac{\partial f}{\partial x_1}(z_1, r_2 + t(x_2 - r_2), r_3 + t(x_3 - r_3))\]
+<p>which is what DeepLIFT computes &#40;all features interpolating simultaneously&#41;.</p>
+<p>Therefore:</p>
+\[\int_0^1 \frac{\partial f}{\partial x_1}(r_1 + t(x_1 - r_1), x_2, r_3) \, dt \approx \int_0^1 \frac{\partial f}{\partial x_1}(\mathbf{r} + t(\mathbf{x} - \mathbf{r})) \, dt\]
+<p>The coalition-specific integral &#40;left&#41; equals the DeepLIFT integral &#40;right&#41;.</p>
+<p>Since this is true for <strong>every coalition \(S\)</strong>, averaging over coalitions gives:</p>
+\[\mathbb{E}_S[\text{Marginal}_{S,i}] \approx \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\]
+<h2 id="wait_-_youre_right_about_the_computation"><a href="#wait_-_youre_right_about_the_computation" class="header-anchor">Wait - You&#39;re Right About the Computation&#33;</a></h2>
+<p>Yes, you&#39;re absolutely correct&#33; The &quot;one feature at a time&quot; perspective is <strong>mathematical exposition</strong>, not how the computation actually works.</p>
+<h3 id="mathematical_exposition_for_understanding"><a href="#mathematical_exposition_for_understanding" class="header-anchor">Mathematical Exposition &#40;For Understanding&#41;</a></h3>
+<p>When we write:</p>
+\(\mathbb{E}_{S \sim \pi}[\text{marginal contribution of } i] \approx \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\)
+<p>This is saying: &quot;Let&#39;s analyze what happens to feature \(i\) and prove that its Shapley value equals its DeepLIFT coefficient.&quot;</p>
+<p>We could write a separate equation for each feature:</p>
+<ul>
+<li><p>For \(i=1\): \(\phi_1^{\text{Shapley}} \approx \phi_1(\mathbf{x}, \mathbf{r}) \cdot (x_1 - r_1)\)</p>
+</li>
+<li><p>For \(i=2\): \(\phi_2^{\text{Shapley}} \approx \phi_2(\mathbf{x}, \mathbf{r}) \cdot (x_2 - r_2)\)</p>
+</li>
+<li><p>...</p>
+</li>
+</ul>
+<p>This is pedagogically useful for understanding <strong>why</strong> each feature&#39;s Shapley value equals its DeepLIFT coefficient.</p>
+<h3 id="actual_computation_what_deeplift_does"><a href="#actual_computation_what_deeplift_does" class="header-anchor">Actual Computation &#40;What DeepLIFT Does&#41;</a></h3>
+<p>In practice, DeepLIFT computes <strong>all \(\phi_i\) coefficients in one backward pass</strong>, exactly like backpropagation.</p>
+<p>Here&#39;s what actually happens:</p>
+<ol>
+<li><p><strong>Forward pass</strong>: Compute \(f(\mathbf{x})\) and \(f(\mathbf{r})\)</p>
+</li>
+<li><p><strong>Backward pass</strong>: Propagate through the network, computing the integrated gradients: \(\phi_i(\mathbf{x}, \mathbf{r}) = \int_0^1 \frac{\partial f}{\partial x_i}(\mathbf{r} + t(\mathbf{x} - \mathbf{r})) \, dt \quad \text{for ALL } i \text{ simultaneously}\)</p>
+</li>
+<li><p><strong>Result</strong>: You get all \(n\) coefficients \(\{\phi_1, \phi_2, \ldots, \phi_n\}\) from a single backward pass</p>
+</li>
+</ol>
+<p>This is exactly like regular backpropagation, which computes \(\frac{\partial f}{\partial x_i}\) for all inputs \(i\) in parallel using the chain rule.</p>
+<h3 id="the_decomposition_happens_automatically"><a href="#the_decomposition_happens_automatically" class="header-anchor">The Decomposition Happens Automatically</a></h3>
+<p>Because DeepLIFT uses the chain rule during backpropagation, the decomposition:</p>
+\(f(\mathbf{x}) - f(\mathbf{r}) = \sum_{i=1}^n \phi_i(\mathbf{x}, \mathbf{r}) \cdot (x_i - r_i)\)
+<p>is <strong>automatically satisfied</strong>. This comes directly from the multivariate FTC and how gradients compose through the network.</p>
+<h3 id="why_the_mathematical_exposition_is_separate"><a href="#why_the_mathematical_exposition_is_separate" class="header-anchor">Why The Mathematical Exposition Is Separate</a></h3>
+<p>The paper separates the analysis by feature because:</p>
+<ol>
+<li><p><strong>Shapley values are defined per feature</strong> - you need to show that each feature&#39;s Shapley value matches its DeepLIFT coefficient</p>
+</li>
+<li><p><strong>The coalition averaging is feature-specific</strong> - the statement &quot;all coalitions give the same marginal contribution for feature \(i\)&quot; needs to be proven for each \(i\)</p>
+</li>
+<li><p><strong>Mathematical clarity</strong> - it&#39;s clearer to say &quot;for any feature \(i\), the following holds...&quot; than to write everything with sum notation</p>
+</li>
+</ol>
+<p>But computationally? One backprop gives you everything.</p>
+<h2 id="summary"><a href="#summary" class="header-anchor">Summary</a></h2>
+<ol>
+<li><p><strong>Mathematical presentation</strong>: We analyze each feature \(i\) separately to prove \(\phi_i^{\text{Shapley}} \approx \phi_i^{\text{DeepLIFT}}\)</p>
+</li>
+<li><p><strong>Actual computation</strong>: One backward pass computes all \(\phi_i\) coefficients simultaneously &#40;in parallel&#41;</p>
+</li>
+<li><p><strong>The sum is implicit in the math, explicit in the code</strong>: The FTC decomposition \(f(\mathbf{x}) - f(\mathbf{r}) = \sum_i \phi_i \cdot (x_i - r_i)\) is built into the backpropagation algorithm</p>
+</li>
+</ol>
+<p>You&#39;re right - it&#39;s mathematical convenience for exposition. The real algorithm is much more efficient&#33;</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 20, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
