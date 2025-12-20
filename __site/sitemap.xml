@@ -26,6 +26,12 @@
     <priority>0.5</priority>
 </url>
 <url>
+    <loc>https://kchu25.github.io/blog/interpretation/deeplift/index.html</loc>
+    <lastmod>2025-12-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/blog/data_processing/normalization/index.html</loc>
     <lastmod>2025-12-01</lastmod>
     <changefreq>monthly</changefreq>
@@ -201,7 +207,7 @@
 </url>
 <url>
     <loc>https://kchu25.github.io/blog/index.html</loc>
-    <lastmod>2025-12-01</lastmod>
+    <lastmod>2025-12-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>

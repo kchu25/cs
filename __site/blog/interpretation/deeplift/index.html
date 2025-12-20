@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>DeepLIFT Notation: Understanding the Subscripts</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="deeplift_notation_understanding_the_subscripts"><a href="#deeplift_notation_understanding_the_subscripts" class="header-anchor">DeepLIFT Notation: Understanding the Subscripts</a></h1>
+<p>In DeepLIFT, the notation \(C_{\Delta x_i \Delta y}\) uses subscripts that represent <strong>differences</strong> &#40;deltas&#41;. Here&#39;s what each component means:</p>
+<h2 id="the_notation_c_delta_x_i_delta_y"><a href="#the_notation_c_delta_x_i_delta_y" class="header-anchor">The Notation: \(C_{\Delta x_i \Delta y}\)</a></h2>
+<h3 id="delta_x_i_-_difference_in_feature_i"><a href="#delta_x_i_-_difference_in_feature_i" class="header-anchor">\(\Delta x_i\) - &quot;Difference in feature \(i\)&quot;</a></h3>
+<ul>
+<li><p>\(\Delta x_i = x_i - x_{i,\text{ref}}\)</p>
+</li>
+<li><p>This represents the <strong>change in the input feature \(i\)</strong> from its reference value</p>
+</li>
+<li><p>It&#39;s the difference between the actual input value and the baseline/reference value for that specific feature</p>
+</li>
+</ul>
+<h3 id="delta_y_-_difference_in_output"><a href="#delta_y_-_difference_in_output" class="header-anchor">\(\Delta y\) - &quot;Difference in output&quot;</a></h3>
+<ul>
+<li><p>\(\Delta y = y - y_{\text{ref}}\)</p>
+</li>
+<li><p>This represents the <strong>change in the model&#39;s output</strong> from its reference prediction</p>
+</li>
+<li><p>It&#39;s the difference between the actual prediction and the baseline prediction</p>
+</li>
+</ul>
+<h2 id="what_c_delta_x_i_delta_y_represents"><a href="#what_c_delta_x_i_delta_y_represents" class="header-anchor">What \(C_{\Delta x_i \Delta y}\) Represents</a></h2>
+<p>The full notation \(C_{\Delta x_i \Delta y}\) is the <strong>contribution score</strong> that answers:</p>
+<blockquote>
+<p>&quot;How much did the change in feature \(i\) &#40;i.e., \(\Delta x_i\)&#41; contribute to the change in output &#40;i.e., \(\Delta y\)&#41;?&quot;</p>
+</blockquote>
+<h3 id="alternative_notation_c_delta_x_i_delta_f"><a href="#alternative_notation_c_delta_x_i_delta_f" class="header-anchor">Alternative Notation: \(C_{\Delta x_i \Delta f}\)</a></h3>
+<p>You&#39;ll also commonly see \(C_{\Delta x_i \Delta f}\) instead of \(C_{\Delta x_i \Delta y}\), where:</p>
+<ul>
+<li><p>\(f\) represents the model/function itself</p>
+</li>
+<li><p>\(\Delta f = f(x) - f(x_{\text{ref}})\) is the change in the function&#39;s output</p>
+</li>
+</ul>
+<p>Both notations mean the same thing:</p>
+<ul>
+<li><p>\(C_{\Delta x_i \Delta y}\) - emphasizes output values</p>
+</li>
+<li><p>\(C_{\Delta x_i \Delta f}\) - emphasizes the function being explained</p>
+</li>
+</ul>
+<p>The \(\Delta f\) version is arguably more consistent since it makes explicit that we&#39;re explaining a <em>function&#39;s</em> behavior.</p>
+<h2 id="the_decomposition"><a href="#the_decomposition" class="header-anchor">The Decomposition</a></h2>
+<p>DeepLIFT ensures that these contributions sum to the total output difference:</p>
+\[\Delta y = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>Or equivalently:</p>
+\[y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>This means: the total change in prediction equals the sum of all individual feature contributions.</p>
+<h2 id="intuitive_understanding"><a href="#intuitive_understanding" class="header-anchor">Intuitive Understanding</a></h2>
+<p>Think of it as a budget allocation problem:</p>
+<ul>
+<li><p>You have a <strong>total change</strong> in the output: \(\Delta y\)</p>
+</li>
+<li><p>Each feature&#39;s change \(\Delta x_i\) is &quot;responsible&quot; for part of this</p>
+</li>
+<li><p>\(C_{\Delta x_i \Delta y}\) tells you <strong>how much of \(\Delta y\) to attribute to \(\Delta x_i\)</strong></p>
+</li>
+</ul>
+<p>The subscripts emphasize that we&#39;re measuring <strong>how differences in inputs relate to differences in outputs</strong>, which is the core principle of DeepLIFT.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 20, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
