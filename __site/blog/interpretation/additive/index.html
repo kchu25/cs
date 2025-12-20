@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Interpretation Frameworks Using Additive Decomposition</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="interpretation_frameworks_using_additive_decomposition"><a href="#interpretation_frameworks_using_additive_decomposition" class="header-anchor">Interpretation Frameworks Using Additive Decomposition</a></h1>
+<h2 id="overview"><a href="#overview" class="header-anchor">Overview</a></h2>
+<p>Additive decomposition is a fundamental principle in many model interpretation frameworks. The general form expresses a model&#39;s prediction as:</p>
+\[f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i\]
+<p>where \(\phi_0\) is the base value and \(\phi_i\) represents the contribution of feature \(i\).</p>
+<hr />
+<h2 id="frameworks_using_additive_decomposition"><a href="#frameworks_using_additive_decomposition" class="header-anchor">Frameworks Using Additive Decomposition</a></h2>
+<h3 id="shap_shapley_additive_explanations"><a href="#shap_shapley_additive_explanations" class="header-anchor"><ol>
+<li><p><strong>SHAP &#40;SHapley Additive exPlanations&#41;</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Unified framework based on game theory</p>
+<p><strong>Additive Form</strong>:</p>
+\[f(x) = E[f(X)] + \sum_{i=1}^{M} \phi_i(x)\]
+<p>where \(\phi_i\) are Shapley values satisfying:</p>
+<ul>
+<li><p><strong>Efficiency</strong>: \(\sum_{i=1}^{M} \phi_i = f(x) - E[f(X)]\)</p>
+</li>
+<li><p><strong>Symmetry</strong>: Equal features get equal attributions</p>
+</li>
+<li><p><strong>Dummy</strong>: Zero-effect features get zero attribution</p>
+</li>
+<li><p><strong>Additivity</strong>: Attributions compose for ensemble models</p>
+</li>
+</ul>
+<p><strong>Variants</strong>:</p>
+<ul>
+<li><p><strong>KernelSHAP</strong>: Model-agnostic approximation using weighted linear regression</p>
+</li>
+<li><p><strong>TreeSHAP</strong>: Exact computation for tree-based models</p>
+</li>
+<li><p><strong>DeepSHAP</strong>: Neural networks via DeepLIFT aggregation</p>
+</li>
+<li><p><strong>GradientSHAP</strong>: Expected gradients as SHAP approximation</p>
+</li>
+</ul>
+<hr />
+<h3 id="ol_start2_lime_local_interpretable_model-agnostic_explanations"><a href="#ol_start2_lime_local_interpretable_model-agnostic_explanations" class="header-anchor"><ol start="2">
+<li><p><strong>LIME &#40;Local Interpretable Model-agnostic Explanations&#41;</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Local surrogate models</p>
+<p><strong>Additive Form</strong>:</p>
+\[g(z) = \beta_0 + \sum_{i=1}^{M} \beta_i z_i\]
+<p>where \(g\) is an interpretable linear model that locally approximates \(f\) around instance \(x\).</p>
+<p><strong>Process</strong>:</p>
+<ol>
+<li><p>Generate perturbed samples around \(x\)</p>
+</li>
+<li><p>Weight samples by proximity to \(x\)</p>
+</li>
+<li><p>Fit linear model: \(\min_{g \in G} \mathcal{L}(f, g, \pi_x) + \Omega(g)\)</p>
+</li>
+<li><p>Extract coefficients \(\beta_i\) as feature importances</p>
+</li>
+</ol>
+<p><strong>Key Difference from SHAP</strong>: LIME approximations don&#39;t satisfy Shapley axioms &#40;no efficiency guarantee&#41;.</p>
+<hr />
+<h3 id="ol_start3_deeplift_deep_learning_important_features"><a href="#ol_start3_deeplift_deep_learning_important_features" class="header-anchor"><ol start="3">
+<li><p><strong>DeepLIFT &#40;Deep Learning Important FeaTures&#41;</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Gradient-based attribution for neural networks</p>
+<p><strong>Additive Form</strong>:</p>
+\[\Delta y = y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>where \(C_{\Delta x_i \Delta y}\) is the contribution of feature \(i\) to the output difference from reference \(x_{\text{ref}}\).</p>
+<p><strong>Properties</strong>:</p>
+<ul>
+<li><p>Uses modified chain rule for backpropagation</p>
+</li>
+<li><p>Handles activation function saturation better than gradients</p>
+</li>
+<li><p>Single backward pass per reference point</p>
+</li>
+</ul>
+<p><strong>Connection</strong>: DeepSHAP aggregates DeepLIFT scores over multiple references:</p>
+\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
+<hr />
+<h3 id="ol_start4_integrated_gradients"><a href="#ol_start4_integrated_gradients" class="header-anchor"><ol start="4">
+<li><p><strong>Integrated Gradients</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Path-based gradient method</p>
+<p><strong>Additive Form</strong>:</p>
+\[\text{IG}_i(x) = (x_i - x'_i) \times \int_{\alpha=0}^{1} \frac{\partial f(x' + \alpha(x - x'))}{\partial x_i} d\alpha\]
+<p>where \(x'\) is a baseline input.</p>
+<p><strong>Satisfies</strong>:</p>
+<ul>
+<li><p><strong>Completeness</strong> &#40;efficiency&#41;: \(\sum_{i=1}^{M} \text{IG}_i(x) = f(x) - f(x')\)</p>
+</li>
+<li><p><strong>Sensitivity</strong>: Non-zero gradient implies non-zero attribution</p>
+</li>
+<li><p><strong>Implementation invariance</strong>: Functionally equivalent networks get same attributions</p>
+</li>
+</ul>
+<p><strong>Approximation</strong>: Typically computed via Riemann sum over path from baseline to input.</p>
+<hr />
+<h3 id="ol_start5_layer-wise_relevance_propagation_lrp"><a href="#ol_start5_layer-wise_relevance_propagation_lrp" class="header-anchor"><ol start="5">
+<li><p><strong>Layer-wise Relevance Propagation &#40;LRP&#41;</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Backward decomposition for neural networks</p>
+<p><strong>Additive Form</strong> &#40;at each layer&#41;:</p>
+\[R_i^{(l)} = \sum_{j} R_{i \leftarrow j}^{(l,l+1)}\]
+<p>where relevance at layer \(l\) is redistributed from layer \(l+1\) according to propagation rules.</p>
+<p><strong>Conservation Property</strong>:</p>
+\[\sum_{i} R_i^{(l)} = \sum_{j} R_j^{(l+1)} = f(x)\]
+<p><strong>Different Rules</strong>:</p>
+<ul>
+<li><p><strong>\(\epsilon\)-rule</strong>: \(R_{i \leftarrow j} = \frac{z_{ij}}{\sum_i z_{ij} + \epsilon \cdot \text{sign}(\sum_i z_{ij})} R_j\)</p>
+</li>
+<li><p><strong>\(\alpha\beta\)-rule</strong>: Separates positive/negative contributions</p>
+</li>
+<li><p><strong>\(z^+\)-rule</strong>: For first layer, focuses on positive evidence</p>
+</li>
+</ul>
+<hr />
+<h3 id="ol_start6_attention_mechanisms_with_additive_interpretation"><a href="#ol_start6_attention_mechanisms_with_additive_interpretation" class="header-anchor"><ol start="6">
+<li><p><strong>Attention Mechanisms</strong> &#40;with additive interpretation&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Built-in model component</p>
+<p><strong>Additive Form</strong> &#40;for additive attention&#41;:</p>
+\[\text{context} = \sum_{i=1}^{T} \alpha_i h_i\]
+<p>where \(\alpha_i\) are attention weights and \(h_i\) are hidden states.</p>
+<p><strong>Properties</strong>:</p>
+<ul>
+<li><p>Attention weights can serve as feature importance when \(\sum_i \alpha_i = 1\)</p>
+</li>
+<li><p>Not always faithful to model behavior &#40;post-hoc analysis shows attention ≠ explanation in many cases&#41;</p>
+</li>
+<li><p>More interpretable than raw hidden states</p>
+</li>
+</ul>
+<hr />
+<h3 id="ol_start7_influence_functions_linear_approximation"><a href="#ol_start7_influence_functions_linear_approximation" class="header-anchor"><ol start="7">
+<li><p><strong>Influence Functions</strong> &#40;linear approximation&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Type</strong>: Training data attribution</p>
+<p><strong>Additive Approximation</strong>:</p>
+\[f(x) - f_{-z}(x) \approx -\nabla_\theta f(x)^\top H^{-1} \nabla_\theta L(z, \theta)\]
+<p>where \(H\) is the Hessian and the influence of training point \(z\) can be decomposed additively across parameters.</p>
+<p><strong>Use Case</strong>: Understanding which training examples most influenced a prediction.</p>
+<hr />
+<h2 id="comparison_table"><a href="#comparison_table" class="header-anchor">Comparison Table</a></h2>
+<table><tr><th align="right">Framework</th><th align="right">Computation</th><th align="right">Theoretical Guarantees</th><th align="right">Model Types</th></tr><tr><td align="right"><strong>SHAP</strong></td><td align="right">Exponential &#40;exact&#41; / Polynomial &#40;approx&#41;</td><td align="right">Efficiency, Symmetry, Dummy, Additivity</td><td align="right">All</td></tr><tr><td align="right"><strong>LIME</strong></td><td align="right">Polynomial</td><td align="right">Local fidelity only</td><td align="right">All</td></tr><tr><td align="right"><strong>DeepLIFT</strong></td><td align="right">Linear &#40;backprop&#41;</td><td align="right">Reference-dependent efficiency</td><td align="right">Neural nets</td></tr><tr><td align="right"><strong>Integrated Gradients</strong></td><td align="right">Linear × discretization steps</td><td align="right">Completeness, Sensitivity</td><td align="right">Differentiable</td></tr><tr><td align="right"><strong>LRP</strong></td><td align="right">Linear &#40;backprop&#41;</td><td align="right">Conservation</td><td align="right">Neural nets</td></tr><tr><td align="right"><strong>Attention</strong></td><td align="right">Built-in</td><td align="right">None &#40;descriptive&#41;</td><td align="right">Attention models</td></tr><tr><td align="right"><strong>Influence Functions</strong></td><td align="right">Cubic &#40;Hessian&#41;</td><td align="right">First-order approximation</td><td align="right">Differentiable</td></tr></table>
+<hr />
+<h2 id="key_insight_why_additive_decomposition_makes_interpretation_tractable"><a href="#key_insight_why_additive_decomposition_makes_interpretation_tractable" class="header-anchor">Key Insight: Why Additive Decomposition Makes Interpretation Tractable</a></h2>
+<p>The additive decomposition framework provides <strong>accountability</strong>: every part of the prediction is explained, and these explanations sum to the total prediction difference from a baseline. This makes debugging, auditing, and understanding model decisions much more tractable.</p>
+<h3 id="what_tractable_means_in_this_context"><a href="#what_tractable_means_in_this_context" class="header-anchor">What &quot;Tractable&quot; Means in This Context</a></h3>
+<p><strong>Tractability</strong> here refers to both computational and cognitive manageability. Let&#39;s break down what becomes tractable:</p>
+<h4 id="complete_accounting_budget-like_analysis"><a href="#complete_accounting_budget-like_analysis" class="header-anchor"><ol>
+<li><p><strong>Complete Accounting</strong> &#40;Budget-Like Analysis&#41;</p>
+</li>
+</ol>
+</a></h4>
+<p>The efficiency property ensures:</p>
+\[f(x) - f(x_{\text{baseline}}) = \sum_{i=1}^{M} \phi_i\]
+<p>This is analogous to a financial budget where:</p>
+<ul>
+<li><p><strong>Total change</strong>: \(f(x) - f(x_{\text{baseline}})\) &#40;e.g., model predicts &#43;&#36;50 higher risk score&#41;</p>
+</li>
+<li><p><strong>Line items</strong>: Each \(\phi_i\) explains how much feature \(i\) contributed</p>
+</li>
+</ul>
+<p><strong>Why this matters</strong>:</p>
+<ul>
+<li><p><strong>No missing mass</strong>: You can&#39;t have unexplained contributions hiding in interactions that aren&#39;t accounted for</p>
+</li>
+<li><p><strong>Verify completeness</strong>: Sum your attributions to check they match the prediction difference</p>
+</li>
+<li><p><strong>Identify dominant factors</strong>: Sort \(|\phi_i|\) to see which features drive the decision</p>
+</li>
+</ul>
+<p><strong>Example</strong>: Credit scoring model predicts score of 720 &#40;baseline: 650, difference: &#43;70&#41;</p>
+<pre><code class="language-julia">Income level:        &#43;35 points
+Credit history:      &#43;28 points  
+Debt-to-income:      -15 points
+Employment length:   &#43;18 points
+Recent inquiries:     &#43;4 points
+                     -------
+Total:               &#43;70 points ✓</code></pre>
+<p>Without additivity, you might get explanations like &quot;income and credit history are important&quot; but not &quot;together they account for 63 out of 70 points.&quot;</p>
+<hr />
+<h4 id="ol_start2_debugging_model_failures"><a href="#ol_start2_debugging_model_failures" class="header-anchor"><ol start="2">
+<li><p><strong>Debugging Model Failures</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>When a model makes an incorrect prediction, additive decomposition lets you:</p>
+<p><strong>Identify the culprit features</strong>:</p>
+<ul>
+<li><p>Which features pushed the model toward the wrong answer?</p>
+</li>
+<li><p>Are any features contributing in unexpected directions?</p>
+</li>
+</ul>
+<p><strong>Example</strong>: Medical diagnosis model incorrectly predicts high diabetes risk</p>
+<pre><code class="language-julia">Glucose level:        &#43;0.45  ← Expected positive
+BMI:                  &#43;0.32  ← Expected positive
+Age:                  &#43;0.15  ← Expected positive
+Exercise frequency:   &#43;0.28  ← Should be NEGATIVE&#33; Bug found.
+Family history:       &#43;0.12  ← Expected positive
+                      ------
+Total:                &#43;1.32 &#40;high risk prediction&#41;</code></pre>
+<p>The additive form makes it <strong>tractable to scan</strong> through features and spot that &quot;exercise frequency&quot; has the wrong sign, revealing a potential data preprocessing bug or feature engineering error.</p>
+<p><strong>Without additivity</strong>: You might get saliency maps or attention weights that are hard to interpret quantitatively, making systematic debugging difficult.</p>
+<hr />
+<h4 id="ol_start3_auditing_for_bias_and_fairness"><a href="#ol_start3_auditing_for_bias_and_fairness" class="header-anchor"><ol start="3">
+<li><p><strong>Auditing for Bias and Fairness</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>Organizations need to ensure models don&#39;t discriminate based on protected attributes. Additive decomposition makes this <strong>legally and practically tractable</strong>:</p>
+<p><strong>Quantitative bias detection</strong>:</p>
+\[\text{Bias} = \mathbb{E}_{x \in \text{Group A}}[\phi_{\text{protected}}] - \mathbb{E}_{x \in \text{Group B}}[\phi_{\text{protected}}]\]
+<p><strong>Example</strong>: Hiring model analysis</p>
+<pre><code class="language-julia">For candidates with similar qualifications:
+
+Group A &#40;protected class&#41;:
+  Gender-related features: -0.15 &#40;on average&#41;
+  
+Group B &#40;non-protected&#41;:
+  Gender-related features: &#43;0.02 &#40;on average&#41;
+  
+Bias measure: 0.17 points penalty</code></pre>
+<p><strong>Why tractable</strong>:</p>
+<ul>
+<li><p><strong>Quantifiable</strong>: You get numbers &#40;-0.15 vs &#43;0.02&#41;, not just &quot;feature is important&quot;</p>
+</li>
+<li><p><strong>Comparable</strong>: Can compare bias across different models or time periods</p>
+</li>
+<li><p><strong>Actionable</strong>: Can set thresholds &#40;e.g., &quot;bias must be &lt; 0.05&quot;&#41; for compliance</p>
+</li>
+</ul>
+<p><strong>Contrast with non-additive methods</strong>: Grad-CAM or attention maps show &quot;where the model looks&quot; but don&#39;t give you the numerical accounting needed for regulatory compliance.</p>
+<hr />
+<h4 id="ol_start4_counterfactual_reasoning"><a href="#ol_start4_counterfactual_reasoning" class="header-anchor"><ol start="4">
+<li><p><strong>Counterfactual Reasoning</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>Additive decomposition makes it <strong>tractable to answer &quot;what if&quot; questions</strong>:</p>
+<p><strong>Question</strong>: &quot;What would my credit score be if my income increased by &#36;10k?&quot;</p>
+<p><strong>With additive decomposition</strong>:</p>
+<ul>
+<li><p>Current contribution of income: \(\phi_{\text{income}} = +35\) points</p>
+</li>
+<li><p>Estimated new contribution: \(\phi'_{\text{income}} \approx +42\) points &#40;via local linearity&#41;</p>
+</li>
+<li><p>Expected change: \(\approx +7\) points</p>
+</li>
+</ul>
+<p><strong>Why tractable</strong>: </p>
+<ul>
+<li><p>Simple arithmetic on individual contributions</p>
+</li>
+<li><p>No need to re-run the entire model</p>
+</li>
+<li><p>Can explore multiple scenarios quickly</p>
+</li>
+</ul>
+<p><strong>Without additivity</strong>: Would need to:</p>
+<ol>
+<li><p>Generate new input with modified income</p>
+</li>
+<li><p>Run full model forward pass</p>
+</li>
+<li><p>Compare outputs</p>
+</li>
+<li><p>Repeat for each scenario &#40;computationally expensive&#41;</p>
+</li>
+</ol>
+<hr />
+<h4 id="ol_start5_model_comparison"><a href="#ol_start5_model_comparison" class="header-anchor"><ol start="5">
+<li><p><strong>Model Comparison</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>When choosing between models, additive decomposition makes comparison <strong>tractable</strong>:</p>
+<p><strong>Scenario</strong>: Comparing Model A vs Model B for loan approval</p>
+<pre><code class="language-julia">Feature          | Model A  | Model B  | Difference
+-----------------|----------|----------|------------
+Income           | &#43;0.40    | &#43;0.35    | -0.05
+Credit score     | &#43;0.30    | &#43;0.40    | &#43;0.10
+Age              | &#43;0.10    | &#43;0.05    | -0.05
+Employment       | &#43;0.15    | &#43;0.15    | 0.00
+Debt ratio       | -0.20    | -0.18    | &#43;0.02</code></pre>
+<p><strong>Tractable insights</strong>:</p>
+<ul>
+<li><p>Model B weights credit score more heavily &#40;&#43;0.10 difference&#41;</p>
+</li>
+<li><p>Model A weights income more heavily &#40;-0.05 difference&#41;</p>
+</li>
+<li><p>Both models treat employment similarly</p>
+</li>
+</ul>
+<p><strong>Decision</strong>: If credit score is more reliable than income, choose Model B.</p>
+<p><strong>Why tractable</strong>: Direct numerical comparison of how models use features. Non-additive explanations &#40;like feature importance rankings&#41; lose this quantitative precision.</p>
+<hr />
+<h4 id="ol_start6_communication_to_stakeholders"><a href="#ol_start6_communication_to_stakeholders" class="header-anchor"><ol start="6">
+<li><p><strong>Communication to Stakeholders</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>Explaining model decisions to non-technical stakeholders becomes <strong>tractable</strong>:</p>
+<p><strong>Loan rejection letter</strong>:</p>
+<pre><code class="language-julia">Your application was denied &#40;score: 580, threshold: 620, gap: -40 points&#41;
+
+Contributing factors:
+  • Credit history:        -25 points &#40;largest negative factor&#41;
+  • Debt-to-income ratio:  -18 points
+  • Recent inquiries:       -8 points
+  • Income level:          &#43;11 points &#40;positive factor&#41;
+  
+To improve your chances:
+  1. Focus on credit history &#40;contributes -25 points&#41;
+  2. Reduce debt-to-income ratio &#40;contributes -18 points&#41;</code></pre>
+<p><strong>Why tractable</strong>:</p>
+<ul>
+<li><p><strong>Precise</strong>: &quot;Your credit history cost you 25 points&quot;</p>
+</li>
+<li><p><strong>Actionable</strong>: Stakeholder knows what to fix and by how much</p>
+</li>
+<li><p><strong>Legally defensible</strong>: Can show exactly why decision was made</p>
+</li>
+</ul>
+<hr />
+<h4 id="ol_start7_cognitive_load_reduction"><a href="#ol_start7_cognitive_load_reduction" class="header-anchor"><ol start="7">
+<li><p><strong>Cognitive Load Reduction</strong></p>
+</li>
+</ol>
+</a></h4>
+<p>Humans can only hold ~7±2 items in working memory. Additive decomposition makes interpretation <strong>cognitively tractable</strong>:</p>
+<p><strong>Instead of</strong>: &quot;The model considers complex interactions between income, age, credit score, employment, and debt in a non-linear way...&quot;</p>
+<p><strong>You get</strong>: </p>
+<ol>
+<li><p>Income: &#43;35</p>
+</li>
+<li><p>Credit: &#43;28</p>
+</li>
+<li><p>Debt: -15</p>
+</li>
+<li><p>Employment: &#43;18</p>
+</li>
+<li><p>Inquiries: &#43;4</p>
+</li>
+</ol>
+<p><strong>Total</strong>: &#43;70 ✓</p>
+<p>This is a <strong>closed system</strong> you can reason about. Each number is independent &#40;in the explanation space&#41;, so you can:</p>
+<ul>
+<li><p>Focus on top-K features</p>
+</li>
+<li><p>Build mental model incrementally</p>
+</li>
+<li><p>Verify your understanding &#40;do the numbers add up?&#41;</p>
+</li>
+</ul>
+<hr />
+<h3 id="mathematical_tractability"><a href="#mathematical_tractability" class="header-anchor">Mathematical Tractability</a></h3>
+<p>The additivity also provides <strong>mathematical tractability</strong>:</p>
+<p><strong>Linearity in explanation space</strong>: Even though \(f\) may be highly non-linear, the explanations are linear:</p>
+\[\phi = W \cdot \text{features} + b\]
+<p>This means:</p>
+<ul>
+<li><p><strong>Optimization is convex</strong> when trying to achieve desired outcomes</p>
+</li>
+<li><p><strong>Statistical analysis is straightforward</strong> &#40;mean, variance, correlation of contributions&#41;</p>
+</li>
+<li><p><strong>Interventions compose</strong>: \(\Delta\phi_i + \Delta\phi_j = \Delta\phi_{i,j}\)</p>
+</li>
+</ul>
+<hr />
+<h3 id="the_trade-offs"><a href="#the_trade-offs" class="header-anchor">The Trade-offs</a></h3>
+<p><strong>What we sacrifice for tractability</strong>:</p>
+<ul>
+<li><p><strong>Computational cost</strong>: Exact Shapley values are exponential in features</p>
+</li>
+<li><p><strong>Choice of baseline</strong>: Different baselines give different attributions &#40;though sum is always preserved&#41;</p>
+</li>
+<li><p><strong>Theoretical guarantees</strong>: Approximations &#40;LIME, KernelSHAP&#41; may not perfectly satisfy efficiency</p>
+</li>
+<li><p><strong>Model compatibility</strong>: Some methods work only for specific architectures</p>
+</li>
+</ul>
+<p>But these trade-offs are often worth it because the alternative—trying to understand a black-box model without decomposition—is cognitively and practically <strong>intractable</strong>.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 20, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

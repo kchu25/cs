@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>DeepSHAP: Additive Decomposition and DeepLIFT Connection</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="deepshap_additive_decomposition_and_deeplift_connection"><a href="#deepshap_additive_decomposition_and_deeplift_connection" class="header-anchor">DeepSHAP: Additive Decomposition and DeepLIFT Connection</a></h1>
+<h2 id="the_additive_decomposition_framework"><a href="#the_additive_decomposition_framework" class="header-anchor">The Additive Decomposition Framework</a></h2>
+<p>DeepSHAP provides an <strong>additive decomposition</strong> of a model&#39;s output, meaning it expresses the prediction as a sum of individual feature contributions plus a base value:</p>
+\[f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i\]
+<p>where:</p>
+<ul>
+<li><p>\(f(x)\) is the model&#39;s output for input \(x\)</p>
+</li>
+<li><p>\(\phi_0\) is the base value &#40;the baseline prediction&#41;</p>
+</li>
+<li><p>\(\phi_i\) is the contribution of feature \(i\) to the deviation from the base value</p>
+</li>
+<li><p>\(M\) is the total number of features</p>
+</li>
+</ul>
+<blockquote>
+<h3>Understanding \(\phi_0\)</h3>
+<p><strong>Yes, \(\phi_0 = f(x_{\text{ref}})\) is the baseline prediction&#33;</strong></p>
+<p>More precisely, when using multiple reference points &#40;as DeepSHAP does&#41;:</p>
+</blockquote>
+\[\phi_0 = \mathbb{E}_{x_{\text{ref}}}[f(x_{\text{ref}})] \approx \frac{1}{K}\sum_{k=1}^{K} f(x_{\text{ref}}^{(k)})\]
+<blockquote>
+<p>So the additive decomposition becomes:</p>
+</blockquote>
+\[f(x) = \underbrace{f(x_{\text{ref}})}_{\text{baseline}} + \underbrace{\sum_{i=1}^{M} \phi_i}_{\text{feature contributions}}\]
+<blockquote>
+<p>or equivalently:</p>
+</blockquote>
+\[\underbrace{f(x) - f(x_{\text{ref}})}_{\text{prediction difference}} = \sum_{i=1}^{M} \phi_i\]
+<blockquote>
+<p><strong>Interpretation</strong>: &quot;The prediction on input \(x\) equals the baseline prediction plus the sum of all feature contributions&quot;</p>
+</blockquote>
+<p><strong>Key Property</strong>: The contributions \(\phi_i\) satisfy the <strong>efficiency property</strong>:</p>
+\[f(x) - f(x_{\text{ref}}) = \sum_{i=1}^{M} \phi_i\]
+<p>This means the sum of all feature contributions exactly equals the difference between the prediction and the baseline prediction.</p>
+<hr />
+<h2 id="connection_to_deeplift_scores"><a href="#connection_to_deeplift_scores" class="header-anchor">Connection to DeepLIFT Scores</a></h2>
+<p>DeepSHAP approximates these additive contributions \(\phi_i\) by <strong>aggregating DeepLIFT scores</strong> across multiple reference points. Here&#39;s how:</p>
+<h3 id="single_reference_deeplift"><a href="#single_reference_deeplift" class="header-anchor"><ol>
+<li><p>Single Reference DeepLIFT</p>
+</li>
+</ol>
+</a></h3>
+<p>For a single reference input \(x_{\text{ref}}\), DeepLIFT computes contribution scores \(C_{\Delta x_i \Delta y}\) that decompose the output difference:</p>
+\[\Delta y = y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>where \(C_{\Delta x_i \Delta y}\) represents how much the change in feature \(i\) contributed to the change in output.</p>
+<h3 id="ol_start2_deepshap_aggregation"><a href="#ol_start2_deepshap_aggregation" class="header-anchor"><ol start="2">
+<li><p>DeepSHAP Aggregation</p>
+</li>
+</ol>
+</a></h3>
+<p>DeepSHAP extends this by considering <strong>multiple reference points</strong> \(\{x_{\text{ref}}^{(k)}\}_{k=1}^{K}\) sampled from a reference distribution &#40;e.g., background dataset&#41;. The SHAP value for feature \(i\) is approximated as:</p>
+\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
+<p>where \(C_{\Delta x_i \Delta y}^{(k)}\) is the DeepLIFT contribution score computed with respect to reference \(x_{\text{ref}}^{(k)}\).</p>
+<hr />
+<h2 id="why_this_connection_matters"><a href="#why_this_connection_matters" class="header-anchor">Why This Connection Matters</a></h2>
+<h3 id="additive_decomposition_properties"><a href="#additive_decomposition_properties" class="header-anchor">Additive Decomposition Properties</a></h3>
+<p>The additive form is crucial because it provides:</p>
+<ol>
+<li><p><strong>Local Accuracy</strong>: \(\sum_{i} \phi_i = f(x) - \mathbb{E}[f(X)]\) &#40;approximately&#41;</p>
+</li>
+<li><p><strong>Missingness</strong>: Features not present have zero contribution</p>
+</li>
+<li><p><strong>Consistency</strong>: Similar feature changes yield similar attribution changes</p>
+</li>
+</ol>
+<h3 id="deeplift_as_the_computational_engine"><a href="#deeplift_as_the_computational_engine" class="header-anchor">DeepLIFT as the Computational Engine</a></h3>
+<p>DeepLIFT provides the <strong>efficient backpropagation-based computation</strong> of these contributions:</p>
+<ul>
+<li><p><strong>Chain Rule Decomposition</strong>: DeepLIFT propagates contributions backwards through the network using modified chain rules</p>
+</li>
+<li><p><strong>Non-linear Handling</strong>: It handles non-linearities &#40;ReLU, sigmoid, etc.&#41; by assigning contributions based on the difference from reference</p>
+</li>
+<li><p><strong>Efficiency</strong>: Single backward pass per reference point &#40;similar cost to gradient computation&#41;</p>
+</li>
+</ul>
+<hr />
+<h2 id="mathematical_flow"><a href="#mathematical_flow" class="header-anchor">Mathematical Flow</a></h2>
+<p>The complete process can be summarized as:</p>
+\[\boxed{\phi_i = \mathbb{E}_{x_{\text{ref}} \sim \mathcal{D}}[C_{\Delta x_i \Delta y}(x, x_{\text{ref}})]}\]
+<p>This equation encapsulates:</p>
+<ul>
+<li><p><strong>Left side</strong>: The additive SHAP contribution for feature \(i\)</p>
+</li>
+<li><p><strong>Right side</strong>: The expectation of DeepLIFT scores over a reference distribution</p>
+</li>
+</ul>
+<p>In practice:</p>
+\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} \text{DeepLIFT}(x, x_{\text{ref}}^{(k)})_i\]
+<hr />
+<h2 id="practical_implications"><a href="#practical_implications" class="header-anchor">Practical Implications</a></h2>
+<ol>
+<li><p><strong>Additive decomposition</strong> ensures we can understand \(f(x)\) as: baseline &#43; contribution₁ &#43; contribution₂ &#43; ... &#43; contributionₘ</p>
+</li>
+<li><p><strong>DeepLIFT aggregation</strong> provides computationally feasible approximation of true SHAP values for deep networks</p>
+</li>
+<li><p><strong>Multiple references</strong> help capture the model&#39;s behavior across different contexts, making attributions more robust</p>
+</li>
+</ol>
+<p>The beauty of DeepSHAP is that it maintains the theoretical guarantees of additive decomposition while leveraging the computational efficiency of DeepLIFT&#39;s score propagation through neural networks.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 20, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
