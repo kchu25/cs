@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Core Mental Models for Operating Systems</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="core_mental_models_for_operating_systems"><a href="#core_mental_models_for_operating_systems" class="header-anchor">Core Mental Models for Operating Systems</a></h1>
+<p>Hey, I totally get your frustration. OS courses often feel like a grab bag of random topics, but there really is a unifying logic underneath. Let me break down the core mental models—including the mathematical ones—that make everything click.</p>
+<h2 id="the_big_picture"><a href="#the_big_picture" class="header-anchor">The Big Picture</a></h2>
+<p>An OS exists to solve one fundamental problem: You have limited physical resources &#40;CPU, memory, disk, network&#41; and many programs that want to use them simultaneously.</p>
+<p>Everything boils down to three challenges:</p>
+<ol>
+<li><p><strong>Virtualization</strong> - Making limited resources appear unlimited</p>
+</li>
+<li><p><strong>Concurrency</strong> - Managing things happening &quot;at the same time&quot; </p>
+</li>
+<li><p><strong>Persistence</strong> - Keeping data safe despite failures</p>
+</li>
+</ol>
+<h2 id="the_mathematical_toolkit"><a href="#the_mathematical_toolkit" class="header-anchor">The Mathematical Toolkit</a></h2>
+<p>Here are the formal structures that let you <em>reason</em> about systems:</p>
+<table><tr><th align="right">Math Structure</th><th align="right">Formal Definition</th><th align="right">OS Applications</th><th align="right">Key Property</th></tr><tr><td align="right"><strong>State Machine</strong></td><td align="right">\((S, s_0, E, \delta)\) where \(\delta: S \times E \to S\)</td><td align="right">Process states, lock states, page states</td><td align="right">Reachability analysis: &quot;Can we reach deadlock state?&quot;</td></tr><tr><td align="right"><strong>Partial Order</strong></td><td align="right">Relation \(\to\) that&#39;s transitive, irreflexive, antisymmetric</td><td align="right">Happens-before, event ordering</td><td align="right">If \(a \not\to b\) and \(b \not\to a\), then \(a \parallel b\) &#40;concurrent&#41;</td></tr><tr><td align="right"><strong>Invariant</strong></td><td align="right">Predicate \(P(s)\) true for all reachable states \(s\)</td><td align="right">Mutual exclusion, memory safety</td><td align="right">\(P(s) = \text{true} \implies\) system is correct</td></tr><tr><td align="right"><strong>Graph</strong></td><td align="right">\(G = (V, E)\)</td><td align="right">Resource allocation, wait-for graphs</td><td align="right">Cycle detection &#61; deadlock detection</td></tr><tr><td align="right"><strong>Function/Mapping</strong></td><td align="right">\(f: A \to B\)</td><td align="right">Page tables, file descriptors</td><td align="right">Composition: \((f \circ g)(x) = f(g(x))\)</td></tr><tr><td align="right"><strong>Probability</strong></td><td align="right">\(P(X), E[X], \text{Var}(X)\)</td><td align="right">Queueing models, performance analysis</td><td align="right">Little&#39;s Law: \(L = \lambda W\)</td></tr></table>
+<h3 id="state_machines_in_detail"><a href="#state_machines_in_detail" class="header-anchor">State Machines in Detail</a></h3>
+<p><strong>Components:</strong></p>
+<ul>
+<li><p>\(S\) &#61; set of states &#40;e.g., \(\{\text{Ready}, \text{Running}, \text{Waiting}, \text{Terminated}\}\)&#41;</p>
+</li>
+<li><p>\(s_0\) &#61; initial state</p>
+</li>
+<li><p>\(E\) &#61; events &#40;e.g., schedule, block, interrupt&#41;</p>
+</li>
+<li><p>\(\delta\) &#61; transition function</p>
+</li>
+</ul>
+<p><strong>Why it matters:</strong> You can prove properties by checking all reachable states. Safety &#61; &quot;bad states unreachable.&quot;</p>
+<h3 id="partial_orders_happens-before"><a href="#partial_orders_happens-before" class="header-anchor">Partial Orders &#40;Happens-Before&#41;</a></h3>
+<p><strong>Definition:</strong> \(a \to b\) means &quot;\(a\) happens before \(b\)&quot;</p>
+<p><strong>Properties:</strong></p>
+<ul>
+<li><p>Transitive: \(a \to b \land b \to c \implies a \to c\)</p>
+</li>
+<li><p>Irreflexive: \(a \not\to a\)</p>
+</li>
+<li><p>Antisymmetric: \(a \to b \implies b \not\to a\)</p>
+</li>
+</ul>
+<p><strong>Concurrency:</strong> \(a \parallel b\) iff \(a \not\to b\) and \(b \not\to a\)</p>
+<p><strong>Critical insight:</strong> Race conditions occur when concurrent events access shared state.</p>
+<p><strong>Example:</strong></p>
+<pre><code class="language-julia">Thread 1: write&#40;x&#41;; read&#40;y&#41;;     a₁ → b₁
+Thread 2: write&#40;y&#41;; read&#40;x&#41;;     a₂ → b₂</code></pre>
+<p>Are \(a_1\) and \(a_2\) ordered? No&#33; So 4 possible execution orders exist.</p>
+<h3 id="invariants"><a href="#invariants" class="header-anchor">Invariants</a></h3>
+<p><strong>Definition:</strong> Predicate that&#39;s always true: \(\forall s \in \text{ReachableStates}, P(s) = \text{true}\)</p>
+<table><tr><th align="right">System Component</th><th align="right">Invariant Example</th></tr><tr><td align="right">Mutex</td><td align="right">\(\|\{\text{threads in critical section}\}| \leq 1\)</td></tr><tr><td align="right">Memory allocator</td><td align="right">\(\sum \text{allocated} + \sum \text{free} = \text{total}\)</td></tr><tr><td align="right">Balanced tree</td><td align="right">\(\|\text{height}(\text{left}) - \text{height}(\text{right})\| \leq 1\)</td></tr><tr><td align="right">File system</td><td align="right">\(\text{blocks\_used} = \sum_{i} \text{file\_sizes}[i]\)</td></tr></table>
+<p><strong>Bugs &#61; Invariant violations.</strong> If you can state your invariants precisely, you can reason about correctness.</p>
+<h3 id="graph_theory_for_resources"><a href="#graph_theory_for_resources" class="header-anchor">Graph Theory for Resources</a></h3>
+<p><strong>Resource Allocation Graph:</strong></p>
+<ul>
+<li><p>Nodes: \(V = P \cup R\) &#40;processes and resources&#41;</p>
+</li>
+<li><p>Edges: \(P \to R\) &#40;request&#41;, \(R \to P\) &#40;allocated&#41;</p>
+</li>
+<li><p><strong>Cycle \(\implies\) potential deadlock</strong></p>
+</li>
+</ul>
+<p><strong>Wait-For Graph &#40;simplified&#41;:</strong></p>
+<ul>
+<li><p>Nodes: \(V = P\) &#40;processes only&#41;</p>
+</li>
+<li><p>Edge: \(P_i \to P_j\) means &quot;\(P_i\) waits for \(P_j\)&quot;</p>
+</li>
+<li><p><strong>Cycle \(\iff\) deadlock</strong></p>
+</li>
+</ul>
+<p><strong>Deadlock conditions &#40;Coffman&#41;:</strong> All must hold simultaneously:</p>
+<ol>
+<li><p>Mutual exclusion</p>
+</li>
+<li><p>Hold and wait</p>
+</li>
+<li><p>No preemption</p>
+</li>
+<li><p>Circular wait &#40;cycle in graph&#41;</p>
+</li>
+</ol>
+<p>Break any one \(\implies\) no deadlock.</p>
+<h3 id="queueing_theory"><a href="#queueing_theory" class="header-anchor">Queueing Theory</a></h3>
+<p><strong>Little&#39;s Law:</strong> </p>
+\[L = \lambda W\]
+<p>Where:</p>
+<ul>
+<li><p>\(L\) &#61; average number in system</p>
+</li>
+<li><p>\(\lambda\) &#61; arrival rate</p>
+</li>
+<li><p>\(W\) &#61; average time in system</p>
+</li>
+</ul>
+<p><strong>Utilization:</strong> \(U = \lambda \times S\) &#40;arrival rate × service time&#41;</p>
+<ul>
+<li><p>If \(U < 1\): stable</p>
+</li>
+<li><p>If \(U \geq 1\): queue grows unbounded</p>
+</li>
+</ul>
+<p><strong>Application:</strong> If processes arrive at rate \(\lambda = 10/\text{sec}\) and each takes \(S = 0.08\) sec, then \(U = 0.8\) &#40;80&#37; CPU utilization&#41;, and on average \(L = 10 \times W\) processes are in the system.</p>
+<h2 id="connecting_math_to_core_concepts"><a href="#connecting_math_to_core_concepts" class="header-anchor">Connecting Math to Core Concepts</a></h2>
+<h3 id="virtualization_function_composition"><a href="#virtualization_function_composition" class="header-anchor">Virtualization &#61; Function Composition</a></h3>
+<p>Virtual memory is layers of mappings:</p>
+\[\text{Virtual Addr} \xrightarrow{\text{TLB}} \text{Page Table} \xrightarrow{f} \text{Physical Addr} \xrightarrow{g} \text{Cache} \xrightarrow{h} \text{DRAM}\]
+<p>Result: \((h \circ g \circ f)(\text{addr})\) — multiple levels of indirection.</p>
+<h3 id="concurrency_product_of_state_machines"><a href="#concurrency_product_of_state_machines" class="header-anchor">Concurrency &#61; Product of State Machines</a></h3>
+<p>Two threads \(T_1, T_2\) with state spaces \(S_1, S_2\):</p>
+\[\text{Combined system state space} = S_1 \times S_2\]
+<p>If \(|S_1| = n\) and \(|S_2| = m\), combined system has \(n \times m\) states.</p>
+<p><strong>State explosion:</strong> With \(k\) threads, state space grows as \(\prod_{i=1}^k |S_i|\) — exponential&#33; This is why concurrency is hard.</p>
+<h3 id="persistence_idempotence_ordering"><a href="#persistence_idempotence_ordering" class="header-anchor">Persistence &#61; Idempotence &#43; Ordering</a></h3>
+<p><strong>Idempotence:</strong> \(f(f(x)) = f(x)\)</p>
+<table><tr><th align="right">Operation</th><th align="right">Idempotent?</th><th align="right">Why?</th></tr><tr><td align="right"><code>SET x &#61; 5</code></td><td align="right">✓</td><td align="right">Applying twice &#61; once</td></tr><tr><td align="right"><code>x &#61; x &#43; 1</code></td><td align="right">✗</td><td align="right">Effect accumulates</td></tr><tr><td align="right"><code>DELETE file</code></td><td align="right">✓</td><td align="right">Second delete is no-op</td></tr><tr><td align="right"><code>APPEND log</code></td><td align="right">✗</td><td align="right">Creates duplicate entries</td></tr></table>
+<p><strong>Write-Ahead Logging:</strong> Log operation \(O\) before applying it. On crash, replay log. Works because logged operations are designed to be idempotent.</p>
+<h2 id="the_core_design_patterns"><a href="#the_core_design_patterns" class="header-anchor">The Core Design Patterns</a></h2>
+<h3 id="time-multiplexing_vs_space-multiplexing"><a href="#time-multiplexing_vs_space-multiplexing" class="header-anchor"><ol>
+<li><p>Time-Multiplexing vs Space-Multiplexing</p>
+</li>
+</ol>
+</a></h3>
+<table><tr><th align="right">Strategy</th><th align="right">How it Works</th><th align="right">Examples</th></tr><tr><td align="right"><strong>Time-multiplexing</strong></td><td align="right">Share by taking turns</td><td align="right">CPU scheduling, network links</td></tr><tr><td align="right"><strong>Space-multiplexing</strong></td><td align="right">Partition and allocate</td><td align="right">Memory allocation, disk blocks</td></tr></table>
+<h3 id="ol_start2_mechanism_vs_policy"><a href="#ol_start2_mechanism_vs_policy" class="header-anchor"><ol start="2">
+<li><p>Mechanism vs Policy</p>
+</li>
+</ol>
+</a></h3>
+<table><tr><th align="right">Component</th><th align="right">Mechanism &#40;How&#41;</th><th align="right">Policy &#40;When/What&#41;</th></tr><tr><td align="right"><strong>Scheduling</strong></td><td align="right">Context switch</td><td align="right">Which process to run &#40;RR, Priority&#41;</td></tr><tr><td align="right"><strong>Memory</strong></td><td align="right">Page allocation</td><td align="right">Which page to evict &#40;LRU, FIFO&#41;</td></tr><tr><td align="right"><strong>File system</strong></td><td align="right">Block I/O</td><td align="right">Which blocks to cache</td></tr></table>
+<h3 id="ol_start3_the_tradeoff_space"><a href="#ol_start3_the_tradeoff_space" class="header-anchor"><ol start="3">
+<li><p>The Tradeoff Space</p>
+</li>
+</ol>
+</a></h3>
+<p>Every OS decision is optimization under constraints:</p>
+\[\text{Maximize } f(\text{throughput, fairness, latency}) \text{ subject to } g(\text{resources}) \leq C\]
+<p>Examples:</p>
+<ul>
+<li><p>Scheduling: Maximize throughput subject to fairness constraints</p>
+</li>
+<li><p>Caching: Maximize hit rate subject to memory limit</p>
+</li>
+<li><p>Page replacement: Minimize page faults subject to available frames</p>
+</li>
+</ul>
+<h2 id="how_this_connects_to_distributed_systems"><a href="#how_this_connects_to_distributed_systems" class="header-anchor">How This Connects to Distributed Systems</a></h2>
+<p>Distributed systems &#61; OS concepts &#43; Networks &#43; Partial failures</p>
+<table><tr><th align="right">OS Concept</th><th align="right">Distributed Systems Extension</th></tr><tr><td align="right">Happens-before \(\to\)</td><td align="right">Vector clocks, causal consistency</td></tr><tr><td align="right">State machines</td><td align="right">Replicated state machines, Raft/Paxos</td></tr><tr><td align="right">Invariants</td><td align="right">Safety properties, consistency models</td></tr><tr><td align="right">Partial orders</td><td align="right">CRDTs, eventual consistency</td></tr><tr><td align="right">Queueing theory</td><td align="right">Load balancing, request routing</td></tr><tr><td align="right">Graphs</td><td align="right">Cluster topology, gossip protocols</td></tr></table>
+<p>The math stays the same, but now:</p>
+<ul>
+<li><p>No shared memory &#40;only message passing&#41;</p>
+</li>
+<li><p>No global clock &#40;only partial orders&#41;</p>
+</li>
+<li><p>Failures are common &#40;need probability models&#41;</p>
+</li>
+</ul>
+<h2 id="how_to_build_competence"><a href="#how_to_build_competence" class="header-anchor">How to Build Competence</a></h2>
+<ol>
+<li><p><strong>Draw state machines:</strong> For any mechanism, sketch states and transitions</p>
+</li>
+<li><p><strong>State invariants:</strong> What must always be true? Can you prove it holds?</p>
+</li>
+<li><p><strong>Find the partial order:</strong> What operations can happen concurrently?</p>
+</li>
+<li><p><strong>Model as optimization:</strong> What are you maximizing? What are constraints?</p>
+</li>
+<li><p><strong>Code something:</strong> Implement a lock, allocator, or scheduler</p>
+</li>
+</ol>
+<p>The goal isn&#39;t memorizing algorithms — it&#39;s recognizing patterns: &quot;This is a partial order problem&quot; or &quot;We need to maintain this invariant.&quot;</p>
+<h2 id="why_optimization_problems_dominate_os_research"><a href="#why_optimization_problems_dominate_os_research" class="header-anchor">Why Optimization Problems Dominate OS Research</a></h2>
+<blockquote>
+<p><strong>Yes, exactly&#33;</strong> OS research is fundamentally optimization research because every resource management problem is a constrained optimization problem.</p>
+<p>Think about it: you have <strong>limited</strong> resources &#40;CPU cycles, memory, disk bandwidth, network&#41; and <strong>competing</strong> demands from multiple processes. The OS can&#39;t satisfy everyone perfectly, so it has to make tradeoffs.</p>
+<p><strong>Why optimization shows up everywhere:</strong></p>
+<ul>
+<li><p><strong>Scheduling:</strong> You want low latency for interactive apps, high throughput for batch jobs, and fairness so no process starves. Can&#39;t maximize all three simultaneously—so you optimize a weighted combination.</p>
+</li>
+<li><p><strong>Page replacement:</strong> You want to minimize page faults, but you only have a fixed number of physical frames. Which pages do you evict? This is literally the &quot;online caching problem&quot; in algorithms research.</p>
+</li>
+<li><p><strong>Disk scheduling:</strong> Minimize seek time &#40;throughput&#41; vs. prevent starvation &#40;fairness&#41;. The &quot;elevator algorithm&quot; is solving an optimization problem in real-time.</p>
+</li>
+<li><p><strong>Power management:</strong> Maximize performance while minimizing energy consumption. Modern CPUs constantly solve this optimization &#40;dynamic voltage/frequency scaling&#41;.</p>
+</li>
+</ul>
+<p><strong>The research angle:</strong> Classic algorithms assume you know the future &#40;optimal page replacement needs to know future accesses&#41;. OS research asks: &quot;What&#39;s the best we can do <strong>online</strong> with <strong>limited information</strong>?&quot; This leads to competitive analysis, machine learning for prediction, adaptive algorithms, etc.</p>
+<p>When you see papers with titles like &quot;Optimal X under Y constraints&quot; or &quot;Learning-based Z scheduling&quot;—they&#39;re all variations of this core optimization framework. The math might get fancy &#40;Markov decision processes, linear programming, game theory&#41;, but the structure is always: maximize something good, subject to constraints on resources.</p>
+<p><strong>Distributed systems takes this further:</strong> Now you&#39;re optimizing across multiple machines with network delays and failures. Same math, harder constraints.</p>
+</blockquote>
+<h2 id="the_key_insight"><a href="#the_key_insight" class="header-anchor">The Key Insight</a></h2>
+<p>OS design is <strong>reasoning under constraints</strong>:</p>
+<ul>
+<li><p>Finite resources → optimization theory</p>
+</li>
+<li><p>Concurrent execution → partial orders, state machines  </p>
+</li>
+<li><p>Failures → probability, invariants</p>
+</li>
+</ul>
+<p>When you see these mathematical structures, you can <em>prove</em> correctness rather than just hope for it.</p>
+<p>You got a B not because you weren&#39;t capable, but because the course taught mechanisms without these unifying models. Now you have the framework to make it all coherent.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 29, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

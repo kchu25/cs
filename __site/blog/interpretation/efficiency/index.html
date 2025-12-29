@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why Efficiency Matters in Explainability</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_efficiency_matters_in_explainability"><a href="#why_efficiency_matters_in_explainability" class="header-anchor">Why Efficiency Matters in Explainability</a></h1>
+<h2 id="the_efficiency_axiom"><a href="#the_efficiency_axiom" class="header-anchor">The Efficiency Axiom</a></h2>
+<p>The efficiency axiom from Shapley values requires:</p>
+\[f(\mathbf{x}) = \phi_0 + \sum_{i=1}^M \phi_i(\mathbf{x})\]
+<p>But why does this matter? The original paragraph claims it&#39;s about &quot;correctness&quot;—let&#39;s examine that claim.</p>
+<h2 id="what_efficiency_actually_guarantees"><a href="#what_efficiency_actually_guarantees" class="header-anchor">What Efficiency Actually Guarantees</a></h2>
+<h3 id="accounting_completeness_not_truth"><a href="#accounting_completeness_not_truth" class="header-anchor"><ol>
+<li><p>Accounting Completeness, Not Truth</p>
+</li>
+</ol>
+</a></h3>
+<p>Efficiency ensures the explanation is <strong>complete</strong> &#40;all contributions are accounted for&#41;, but it doesn&#39;t guarantee the explanation is <strong>correct</strong> in capturing how the model actually works.</p>
+<ul>
+<li><p>✓ You can verify: \(\sum_{i=1}^M \phi_i(\mathbf{x}) = f(\mathbf{x}) - \phi_0\)</p>
+</li>
+<li><p>✗ This doesn&#39;t mean the \(\phi_i\) reflect true causal mechanisms</p>
+</li>
+</ul>
+<p><strong>Key insight</strong>: An explanation can satisfy efficiency while being completely wrong about feature interactions, causality, or model behavior.</p>
+<h3 id="ol_start2_mathematical_consistency"><a href="#ol_start2_mathematical_consistency" class="header-anchor"><ol start="2">
+<li><p>Mathematical Consistency</p>
+</li>
+</ol>
+</a></h3>
+<p>Efficiency provides a consistency check. If your attribution method claims:</p>
+<ul>
+<li><p>Feature A contributes &#43;0.5</p>
+</li>
+<li><p>Feature B contributes &#43;0.3  </p>
+</li>
+<li><p>But total prediction difference is 1.0</p>
+</li>
+</ul>
+<p>Then something is mathematically inconsistent. Efficiency catches these errors.</p>
+<h3 id="ol_start3_conservation_principle"><a href="#ol_start3_conservation_principle" class="header-anchor"><ol start="3">
+<li><p>Conservation Principle</p>
+</li>
+</ol>
+</a></h3>
+<p>Like conservation laws in physics, efficiency tracks where all &quot;explanatory mass&quot; goes:</p>
+<ul>
+<li><p><strong>Over-allocation</strong>: Claiming more influence than exists</p>
+</li>
+<li><p><strong>Under-allocation</strong>: Leaving parts of the decision unexplained</p>
+</li>
+<li><p><strong>Efficiency</strong>: Every bit of prediction is explained exactly once</p>
+</li>
+</ul>
+<h3 id="ol_start4_comparability"><a href="#ol_start4_comparability" class="header-anchor"><ol start="4">
+<li><p>Comparability</p>
+</li>
+</ol>
+</a></h3>
+<p>Efficiency puts all methods on equal footing. When LIME, SHAP, and Integrated Gradients all satisfy efficiency, we can meaningfully compare their different \(\phi_i\) values knowing they&#39;re all explaining the same total.</p>
+<h2 id="the_correctness_confusion"><a href="#the_correctness_confusion" class="header-anchor">The Correctness Confusion</a></h2>
+<p>The paragraph conflates <strong>mathematical consistency</strong> with <strong>explanatory correctness</strong>:</p>
+<table><tr><th align="right">Property</th><th align="right">What it means</th></tr><tr><td align="right">Mathematically consistent</td><td align="right">The numbers add up correctly</td></tr><tr><td align="right">Explanatorily correct</td><td align="right">The attribution reflects true model behavior</td></tr></table>
+<p>You can have:</p>
+<ul>
+<li><p><strong>Efficient but misleading</strong>: Wrong baseline, wrong interactions, wrong counterfactuals</p>
+</li>
+<li><p><strong>Multiple valid efficient explanations</strong>: LIME, SHAP, IG all satisfy efficiency but give different attributions</p>
+</li>
+</ul>
+<h2 id="bottom_line"><a href="#bottom_line" class="header-anchor">Bottom Line</a></h2>
+<p>Efficiency is <strong>necessary but not sufficient</strong> for good explanations:</p>
+\[\text{Good Explanation} = \text{Efficiency} + \text{[Other Properties]}\]
+<p>It&#39;s about coherence and verifiability of the decomposition, not about capturing true causal structure. Think of it as a sanity check, not a truth certificate.</p>
+<hr />
+<h2 id="why_linear_a_nice_coincidence"><a href="#why_linear_a_nice_coincidence" class="header-anchor">Why Linear? A Nice Coincidence?</a></h2>
+<p>The additive &#40;linear&#41; form isn&#39;t arbitrary—it&#39;s deeply connected to efficiency, but <strong>why linear specifically</strong>?</p>
+<h3 id="the_linearity_emerges_from_completeness"><a href="#the_linearity_emerges_from_completeness" class="header-anchor">The Linearity Emerges from Completeness</a></h3>
+<p>Consider what we&#39;re trying to do: decompose a potentially complex function \(f(\mathbf{x})\) into contributions. The efficiency requirement is:</p>
+\[f(\mathbf{x}) - \phi_0 = \sum_{i=1}^M \phi_i(\mathbf{x})\]
+<p><strong>Why not use a product?</strong> </p>
+\[f(\mathbf{x}) = \phi_0 \cdot \prod_{i=1}^M \phi_i(\mathbf{x})\]
+<p>Problems:</p>
+<ol>
+<li><p><strong>Dimensionality</strong>: Each \(\phi_i\) would need units that make the product match \(f\)&#39;s units</p>
+</li>
+<li><p><strong>Zero problem</strong>: If any \(\phi_i = 0\), the entire prediction becomes zero</p>
+</li>
+<li><p><strong>Sign issues</strong>: Negative contributions become problematic</p>
+</li>
+<li><p><strong>Not additive in value</strong>: Can&#39;t track individual contributions separately</p>
+</li>
+</ol>
+<h3 id="game_theory_perspective"><a href="#game_theory_perspective" class="header-anchor">Game Theory Perspective</a></h3>
+<p>In cooperative game theory, the <strong>value</strong> being distributed is a scalar &#40;e.g., money, utility&#41;. Distribution naturally follows addition:</p>
+\[\text{Total Value} = \sum_{i=1}^M \text{Player } i\text{'s share}\]
+<p>This isn&#39;t a choice—it&#39;s what &quot;distribution&quot; means. You&#39;re dividing a pie, not multiplying slices.</p>
+<h3 id="the_deep_reason_linearity_of_expectation"><a href="#the_deep_reason_linearity_of_expectation" class="header-anchor">The Deep Reason: Linearity of Expectation</a></h3>
+<p>Most explainability methods involve some form of expectation or averaging. The additive form naturally arises from:</p>
+\[\mathbb{E}[f(\mathbf{x})] = \mathbb{E}[\phi_0] + \sum_{i=1}^M \mathbb{E}[\phi_i(\mathbf{x})]\]
+<p>Expectation is a linear operator: \(\mathbb{E}[X + Y] = \mathbb{E}[X] + \mathbb{E}[Y]\)</p>
+<p>So when we decompose expectations &#40;which is what SHAP, IG, and others do&#41;, linearity falls out automatically.</p>
+<h3 id="what_about_interactions"><a href="#what_about_interactions" class="header-anchor">What About Interactions?</a></h3>
+<p>You might object: &quot;But features interact nonlinearly&#33;&quot; True&#33; But the additive form can still capture this:</p>
+\[\phi_i(\mathbf{x}) = \text{main effect of } i + \text{interaction effects involving } i\]
+<p>Each \(\phi_i\) can internalize complex interactions. The linearity is in how we <strong>sum contributions</strong>, not in how contributions are computed.</p>
+<h3 id="is_it_a_coincidence"><a href="#is_it_a_coincidence" class="header-anchor">Is It a Coincidence?</a></h3>
+<p><strong>No.</strong> The linear form is the unique structure that:</p>
+<ol>
+<li><p>Satisfies efficiency &#40;completeness&#41;</p>
+</li>
+<li><p>Respects dimensionality &#40;units match&#41;</p>
+</li>
+<li><p>Allows both positive and negative contributions</p>
+</li>
+<li><p>Enables individual tracking of contributions</p>
+</li>
+<li><p>Aligns with how expectations and distributions work mathematically</p>
+</li>
+</ol>
+<p>Other functional forms &#40;products, max, min&#41; fail at least one of these requirements.</p>
+<h3 id="the_deeper_connection"><a href="#the_deeper_connection" class="header-anchor">The Deeper Connection</a></h3>
+<p>There&#39;s an equivalence:</p>
+\[\text{Additive decomposition} \iff \text{Efficiency axiom} \iff \text{Complete attribution}\]
+<p>They&#39;re three ways of saying the same thing. The linearity isn&#39;t imposed—it&#39;s the mathematical expression of &quot;accounting for everything exactly once.&quot;</p>
+<p>So while it might feel like a convenient coincidence that explanations are linear, it&#39;s actually the <strong>only way</strong> to satisfy the efficiency requirement in a mathematically coherent manner.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 22, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
