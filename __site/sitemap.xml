@@ -152,6 +152,12 @@
     <priority>0.5</priority>
 </url>
 <url>
+    <loc>https://kchu25.github.io/blog/interpretation/modisco/index.html</loc>
+    <lastmod>2025-12-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/index.html</loc>
     <lastmod>2025-12-10</lastmod>
     <changefreq>monthly</changefreq>

@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding Seqlets in TF-MoDISco</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_seqlets_in_tf-modisco"><a href="#understanding_seqlets_in_tf-modisco" class="header-anchor">Understanding Seqlets in TF-MoDISco</a></h1>
+<h2 id="the_big_picture_what_is_tf-modisco"><a href="#the_big_picture_what_is_tf-modisco" class="header-anchor">The Big Picture: What is TF-MoDISco?</a></h2>
+<p>TF-MoDISco &#40;Transcription Factor Motif Discovery from Importance Scores&#41; is a computational tool that takes per-nucleotide importance scores &#40;from methods like DeepLIFT, SHAP, or Integrated Gradients&#41; and discovers recurring patterns—motifs—that the model has learned to recognize.</p>
+<p>The key insight: instead of looking at raw sequence patterns, TF-MoDISco clusters based on <em>contribution patterns</em>. A traditional motif finder might say &quot;GATAAG appears often.&quot; TF-MoDISco says &quot;there&#39;s a pattern where positions 1, 4, and 5 consistently have high positive contributions.&quot;</p>
+<h2 id="whats_a_seqlet"><a href="#whats_a_seqlet" class="header-anchor">What&#39;s a seqlet?</a></h2>
+<p>A seqlet is basically a short stretch of sequence &#40;typically 10-30 base pairs&#41; that TF-MoDISco identifies as potentially important. Think of it as a &quot;snippet of interest&quot; extracted from your larger input sequences.</p>
+<p>More precisely, a seqlet is defined by:</p>
+<ul>
+<li><p><strong>Start and end coordinates</strong> within a parent sequence</p>
+</li>
+<li><p><strong>The underlying nucleotide sequence</strong> &#40;e.g., &quot;GATAAGCC&quot;&#41;</p>
+</li>
+<li><p><strong>Per-nucleotide contribution scores</strong> from your interpretation method</p>
+</li>
+<li><p><strong>A strand orientation</strong> &#40;forward or reverse complement&#41;</p>
+</li>
+</ul>
+<h2 id="the_tf-modisco_pipeline_in_detail"><a href="#the_tf-modisco_pipeline_in_detail" class="header-anchor">The TF-MoDISco Pipeline in Detail</a></h2>
+<p>Let&#39;s trace through exactly what happens:</p>
+<h3 id="step_1_contribution_score_computation"><a href="#step_1_contribution_score_computation" class="header-anchor">Step 1: Contribution Score Computation</a></h3>
+<p>Before TF-MoDISco even runs, you need per-nucleotide contribution scores. These come from interpreting a trained model:</p>
+<pre><code class="language-julia">Input sequence:  A  T  G  C  A  T  A  G  ...
+Contribution:   0.1 0.0 0.8 0.9 0.1 0.0 0.7 0.6 ...</code></pre>
+<p>Common methods:</p>
+<ul>
+<li><p><strong>DeepLIFT</strong>: Compares activations to a reference</p>
+</li>
+<li><p><strong>Integrated Gradients</strong>: Integrates gradients along path from baseline</p>
+</li>
+<li><p><strong>SHAP</strong>: Shapley values &#40;DeepSHAP is popular&#41;</p>
+</li>
+</ul>
+<p>Each method has different theoretical properties, but TF-MoDISco treats them all the same way.</p>
+<h3 id="step_2_seqlet_identification_the_heuristic_part"><a href="#step_2_seqlet_identification_the_heuristic_part" class="header-anchor">Step 2: Seqlet Identification &#40;The Heuristic Part&#41;</a></h3>
+<p>This is where the thresholding happens. TF-MoDISco needs to find &quot;regions of interest&quot;:</p>
+<p><strong>The sliding window approach:</strong></p>
+<ol>
+<li><p>Slide a window &#40;e.g., 21bp&#41; across each sequence</p>
+</li>
+<li><p>Compute the sum of absolute contribution scores within the window</p>
+</li>
+<li><p>If the sum exceeds a threshold, mark this as a candidate seqlet</p>
+</li>
+</ol>
+<p><strong>The threshold determination:</strong></p>
+<ul>
+<li><p>By default, TF-MoDISco uses an adaptive threshold based on the distribution of window scores</p>
+</li>
+<li><p>It typically looks for the &quot;elbow&quot; in the distribution, or uses a percentile &#40;e.g., top 5&#37;&#41;</p>
+</li>
+<li><p>The parameter <code>target_seqlet_fdr</code> controls how aggressive the detection is</p>
+</li>
+</ul>
+<p><strong>Concrete example:</strong></p>
+<pre><code class="language-julia">Position:        1    2    3    4    5    6    7    8    9   10
+Sequence:        A    T    G    C    A    T    A    G    C    T
+Contribution:   0.1  0.0  0.8  0.9  0.7  0.6  0.5  0.3  0.1  0.0
+
+Window &#91;1-5&#93; sum: |0.1| &#43; |0.0| &#43; |0.8| &#43; |0.9| &#43; |0.7| &#61; 2.5  ✓ Above threshold
+Window &#91;6-10&#93; sum: |0.6| &#43; |0.5| &#43; |0.3| &#43; |0.1| &#43; |0.0| &#61; 1.5  ✗ Below threshold</code></pre>
+<h3 id="step_3_seqlet_filtering_and_expansion"><a href="#step_3_seqlet_filtering_and_expansion" class="header-anchor">Step 3: Seqlet Filtering and Expansion</a></h3>
+<p>Once candidates are identified:</p>
+<ul>
+<li><p><strong>Overlapping seqlets</strong> are merged or the stronger one is kept</p>
+</li>
+<li><p><strong>Boundaries are refined</strong> by extending until contribution scores drop</p>
+</li>
+<li><p><strong>Too-short seqlets</strong> may be filtered out</p>
+</li>
+</ul>
+<h3 id="step_4_the_clustering_magic_this_is_the_interesting_part"><a href="#step_4_the_clustering_magic_this_is_the_interesting_part" class="header-anchor">Step 4: The Clustering Magic &#40;This is the interesting part&#33;&#41;</a></h3>
+<p>Now TF-MoDISco clusters seqlets that have similar contribution patterns. This is NOT just sequence similarity—two seqlets with the same sequence can be in different clusters if their contribution patterns differ&#33;</p>
+<p><strong>The similarity metric:</strong> TF-MoDISco uses a correlation-based similarity between seqlet contribution profiles:</p>
+\[\text{sim}(s_1, s_2) = \max_{\text{offset}} \text{corr}(\text{contrib}_{s_1}, \text{contrib}_{s_2}[\text{offset}])\]
+<p>It also considers the reverse complement, so &quot;GATAAG&quot; and &quot;CTTATC&quot; can cluster together.</p>
+<p><strong>The clustering algorithm:</strong></p>
+<ul>
+<li><p>Uses a greedy clustering approach &#40;not k-means or hierarchical&#41;</p>
+</li>
+<li><p>Iteratively assigns seqlets to the cluster with highest similarity</p>
+</li>
+<li><p>Creates new clusters when similarity to existing clusters is too low</p>
+</li>
+</ul>
+<h3 id="step_5_building_the_cwm_contribution_weight_matrix"><a href="#step_5_building_the_cwm_contribution_weight_matrix" class="header-anchor">Step 5: Building the CWM &#40;Contribution Weight Matrix&#41;</a></h3>
+<p>For each cluster, TF-MoDISco aligns all seqlets and averages their contribution scores:</p>
+<pre><code class="language-julia">Seqlet 1 contrib:  0.1  0.8  0.9  0.7  0.1
+Seqlet 2 contrib:  0.2  0.7  0.8  0.6  0.2
+Seqlet 3 contrib:  0.0  0.9  0.9  0.8  0.0
+                   ─────────────────────────
+CWM &#40;average&#41;:     0.1  0.8  0.87 0.7  0.1</code></pre>
+<p>The CWM tells you: &quot;At position 2 and 3, contributions are consistently high across instances.&quot;</p>
+<p>You also get a <strong>PWM &#40;Position Weight Matrix&#41;</strong> by looking at the nucleotide frequencies:</p>
+<pre><code class="language-julia">Position:    1    2    3    4    5
+A:          0.8  0.0  0.0  1.0  0.0
+T:          0.2  0.0  0.0  0.0  1.0
+G:          0.0  1.0  0.0  0.0  0.0
+C:          0.0  0.0  1.0  0.0  0.0</code></pre>
+<h2 id="how_are_seqlets_quantified"><a href="#how_are_seqlets_quantified" class="header-anchor">How are seqlets quantified?</a></h2>
+<p>You&#39;re absolutely right that there&#39;s a heuristic involved&#33; Here&#39;s how it works:</p>
+<h3 id="the_threshold_approach"><a href="#the_threshold_approach" class="header-anchor">The threshold approach</a></h3>
+<p>Since TF-MoDISco starts with per-nucleotide contribution scores &#40;from SHAP, DeepLIFT, etc.&#41;, it needs a way to decide which regions are &quot;important enough&quot; to be seqlets. The typical approach:</p>
+<ol>
+<li><p><strong>Set a contribution threshold</strong> - Only nucleotides with contribution scores above a certain threshold are considered</p>
+</li>
+<li><p><strong>Find contiguous regions</strong> - Connected stretches of high-contribution nucleotides become candidate seqlets</p>
+</li>
+<li><p><strong>Apply filtering</strong> - Very short regions &#40;like 1-2 bp&#41; might get filtered out as noise</p>
+</li>
+</ol>
+<h3 id="common_heuristics"><a href="#common_heuristics" class="header-anchor">Common heuristics</a></h3>
+<p>The exact threshold can be:</p>
+<ul>
+<li><p>A fixed percentile &#40;e.g., top 5&#37; of contribution scores&#41;</p>
+</li>
+<li><p>A multiple of the standard deviation above the mean</p>
+</li>
+<li><p>Set empirically based on your data</p>
+</li>
+</ul>
+<h3 id="key_parameters_that_affect_seqlet_detection"><a href="#key_parameters_that_affect_seqlet_detection" class="header-anchor">Key parameters that affect seqlet detection</a></h3>
+<table><tr><th align="right">Parameter</th><th align="right">What it controls</th><th align="right">Trade-off</th></tr><tr><td align="right"><code>sliding_window_size</code></td><td align="right">Width of detection window</td><td align="right">Larger &#61; smoother, may miss short motifs</td></tr><tr><td align="right"><code>flank_size</code></td><td align="right">How much to extend seqlets</td><td align="right">Larger &#61; more context, more noise</td></tr><tr><td align="right"><code>target_seqlet_fdr</code></td><td align="right">How many seqlets to find</td><td align="right">Lower &#61; more seqlets, more noise</td></tr><tr><td align="right"><code>min_seqlets_per_task</code></td><td align="right">Minimum seqlets needed</td><td align="right">Higher &#61; more robust, may miss rare motifs</td></tr></table>
+<h2 id="why_this_matters"><a href="#why_this_matters" class="header-anchor">Why this matters</a></h2>
+<p>This thresholding step is crucial because it determines what patterns TF-MoDISco will try to cluster and discover. Set it too high and you miss subtle motifs; too low and you get swamped with noise.</p>
+<p>The beauty is that once you have seqlets defined, TF-MoDISco can cluster them based on their contribution patterns to discover recurring motifs - no additional quantification needed at that point&#33;</p>
+<hr />
+<blockquote>
+<p><strong>Does the stretch need uniformly high contributions?</strong></p>
+<p>Nope&#33; The seqlet just needs <em>some</em> nucleotides above threshold within a window. Think of it like finding &quot;peaks&quot; in the contribution landscape - you&#39;re looking for regions with elevated signal, not necessarily flat plateaus. Typically, a sliding window approach identifies regions where enough nucleotides &#40;or the aggregate score&#41; exceeds the threshold.</p>
+<p><strong>Is this heuristic-y?</strong></p>
+<p>Oh absolutely, 100&#37; yes. You&#39;re making arbitrary choices about:</p>
+<ul>
+<li><p>What threshold to use</p>
+</li>
+<li><p>How big the sliding window should be</p>
+</li>
+<li><p>How many high-contribution bases constitute a &quot;region&quot;</p>
+</li>
+<li><p>Whether to use max, mean, or sum aggregation</p>
+</li>
+</ul>
+<p>Different settings can give you different seqlets, which means different discovered motifs. It&#39;s practical and works well, but definitely not theoretically rigorous.</p>
+<p><strong>The aggregation opacity issue</strong></p>
+<p>You&#39;ve hit on something important here. Yes, they aggregate&#33; To compare seqlets, TF-MoDISco needs to summarize each one somehow - often taking the sum or mean of contributions across nucleotides in the seqlet. This adds another layer of abstraction: you&#39;re now clustering aggregated summaries of already-thresholded data. It works empirically because motifs have characteristic patterns, but yeah... it&#39;s opaque. You&#39;re multiple steps removed from your original contribution scores.</p>
+<p><strong>The global interpretation problem</strong></p>
+<p>Here&#39;s the kicker: at the end, you get a discovered motif pattern &#40;like &quot;GATAAG&quot;&#41;, but what&#39;s the <em>contribution</em> of that pattern globally across all your sequences? TF-MoDISco doesn&#39;t really give you a clean answer to this.</p>
+<p>You know the pattern exists and appears in multiple seqlets, but:</p>
+<ul>
+<li><p>You don&#39;t get a single &quot;importance score&quot; for the motif across your dataset</p>
+</li>
+<li><p>The contribution scores were local to individual sequences</p>
+</li>
+<li><p>The clustering/aggregation process has mixed contributions from different sequences and contexts</p>
+</li>
+</ul>
+<p>So you end up with interpretable <em>patterns</em> &#40;what motifs exist&#41; but not necessarily interpretable <em>global contributions</em> &#40;how much does this motif matter overall&#41;. It&#39;s more of a pattern discovery tool than a global feature importance tool. You&#39;d need to do additional analysis - like testing the motif&#39;s effect across your dataset - to quantify its global importance.</p>
+</blockquote>
+<hr />
+<h2 id="a_deeper_look_what_does_the_cwm_actually_represent"><a href="#a_deeper_look_what_does_the_cwm_actually_represent" class="header-anchor">A Deeper Look: What Does the CWM Actually Represent?</a></h2>
+<p>Let&#39;s be precise about what a CWM &#40;Contribution Weight Matrix&#41; is and isn&#39;t.</p>
+<h3 id="mathematically"><a href="#mathematically" class="header-anchor">Mathematically</a></h3>
+<p>For a motif cluster with \(N\) seqlets, each of length \(L\), the CWM at position \(j\) for nucleotide \(b\) is:</p>
+\[\text{CWM}_{j,b} = \frac{1}{N_b} \sum_{i: s_i[j] = b} c_i[j]\]
+<p>where:</p>
+<ul>
+<li><p>\(s_i[j]\) is the nucleotide at position \(j\) of seqlet \(i\)</p>
+</li>
+<li><p>\(c_i[j]\) is the contribution score at position \(j\) of seqlet \(i\)</p>
+</li>
+<li><p>\(N_b\) is the count of seqlets with nucleotide \(b\) at position \(j\)</p>
+</li>
+</ul>
+<p><strong>The key issue</strong>: You&#39;re averaging contributions from different sequence contexts. A &quot;G&quot; at position 3 in one seqlet might have contribution 0.9 because of its neighbors, while another &quot;G&quot; at position 3 has contribution 0.5 due to different context.</p>
+<h3 id="what_cwm_captures_vs_what_it_obscures"><a href="#what_cwm_captures_vs_what_it_obscures" class="header-anchor">What CWM captures vs. what it obscures</a></h3>
+<table><tr><th align="right">CWM Captures</th><th align="right">CWM Obscures</th></tr><tr><td align="right">Average positional importance</td><td align="right">Variance in importance</td></tr><tr><td align="right">Nucleotide preferences</td><td align="right">Context-dependent effects</td></tr><tr><td align="right">Core motif structure</td><td align="right">Flanking sequence effects</td></tr><tr><td align="right">Consistent patterns</td><td align="right">Rare but important variants</td></tr></table>
+<h3 id="an_analogy"><a href="#an_analogy" class="header-anchor">An analogy</a></h3>
+<p>Imagine you&#39;re studying how people cross intersections:</p>
+<ul>
+<li><p><strong>Seqlets</strong> &#61; individual crossing observations</p>
+</li>
+<li><p><strong>Clustering</strong> &#61; grouping crossings by intersection type &#40;4-way, T-junction, roundabout&#41;</p>
+</li>
+<li><p><strong>CWM</strong> &#61; &quot;average walking path&quot; for each intersection type</p>
+</li>
+</ul>
+<p>The CWM tells you the typical path, but obscures individual variations &#40;some people jaywalk, some wait for lights, some run&#41;. If those variations matter, you&#39;ve lost that information.</p>
+<h2 id="comparison_to_other_motif_discovery_methods"><a href="#comparison_to_other_motif_discovery_methods" class="header-anchor">Comparison to Other Motif Discovery Methods</a></h2>
+<table><tr><th align="right">Method</th><th align="right">Input</th><th align="right">What it finds</th><th align="right">Strengths</th><th align="right">Weaknesses</th></tr><tr><td align="right"><strong>TF-MoDISco</strong></td><td align="right">Contribution scores</td><td align="right">Patterns model uses</td><td align="right">Model-specific, captures importance</td><td align="right">Heuristic clustering, no global score</td></tr><tr><td align="right"><strong>MEME</strong></td><td align="right">Raw sequences</td><td align="right">Overrepresented patterns</td><td align="right">Statistically principled</td><td align="right">May miss model-relevant patterns</td></tr><tr><td align="right"><strong>HOMER</strong></td><td align="right">Foreground/background</td><td align="right">Differentially enriched</td><td align="right">Fast, handles background</td><td align="right">Assumes differential enrichment</td></tr><tr><td align="right"><strong>DeepBind</strong></td><td align="right">Sequences &#43; labels</td><td align="right">Predictive patterns</td><td align="right">End-to-end learning</td><td align="right">Black box, needs training</td></tr></table>
+<p><strong>The key distinction</strong>: Traditional methods ask &quot;what patterns exist in the data?&quot; TF-MoDISco asks &quot;what patterns does the model care about?&quot; These can be different&#33;</p>
+<hr />
+<h2 id="wait_so_why_is_this_used_in_nature_papers"><a href="#wait_so_why_is_this_used_in_nature_papers" class="header-anchor">Wait, so why is this used in Nature papers?</a></h2>
+<p><strong>My answer above is partially correct, but let me clarify</strong>: TF-MoDISco <em>does</em> give you something interpretable at the global level, just not in the traditional sense you might expect.</p>
+<p>What you get:</p>
+<ul>
+<li><p><strong>Contribution Weight Matrix &#40;CWM&#41;</strong>: This is the averaged contribution scores across all seqlets in a cluster. It tells you which positions in the motif are consistently important.</p>
+</li>
+<li><p><strong>Per-instance contributions</strong>: You can see how much each specific motif instance contributed in its local context.</p>
+</li>
+<li><p><strong>Pattern frequency</strong>: You know how often the pattern appears across your sequences.</p>
+</li>
+<li><p><strong>Metacluster organization</strong>: Related patterns are grouped together &#40;e.g., all GATA-like motifs&#41;</p>
+</li>
+</ul>
+<p>What you DON&#39;T get directly:</p>
+<ul>
+<li><p>A single number like &quot;this motif explains 15&#37; of model predictions globally&quot;</p>
+</li>
+<li><p>Easy comparison between motifs &#40;which is more important overall?&#41;</p>
+</li>
+<li><p>Causal importance &#40;does the model <em>need</em> this motif, or just <em>use</em> it?&#41;</p>
+</li>
+</ul>
+<p><strong>Why it&#39;s still valuable and widely used:</strong></p>
+<ol>
+<li><p><strong>It works empirically</strong> - The patterns it discovers are biologically meaningful and match known TF binding sites</p>
+</li>
+<li><p><strong>Context matters</strong> - The CWM captures position-specific contributions, which is more nuanced than a PWM</p>
+</li>
+<li><p><strong>Better than alternatives</strong> - Traditional motif discovery &#40;MEME, HOMER&#41; often miss patterns that deep learning models actually use</p>
+</li>
+<li><p><strong>Hypothesis generation</strong> - You discover what patterns the model learned, then validate them experimentally</p>
+</li>
+<li><p><strong>Visual interpretability</strong> - CWM logos are intuitive and publication-ready</p>
+</li>
+</ol>
+<hr />
+<h2 id="but_wait_arent_cwms_theoretically_messy"><a href="#but_wait_arent_cwms_theoretically_messy" class="header-anchor">But wait... aren&#39;t CWMs theoretically messy?</a></h2>
+<p><strong>You&#39;re absolutely right to push back on this.</strong> CWMs have some real theoretical issues:</p>
+<p><strong>The averaging problem:</strong></p>
+<ul>
+<li><p>You&#39;re averaging contribution scores across seqlets from different sequences</p>
+</li>
+<li><p>These contributions came from different contexts, different positions, different predictions</p>
+</li>
+<li><p>What does the &quot;average contribution&quot; even mean when the underlying examples are heterogeneous?</p>
+</li>
+</ul>
+<p><strong>The alignment problem:</strong></p>
+<ul>
+<li><p>Seqlets get aligned before averaging, but this alignment is based on similarity, not on any theoretical principle</p>
+</li>
+<li><p>You&#39;re forcing different instances into the same coordinate system</p>
+</li>
+<li><p>Insertions/deletions are handled by extension, not by proper alignment</p>
+</li>
+</ul>
+<p><strong>The interpretation problem:</strong></p>
+<ul>
+<li><p>Is a CWM position with high average contribution &quot;important&quot; because:</p>
+<ul>
+<li><p>That position matters a lot in a few instances?</p>
+</li>
+<li><p>That position matters moderately across many instances?</p>
+</li>
+<li><p>The contribution is just less noisy there?</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>The additivity assumption:</strong></p>
+<ul>
+<li><p>Averaging assumes contributions are additive/decomposable</p>
+</li>
+<li><p>But neural networks have complex interactions—position 2 might only matter <em>because</em> of what&#39;s at position 5</p>
+</li>
+<li><p>These interactions are lost in the CWM</p>
+</li>
+</ul>
+<p><strong>So why does everyone use it anyway?</strong></p>
+<p>Honestly? Because it&#39;s <em>pragmatically useful</em> despite being <em>theoretically sketchy</em>. The patterns look right, they match known biology, and they generate testable hypotheses. </p>
+<p>It&#39;s a bit like p-values in statistics - lots of theoretical problems, widely misinterpreted, but still used everywhere because they&#39;re practical. The computational biology field has essentially decided that discovering biologically meaningful patterns is worth the theoretical hand-waving.</p>
+<p>The dirty secret: much of neural network interpretability is like this. We&#39;re trying to understand complex, non-linear systems with tools that make convenient assumptions. TF-MoDISco is just more honest about the heuristics than most methods.</p>
+<hr />
+<h2 id="practical_recommendations"><a href="#practical_recommendations" class="header-anchor">Practical Recommendations</a></h2>
+<p>If you&#39;re going to use TF-MoDISco, here are some tips:</p>
+<h3 id="validate_your_discovered_motifs"><a href="#validate_your_discovered_motifs" class="header-anchor"><ol>
+<li><p>Validate your discovered motifs</p>
+</li>
+</ol>
+</a></h3>
+<p>Don&#39;t just trust the CWM. Check that the pattern makes biological sense:</p>
+<ul>
+<li><p>Compare to known motif databases &#40;JASPAR, HOCOMOCO&#41;</p>
+</li>
+<li><p>Look at the seqlet instances—do they actually look similar?</p>
+</li>
+<li><p>Check if the motif appears in biologically relevant regions &#40;promoters, enhancers, etc.&#41;</p>
+</li>
+</ul>
+<h3 id="ol_start2_be_aware_of_parameter_sensitivity"><a href="#ol_start2_be_aware_of_parameter_sensitivity" class="header-anchor"><ol start="2">
+<li><p>Be aware of parameter sensitivity</p>
+</li>
+</ol>
+</a></h3>
+<p>Run TF-MoDISco with different parameters and see if the same motifs emerge:</p>
+<ul>
+<li><p>Try different <code>target_seqlet_fdr</code> values</p>
+</li>
+<li><p>Vary the <code>sliding_window_size</code></p>
+</li>
+<li><p>If a motif disappears with small parameter changes, be skeptical</p>
+</li>
+</ul>
+<h3 id="ol_start3_look_beyond_the_cwm"><a href="#ol_start3_look_beyond_the_cwm" class="header-anchor"><ol start="3">
+<li><p>Look beyond the CWM</p>
+</li>
+</ol>
+</a></h3>
+<p>The CWM is a summary. Dig deeper:</p>
+<ul>
+<li><p>Examine the seqlet alignment—are they truly similar?</p>
+</li>
+<li><p>Look at the contribution score distribution per position</p>
+</li>
+<li><p>Check for bimodal distributions &#40;might indicate sub-clusters&#41;</p>
+</li>
+</ul>
+<h3 id="ol_start4_compute_supplementary_statistics"><a href="#ol_start4_compute_supplementary_statistics" class="header-anchor"><ol start="4">
+<li><p>Compute supplementary statistics</p>
+</li>
+</ol>
+</a></h3>
+<p>TF-MoDISco gives you seqlets. Use them to compute:</p>
+<ul>
+<li><p><strong>Total contribution</strong>: Sum of contributions across all instances of the motif</p>
+</li>
+<li><p><strong>Coverage</strong>: What fraction of your sequences contain this motif?</p>
+</li>
+<li><p><strong>Effect size</strong>: Mean prediction with motif vs. without</p>
+</li>
+</ul>
+<h3 id="ol_start5_consider_alternatives_for_specific_questions"><a href="#ol_start5_consider_alternatives_for_specific_questions" class="header-anchor"><ol start="5">
+<li><p>Consider alternatives for specific questions</p>
+</li>
+</ol>
+</a></h3>
+<table><tr><th align="right">If you want to know...</th><th align="right">TF-MoDISco is...</th><th align="right">Consider instead...</th></tr><tr><td align="right">What patterns does the model use?</td><td align="right">✅ Good</td><td align="right">-</td></tr><tr><td align="right">How important is pattern X globally?</td><td align="right">⚠️ Indirect</td><td align="right">In-silico mutagenesis</td></tr><tr><td align="right">Does pattern X cause high predictions?</td><td align="right">❌ No</td><td align="right">Synthetic sequence tests</td></tr><tr><td align="right">What&#39;s the minimal motif?</td><td align="right">⚠️ Approximate</td><td align="right">Motif truncation experiments</td></tr></table>
+<hr />
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>TF-MoDISco is a powerful tool for discovering <em>what patterns your model has learned</em>. It&#39;s not perfect—the seqlet detection is heuristic, the clustering is approximate, and the CWM is a lossy summary. But it provides interpretable, biologically meaningful results that have driven real discoveries.</p>
+<p>Use it as a starting point for hypothesis generation, not as the final word on model interpretation. Validate what you find, be aware of the assumptions, and remember that &quot;interpretability&quot; in deep learning is still more art than science.</p>
+<p><strong>Key takeaways:</strong></p>
+<ol>
+<li><p>Seqlets are short sequences with high contribution scores, identified heuristically</p>
+</li>
+<li><p>Clustering is based on contribution <em>patterns</em>, not just sequence similarity</p>
+</li>
+<li><p>CWMs are averaged contributions—useful but theoretically messy</p>
+</li>
+<li><p>Global importance requires additional analysis beyond TF-MoDISco</p>
+</li>
+<li><p>Despite limitations, it works well in practice for motif discovery</p>
+</li>
+</ol>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: December 29, 2025.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
