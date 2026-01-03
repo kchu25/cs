@@ -26,7 +26,7 @@ Think of it as your statistical safety net when you can't check everything.
 
 If you have $n$ independent samples $X_1, \ldots, X_n$ where each $X_i \in [a,b]$, and you compute their average $\bar{X} = \frac{1}{n}\sum X_i$, then:
 
-$P(|\bar{X} - \mu| > t) \leq 2e^{-\frac{2nt^2}{(b-a)^2}}$
+$$P(|\bar{X} - \mu| > t) \leq 2e^{-\frac{2nt^2}{(b-a)^2}}$$
 
 where $\mu = E[\bar{X}]$ is the true mean, and $t$ is your "tolerance" for error.
 
@@ -36,9 +36,38 @@ where $\mu = E[\bar{X}]$ is the true mean, and $t$ is your "tolerance" for error
 
 For Bernoulli variables (coin flips) with $X = \sum_{i=1}^n X_i$ where $E[X] = \mu$:
 
-$P(X \geq (1+\delta)\mu) \leq e^{-\frac{\delta^2 \mu}{3}} \quad \text{for } 0 < \delta < 1$
+$$P(X \geq (1+\delta)\mu) \leq e^{-\frac{\delta^2 \mu}{3}} \quad \text{for } 0 < \delta \leq 1$$
+
+$$P(X \geq (1+\delta)\mu) \leq e^{-\delta\mu/3} \quad \text{for } \delta > 1$$
 
 This is **tighter** when $\mu$ is small (rare events). Uses relative deviation $(1+\delta)$ rather than absolute deviation.
+
+> **Where's the KL-divergence?**
+> 
+> The exact Chernoff bound is actually:
+> 
+> $$P(X \geq (1+\delta)\mu) \leq e^{-n \cdot D_{KL}(p(1+\delta) \,||\, p)}$$
+> 
+> where $p = \mu/n$ is the success probability per trial, and $D_{KL}$ is the KL-divergence between two Bernoulli distributions with probabilities $p(1+\delta)$ and $p$.
+> 
+> The KL-divergence for Bernoulli is: $D_{KL}(q||p) = q\ln(q/p) + (1-q)\ln((1-q)/(1-p))$
+> 
+> The formulas $e^{-\delta^2\mu/3}$ and $e^{-\delta\mu/3}$ above are **approximations** of this KL-divergence term that are easier to work with. They come from Taylor expanding the KL-divergence for small/large $\delta$.
+
+> **Does $\delta$ need to be between 0 and 1?**
+> 
+> **Short answer:** No, $\delta$ doesn't *need* to be between 0 and 1. That's just where the bound has its nicest, simplest form.
+> 
+> **What's really going on:**
+> 
+> The Chernoff bound works for **any** $\delta > 0$. The restriction $0 < \delta \leq 1$ is just when you get that clean $e^{-\delta^2\mu/3}$ formula. Think of it like this:
+> 
+> - For **small deviations** ($\delta \leq 1$): The bound is approximately $e^{-\delta^2\mu/3}$—that's the "squared" version that's easiest to work with
+> - For **large deviations** ($\delta > 1$): The bound becomes roughly $e^{-\delta\mu/3}$—still exponential, just linear in $\delta$ instead of quadratic
+> 
+> **Why split it up?** Because the exact Chernoff bound is $\left(\frac{e^\delta}{(1+\delta)^{1+\delta}}\right)^\mu$, which is messy. When you simplify this for small $\delta$, you get the $\delta^2$ version. For large $\delta$, you get a different simplification.
+> 
+> **In practice:** Most people only care about $\delta \leq 1$ because you're typically looking for modest deviations (like "within 10% or 50%"), not "10× the mean." But mathematically, the bound is valid everywhere—just with different forms.
 
 **Translation:** The probability your sample is off drops *exponentially* fast as you take more samples.
 
@@ -71,15 +100,15 @@ Pick two numbers:
 
 **Using Hoeffding:** Set the bound equal to your confidence level:
 
-$2e^{-2nt^2} = \delta$
+$$2e^{-2nt^2} = \delta$$
 
 Solve for $n$:
 
-$n = \frac{\ln(2/\delta)}{2t^2}$
+$$n = \frac{\ln(2/\delta)}{2t^2}$$
 
 **Example:** For $t = 0.01$ and $\delta = 0.05$:
 
-$n = \frac{\ln(2/0.05)}{2(0.01)^2} = \frac{\ln(40)}{0.0002} = \frac{3.69}{0.0002} \approx 18{,}450$
+$$n = \frac{\ln(2/0.05)}{2(0.01)^2} = \frac{\ln(40)}{0.0002} = \frac{3.69}{0.0002} \approx 18{,}450$$
 
 You need about **18,450 samples** to estimate a rate within 1% with 95% confidence.
 
@@ -105,85 +134,122 @@ The bound guarantees that $P(|\bar{X} - \mu| > 0.01) \leq 0.05$.
 
 ---
 
----
-
 ## Derivation: Where Do These Sample Complexity Formulas Come From?
 
 You might be wondering: "How did we get $n \geq \frac{\ln(2/\delta)}{2t^2}$?" Here's the step-by-step for each pattern.
 
-### Pattern A: Find at least one good item
+### Pattern A: Find at least one good item (Neither bound—basic probability!)
+
+**Which bound?** Actually, this doesn't use Chernoff or Hoeffding! It's just basic probability.
 
 **Setup:** Probability of success per sample is $\epsilon$. After $n$ samples, probability of getting zero successes is:
 
-$P(\text{all fail}) = (1-\epsilon)^n$
+$$P(\text{all fail}) = (1-\epsilon)^n$$
 
 **Goal:** Make this failure probability ≤ $\delta$:
 
-$(1-\epsilon)^n \leq \delta$
+$$(1-\epsilon)^n \leq \delta$$
 
 **Key trick:** Use the approximation $(1-\epsilon)^n \approx e^{-n\epsilon}$ (valid for small $\epsilon$):
 
-$e^{-n\epsilon} \leq \delta$
+$$e^{-n\epsilon} \leq \delta$$
 
 **Solve for $n$:** Take natural log of both sides:
 
-$-n\epsilon \leq \ln(\delta)$
-$n\epsilon \geq -\ln(\delta) = \ln(1/\delta)$
-$n \geq \frac{\ln(1/\delta)}{\epsilon}$
+$$-n\epsilon \leq \ln(\delta)$$
+$$n\epsilon \geq -\ln(\delta) = \ln(1/\delta)$$
+$$n \geq \frac{\ln(1/\delta)}{\epsilon}$$
 
-Done! This is why we only need $O(1/\epsilon)$ samples—no $\epsilon^2$ here.
+Done! This is why we only need $O(1/\epsilon)$ samples—no $\epsilon^2$ here. We're just asking "did we see at least one?" not "how accurate is our estimate?"
 
 ---
 
-### Pattern A (extended): Estimate mean within $\pm t$ (Hoeffding)
+### Pattern A (extended): Estimate mean within $\pm t$ (Uses Hoeffding)
+
+**Which bound?** **Hoeffding's inequality**
 
 **Setup:** Start with Hoeffding's inequality:
 
-$P(|\bar{X} - \mu| > t) \leq 2e^{-2nt^2}$
+$$P(|\bar{X} - \mu| > t) \leq 2e^{-2nt^2}$$
 
 **Goal:** Make this failure probability ≤ $\delta$:
 
-$2e^{-2nt^2} \leq \delta$
+$$2e^{-2nt^2} \leq \delta$$
 
 **Solve for $n$:** 
 
-$e^{-2nt^2} \leq \delta/2$
+$$e^{-2nt^2} \leq \delta/2$$
 
 Take natural log:
 
-$-2nt^2 \leq \ln(\delta/2)$
-$2nt^2 \geq -\ln(\delta/2) = \ln(2/\delta)$
-$n \geq \frac{\ln(2/\delta)}{2t^2}$
+$$-2nt^2 \leq \ln(\delta/2)$$
+$$2nt^2 \geq -\ln(\delta/2) = \ln(2/\delta)$$
+$$n \geq \frac{\ln(2/\delta)}{2t^2}$$
 
 The $t^2$ in the denominator is the key—this is why estimation needs more samples than detection!
 
 ---
 
-### Pattern B & C: Multiple testing with union bound
+### Pattern A (Chernoff version): Estimate Bernoulli mean with relative error
+
+**Which bound?** **Chernoff bound**
+
+**Setup:** For Bernoulli with $X = \sum_{i=1}^n X_i$ and $E[X] = np$ (where $p$ is success probability), Chernoff gives:
+
+$$P(X \geq (1+\delta)np) \leq e^{-\frac{\delta^2 np}{3}}$$
+
+For two-sided (both upper and lower deviation), we get:
+
+$$P(|X - np| > \delta \cdot np) \leq 2e^{-\frac{\delta^2 np}{3}}$$
+
+**Goal:** We want the empirical frequency $\hat{p} = X/n$ to be within relative error $\delta$ of true $p$. Set failure probability ≤ $\delta_{conf}$:
+
+$$2e^{-\frac{\delta^2 np}{3}} \leq \delta_{conf}$$
+
+**Solve for $n$:**
+
+$$e^{-\frac{\delta^2 np}{3}} \leq \frac{\delta_{conf}}{2}$$
+
+Take natural log:
+
+$$-\frac{\delta^2 np}{3} \leq \ln(\delta_{conf}/2)$$
+$$\frac{\delta^2 np}{3} \geq \ln(2/\delta_{conf})$$
+$$n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$$
+
+**Key difference from Hoeffding:** 
+- Chernoff has $p$ in denominator (works better when $p$ is small!)
+- Uses **relative** error $\delta$ (like "within 20%") instead of **absolute** error $t$
+- For small $p$ (rare events), this gives tighter bounds than Hoeffding
+
+---
+
+### Pattern B & C: Multiple testing with union bound (Uses Hoeffding)
+
+**Which bound?** **Hoeffding's inequality + union bound**
 
 **Setup:** We have $M$ different modes/items to test. For each mode $i$, Hoeffding gives:
 
-$P(|\bar{X}_i - \mu_i| > \epsilon) \leq 2e^{-2n\epsilon^2}$
+$$P(|\bar{X}_i - \mu_i| > \epsilon) \leq 2e^{-2n\epsilon^2}$$
 
 **Goal:** We want *all* $M$ estimates to be accurate. The probability that *at least one* fails is:
 
-$P(\text{any fails}) \leq \sum_{i=1}^M P(|\bar{X}_i - \mu_i| > \epsilon) \leq M \cdot 2e^{-2n\epsilon^2}$
+$$P(\text{any fails}) \leq \sum_{i=1}^M P(|\bar{X}_i - \mu_i| > \epsilon) \leq M \cdot 2e^{-2n\epsilon^2}$$
 
 This is the **union bound**—we just added up all individual failure probabilities.
 
 **Set this ≤ $\delta$:**
 
-$M \cdot 2e^{-2n\epsilon^2} \leq \delta$
+$$M \cdot 2e^{-2n\epsilon^2} \leq \delta$$
 
 **Solve for $n$:**
 
-$e^{-2n\epsilon^2} \leq \frac{\delta}{2M}$
+$$e^{-2n\epsilon^2} \leq \frac{\delta}{2M}$$
 
 Take natural log:
 
-$-2n\epsilon^2 \leq \ln\left(\frac{\delta}{2M}\right)$
-$2n\epsilon^2 \geq -\ln\left(\frac{\delta}{2M}\right) = \ln\left(\frac{2M}{\delta}\right)$
-$n \geq \frac{\ln(2M/\delta)}{2\epsilon^2}$
+$$-2n\epsilon^2 \leq \ln\left(\frac{\delta}{2M}\right)$$
+$$2n\epsilon^2 \geq -\ln\left(\frac{\delta}{2M}\right) = \ln\left(\frac{2M}{\delta}\right)$$
+$$n \geq \frac{\ln(2M/\delta)}{2\epsilon^2}$$
 
 Often simplified to $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$ by absorbing the constant 2.
 
@@ -191,15 +257,45 @@ Often simplified to $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$ by absorbing the 
 
 ---
 
+### Pattern B & C (Chernoff version): Multiple Bernoulli tests
+
+**Which bound?** **Chernoff bound + union bound**
+
+**Setup:** For $M$ different Bernoulli modes with probabilities $p_1, \ldots, p_M$. For each mode $i$:
+
+$$P(|\hat{p}_i - p_i| > \delta \cdot p_i) \leq 2e^{-\frac{\delta^2 np_i}{3}}$$
+
+**Union bound over all $M$ modes:**
+
+$$P(\text{any fails}) \leq M \cdot 2e^{-\frac{\delta^2 n p_{min}}{3}}$$
+
+where $p_{min}$ is the smallest probability we care about.
+
+**Set this ≤ $\delta_{conf}$:**
+
+$$M \cdot 2e^{-\frac{\delta^2 n p_{min}}{3}} \leq \delta_{conf}$$
+
+**Solve for $n$:**
+
+$$n \geq \frac{3\ln(2M/\delta_{conf})}{\delta^2 p_{min}}$$
+
+**When Chernoff is better:** If $p_{min}$ is small (say 0.01), Chernoff needs fewer samples than Hoeffding for the same relative accuracy.
+
+---
+
 ### Summary of Derivations
 
-| Pattern | Starting Inequality | Goal | Result |
-|---------|-------------------|------|--------|
-| Find ≥1 item | $(1-\epsilon)^n \approx e^{-n\epsilon}$ | $\leq \delta$ | $n \geq \frac{\ln(1/\delta)}{\epsilon}$ |
-| Estimate mean | $2e^{-2nt^2} \leq \delta$ | Hoeffding bound | $n \geq \frac{\ln(2/\delta)}{2t^2}$ |
-| $M$ items (union) | $M \cdot 2e^{-2n\epsilon^2} \leq \delta$ | Sum over $M$ tests | $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$ |
+| Pattern | Bound Used | Starting Inequality | Result |
+|---------|------------|-------------------|--------|
+| Find ≥1 item | Basic probability | $(1-\epsilon)^n \approx e^{-n\epsilon}$ | $n \geq \frac{\ln(1/\delta)}{\epsilon}$ |
+| Estimate (absolute error) | **Hoeffding** | $2e^{-2nt^2} \leq \delta$ | $n \geq \frac{\ln(2/\delta)}{2t^2}$ |
+| Estimate (relative error) | **Chernoff** | $2e^{-\frac{\delta^2 np}{3}} \leq \delta_{conf}$ | $n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$ |
+| $M$ items (absolute) | **Hoeffding + union** | $M \cdot 2e^{-2n\epsilon^2} \leq \delta$ | $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$ |
+| $M$ items (relative) | **Chernoff + union** | $M \cdot 2e^{-\frac{\delta^2 np}{3}} \leq \delta_{conf}$ | $n \geq \frac{3\ln(2M/\delta_{conf})}{\delta^2 p}$ |
 
 The common thread: **Start with exponential tail bound → Set ≤ $\delta$ → Take log → Solve for $n$**
+
+**Key takeaway:** Hoeffding uses absolute error and works for any bounded variables. Chernoff uses relative error and works specifically for Bernoulli, giving tighter bounds when probabilities are small.
 
 ---
 
@@ -229,7 +325,7 @@ Just **460 samples**! Notice: no $\epsilon^2$, and no dependence on $N$.
 
 **Answer:** Need to account for multiple testing (union bound):
 
-$n \geq \frac{\ln(N/\delta)}{2\epsilon^2}$
+$$n \geq \frac{\ln(N/\delta)}{2\epsilon^2}$$
 
 **Why?** You're now making $N$ different statistical tests. The $\ln N$ appears from the union bound over all tests.
 
@@ -245,7 +341,7 @@ $n \geq \frac{\ln(N/\delta)}{2\epsilon^2}$
 
 **Example:** Testing $N = 10{,}000$ items, want 99% confidence overall ($\delta = 0.01$), tolerance $\epsilon = 0.05$:
 
-$n = \frac{\ln(10000/0.01)}{2(0.05)^2} = \frac{\ln(10^6)}{0.005} = \frac{13.8}{0.005} \approx 2{,}760$
+$$n = \frac{\ln(10000/0.01)}{2(0.05)^2} = \frac{\ln(10^6)}{0.005} = \frac{13.8}{0.005} \approx 2{,}760$$
 
 Need **2,760 samples per item**. Notice: $\ln N$ grows slowly (doubling $N$ only adds $\ln 2 \approx 0.7$ to the log).
 
@@ -257,7 +353,7 @@ Need **2,760 samples per item**. Notice: $\ln N$ grows slowly (doubling $N$ only
 
 **Answer:** Yes! That's the power of these bounds.
 
-$n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$
+$$n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$$
 
 > **The magic of "sample once, know forever":**
 > 
@@ -275,7 +371,7 @@ $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$
 > 
 > **Example:** 1 million possible modes, want to find all modes with frequency ≥ 0.01, with 95% confidence ($\delta = 0.05$):
 > 
-> $n \approx \frac{\ln(10^6/0.05)}{2(0.01)^2} \approx \frac{17}{0.0002} \approx 85{,}000 \text{ samples}$
+> $$n \approx \frac{\ln(10^6/0.05)}{2(0.01)^2} \approx \frac{17}{0.0002} \approx 85{,}000 \text{ samples}$$
 > 
 > That's it! **85k samples to characterize all 1 million modes.** Sample once, know forever (assuming the distribution doesn't change).
 > 
@@ -290,29 +386,6 @@ The key insight is **exponential concentration**. When you have independent samp
 This is *way* faster than linear! Even if you have a billion items ($N = 10^9$), you only need $\sim \ln(10^9) \approx 21$ in the exponent. That's why sampling beats exhaustive search.
 
 **Intuition:** Imagine flipping a coin 1000 times. You expect about 500 heads. What's the chance you get 600? It's astronomically small—like $10^{-20}$. That's concentration at work.
-
----
-
-## Quick Reference Table
-
-| **Goal** | **Formula** | **Key** | **Best for** |
-|----------|-------------|---------|--------------|
-| Estimate mean within $\pm t$ (Hoeffding) | $n \geq \frac{\ln(2/\delta)}{2t^2}$ | Need $t^2$ for accuracy | Any bounded variables |
-| Estimate mean (Chernoff, relative error) | $n \geq \frac{3\ln(1/\delta)}{\delta^2 p}$ | Tighter for small $p$ | Rare events (Bernoulli) |
-| Find $\geq 1$ good item | $n \geq \frac{\ln(1/\delta)}{\epsilon}$ | Just need $\epsilon$, much easier | Detection problems |
-| Test $N$ items, no false alarms | $n \geq \frac{\ln(N/\delta)}{2\epsilon^2}$ | Union bound adds $\ln N$ | Multiple testing |
-
----
-
-## Common Gotchas
-
-1. **Independence matters**: If your samples aren't independent, all bets are off
-2. **The $t^2$ hurts**: To halve your error, you need 4× the samples
-3. **Bounded range**: Hoeffding assumes values in $[a,b]$. If not, rescale first
-4. **One-sided vs two-sided**: The formula above is two-sided ($|\bar{X} - \mu| > t$). For one-sided (just $\bar{X} > \mu + t$), drop the factor of 2
-5. **Chernoff vs Hoeffding choice**: 
-   - Use **Chernoff** when you have Bernoulli variables and small probabilities (gives tighter bounds)
-   - Use **Hoeffding** when you have general bounded variables or don't know the distribution well (more robust)
 
 ---
 
@@ -350,8 +423,8 @@ Say you're estimating a click-through rate of 2% (p = 0.02):
 - Need $n \approx \frac{\ln(2/\delta)}{2(0.01)^2} \approx 18{,}000$ samples
 
 **Chernoff approach:** "I want my estimate within 50% relative error" (so between 1% and 3%)
-- Here $\delta = 0.5$, $\mu = 0.02n$
-- Need $n \approx \frac{3\ln(1/\delta)}{\delta^2 \mu} = \frac{3\ln(1/\delta)}{0.25 \times 0.02} \approx$ fewer samples
+- Here $\delta = 0.5$, $p = 0.02$
+- Need $n \approx \frac{3\ln(2/\delta_{conf})}{\delta^2 p} = \frac{3\ln(40)}{0.25 \times 0.02} \approx 2{,}200$ samples
 
 For rare events, Chernoff's relative error formulation often needs **fewer samples** than Hoeffding's absolute error.
 
@@ -362,6 +435,29 @@ For rare events, Chernoff's relative error formulation often needs **fewer sampl
 - **General bounded data or don't know the distribution?** → Use **Hoeffding**
 - **Binary data with small probabilities?** → Use **Chernoff** (you'll get tighter bounds)
 - **Binary data with probabilities near 0.5?** → Both work similarly, use **Hoeffding** (simpler)
+
+---
+
+## Quick Reference Table
+
+| **Goal** | **Formula** | **Key** | **Best for** |
+|----------|-------------|---------|--------------|
+| Estimate mean within $\pm t$ (Hoeffding) | $n \geq \frac{\ln(2/\delta)}{2t^2}$ | Need $t^2$ for accuracy | Any bounded variables |
+| Estimate mean (Chernoff, relative error) | $n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$ | Tighter for small $p$ | Rare events (Bernoulli) |
+| Find $\geq 1$ good item | $n \geq \frac{\ln(1/\delta)}{\epsilon}$ | Just need $\epsilon$, much easier | Detection problems |
+| Test $M$ items, no false alarms | $n \geq \frac{\ln(M/\delta)}{2\epsilon^2}$ | Union bound adds $\ln M$ | Multiple testing |
+
+---
+
+## Common Gotchas
+
+1. **Independence matters**: If your samples aren't independent, all bets are off
+2. **The $t^2$ hurts**: To halve your error, you need 4× the samples
+3. **Bounded range**: Hoeffding assumes values in $[a,b]$. If not, rescale first
+4. **One-sided vs two-sided**: The formula above is two-sided ($|\bar{X} - \mu| > t$). For one-sided (just $\bar{X} > \mu + t$), drop the factor of 2
+5. **Chernoff vs Hoeffding choice**: 
+   - Use **Chernoff** when you have Bernoulli variables and small probabilities (gives tighter bounds)
+   - Use **Hoeffding** when you have general bounded variables or don't know the distribution well (more robust)
 
 ---
 
