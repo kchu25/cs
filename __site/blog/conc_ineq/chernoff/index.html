@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Step-by-Step Guide: Using Chernoff Bounds</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="step-by-step_guide_using_chernoff_bounds"><a href="#step-by-step_guide_using_chernoff_bounds" class="header-anchor">Step-by-Step Guide: Using Chernoff Bounds</a></h1>
+<h2 id="whats_the_difference_chernoff_vs_hoeffding"><a href="#whats_the_difference_chernoff_vs_hoeffding" class="header-anchor">What&#39;s the difference: Chernoff vs Hoeffding?</a></h2>
+<p><strong>The short answer:</strong> They&#39;re both concentration inequalities, but:</p>
+<ul>
+<li><p><strong>Chernoff bound</strong>: Specifically for <strong>Bernoulli</strong> random variables &#40;0/1, like coin flips&#41;, gives bounds using KL-divergence. Tighter when probabilities are small.</p>
+</li>
+<li><p><strong>Hoeffding bound</strong>: Works for <strong>any bounded</strong> random variables &#40;e.g., values in \([a,b]\)&#41;, uses simpler quadratic form. More general but sometimes looser.</p>
+</li>
+</ul>
+<p><strong>In practice:</strong> People often say &quot;Chernoff bound&quot; colloquially to mean either one, since they&#39;re both exponential tail bounds derived using similar techniques &#40;moment generating functions&#41;. The page you linked uses them somewhat interchangeably.</p>
+<h2 id="what_is_it"><a href="#what_is_it" class="header-anchor">What is it?</a></h2>
+<p>These bounds tell you: <strong>&quot;If you sample from a random process, how likely is your average to be far from the true mean?&quot;</strong></p>
+<p>Think of it as your statistical safety net when you can&#39;t check everything.</p>
+<hr />
+<h2 id="the_core_formulas"><a href="#the_core_formulas" class="header-anchor">The Core Formulas</a></h2>
+<h3 id="hoeffdings_inequality_general_bounded_case"><a href="#hoeffdings_inequality_general_bounded_case" class="header-anchor">Hoeffding&#39;s Inequality &#40;General Bounded Case&#41;</a></h3>
+<p>If you have \(n\) independent samples \(X_1, \ldots, X_n\) where each \(X_i \in [a,b]\), and you compute their average \(\bar{X} = \frac{1}{n}\sum X_i\), then:</p>
+\(P(|\bar{X} - \mu| > t) \leq 2e^{-\frac{2nt^2}{(b-a)^2}}\)
+<p>where \(\mu = E[\bar{X}]\) is the true mean, and \(t\) is your &quot;tolerance&quot; for error.</p>
+<p><strong>Special case:</strong> When \(X_i \in [0,1]\), this simplifies to \(2e^{-2nt^2}\).</p>
+<h3 id="chernoff_bound_bernoulli_case"><a href="#chernoff_bound_bernoulli_case" class="header-anchor">Chernoff Bound &#40;Bernoulli Case&#41;</a></h3>
+<p>For Bernoulli variables &#40;coin flips&#41; with \(X = \sum_{i=1}^n X_i\) where \(E[X] = \mu\):</p>
+\(P(X \geq (1+\delta)\mu) \leq e^{-\frac{\delta^2 \mu}{3}} \quad \text{for } 0 < \delta < 1\)
+<p>This is <strong>tighter</strong> when \(\mu\) is small &#40;rare events&#41;. Uses relative deviation \((1+\delta)\) rather than absolute deviation.</p>
+<p><strong>Translation:</strong> The probability your sample is off drops <em>exponentially</em> fast as you take more samples.</p>
+<hr />
+<h2 id="step-by-step_how_to_use_it"><a href="#step-by-step_how_to_use_it" class="header-anchor">Step-by-Step: How to Use It</a></h2>
+<h3 id="step_1_figure_out_what_youre_measuring"><a href="#step_1_figure_out_what_youre_measuring" class="header-anchor">Step 1: Figure out what you&#39;re measuring</a></h3>
+<p>Ask yourself:</p>
+<ul>
+<li><p>What&#39;s my random variable? &#40;coin flips? click-through rates? test scores?&#41;</p>
+</li>
+<li><p>What&#39;s the true mean \(\mu\) I&#39;m trying to estimate?</p>
+</li>
+<li><p>Each sample should be independent and bounded &#40;usually between 0 and 1&#41;</p>
+</li>
+</ul>
+<p><strong>Example:</strong> You&#39;re A/B testing a website. Each visitor either clicks &#40;1&#41; or doesn&#39;t &#40;0&#41;. True click rate is \(\mu = 0.05\) &#40;5&#37;&#41;.</p>
+<hr />
+<h3 id="step_2_decide_your_tolerance_and_confidence"><a href="#step_2_decide_your_tolerance_and_confidence" class="header-anchor">Step 2: Decide your tolerance and confidence</a></h3>
+<p>Pick two numbers:</p>
+<ul>
+<li><p><strong>Tolerance \(t\):</strong> How accurate do you want to be? </p>
+<ul>
+<li><p>E.g., &quot;I want my estimate within 1&#37; of the true value&quot; → \(t = 0.01\)</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Confidence \(\delta\):</strong> How sure do you want to be?</p>
+<ul>
+<li><p>E.g., &quot;I want to be 95&#37; confident&quot; → \(\delta = 0.05\) &#40;failure probability&#41;</p>
+</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h3 id="step_3_solve_for_sample_size_n"><a href="#step_3_solve_for_sample_size_n" class="header-anchor">Step 3: Solve for sample size \(n\)</a></h3>
+<p><strong>Using Hoeffding:</strong> Set the bound equal to your confidence level:</p>
+\(2e^{-2nt^2} = \delta\)
+<p>Solve for \(n\):</p>
+\(n = \frac{\ln(2/\delta)}{2t^2}\)
+<p><strong>Example:</strong> For \(t = 0.01\) and \(\delta = 0.05\):</p>
+\(n = \frac{\ln(2/0.05)}{2(0.01)^2} = \frac{\ln(40)}{0.0002} = \frac{3.69}{0.0002} \approx 18{,}450\)
+<p>You need about <strong>18,450 samples</strong> to estimate a rate within 1&#37; with 95&#37; confidence.</p>
+<p><strong>When to use Chernoff instead:</strong> If you know your random variables are Bernoulli &#40;0/1&#41; and the probability \(p\) is small, use the Chernoff bound with relative error. It&#39;ll give you tighter &#40;fewer samples needed&#41; results.</p>
+<hr />
+<h3 id="step_4_collect_your_samples"><a href="#step_4_collect_your_samples" class="header-anchor">Step 4: Collect your samples</a></h3>
+<p>Run your experiment and collect \(n\) independent samples. Compute the average:</p>
+\[\bar{X} = \frac{1}{n}\sum_{i=1}^n X_i\]
+<p><strong>Example:</strong> After 18,450 visitors, 932 clicked. Your estimate: \(\bar{X} = 932/18450 \approx 0.0505\) &#40;5.05&#37;&#41;.</p>
+<hr />
+<h3 id="step_5_report_with_confidence"><a href="#step_5_report_with_confidence" class="header-anchor">Step 5: Report with confidence</a></h3>
+<p>You can now say: <strong>&quot;With 95&#37; confidence, the true click rate is between 4.05&#37; and 6.05&#37;&quot;</strong></p>
+<p>The bound guarantees that \(P(|\bar{X} - \mu| > 0.01) \leq 0.05\).</p>
+<hr />
+<h2 id="two_common_patterns"><a href="#two_common_patterns" class="header-anchor">Two Common Patterns</a></h2>
+<h3 id="pattern_a_find_at_least_one_good_thing"><a href="#pattern_a_find_at_least_one_good_thing" class="header-anchor">Pattern A: &quot;Find at least one good thing&quot;</a></h3>
+<p><strong>Question:</strong> You have a pile of \(N\) items, \(\epsilon\) fraction are good. How many samples to find <em>one</em> good item?</p>
+<p><strong>Answer:</strong> Much easier&#33; You only need:</p>
+\[n \geq \frac{\ln(1/\delta)}{\epsilon}\]
+<p><strong>Why?</strong> You&#39;re not estimating a frequency—you just need \(X \geq 1\). Probability of missing all: \((1-\epsilon)^n \approx e^{-n\epsilon}\). Set this equal to \(\delta\) and solve.</p>
+<p><strong>Example:</strong> If 1&#37; are good &#40;\(\epsilon = 0.01\)&#41; and you want 99&#37; confidence &#40;\(\delta = 0.01\)&#41;:</p>
+\[n = \frac{\ln(100)}{0.01} = \frac{4.6}{0.01} = 460\]
+<p>Just <strong>460 samples</strong>&#33; Notice: no \(\epsilon^2\), and no dependence on \(N\).</p>
+<hr />
+<h3 id="pattern_b_avoid_false_alarms_across_many_items"><a href="#pattern_b_avoid_false_alarms_across_many_items" class="header-anchor">Pattern B: &quot;Avoid false alarms across many items&quot;</a></h3>
+<p><strong>Question:</strong> You&#39;re testing \(N\) different hypotheses. How many samples per item to avoid false positives?</p>
+<p><strong>Answer:</strong> Need to account for multiple testing &#40;union bound&#41;:</p>
+\[n \geq \frac{\ln(N/\delta)}{2\epsilon^2}\]
+<p><strong>Why?</strong> You&#39;re now making \(N\) different statistical tests. The \(\ln N\) appears from the union bound over all tests.</p>
+<p><strong>Example:</strong> Testing \(N = 10{,}000\) items, want 99&#37; confidence overall &#40;\(\delta = 0.01\)&#41;, tolerance \(\epsilon = 0.05\):</p>
+\[n = \frac{\ln(10000/0.01)}{2(0.05)^2} = \frac{\ln(10^6)}{0.005} = \frac{13.8}{0.005} \approx 2{,}760\]
+<p>Need <strong>2,760 samples per item</strong>. Notice: \(\ln N\) grows slowly &#40;doubling \(N\) only adds \(\ln 2 \approx 0.7\) to the log&#41;.</p>
+<hr />
+<h2 id="the_magic_why_this_works"><a href="#the_magic_why_this_works" class="header-anchor">The Magic: Why This Works</a></h2>
+<p>The key insight is <strong>exponential concentration</strong>. When you have independent samples, the probability of being far from the mean drops like \(e^{-n}\). </p>
+<p>This is <em>way</em> faster than linear&#33; Even if you have a billion items &#40;\(N = 10^9\)&#41;, you only need \(\sim \ln(10^9) \approx 21\) in the exponent. That&#39;s why sampling beats exhaustive search.</p>
+<p><strong>Intuition:</strong> Imagine flipping a coin 1000 times. You expect about 500 heads. What&#39;s the chance you get 600? It&#39;s astronomically small—like \(10^{-20}\). That&#39;s concentration at work.</p>
+<hr />
+<h2 id="quick_reference_table"><a href="#quick_reference_table" class="header-anchor">Quick Reference Table</a></h2>
+<table><tr><th align="right"><strong>Goal</strong></th><th align="right"><strong>Formula</strong></th><th align="right"><strong>Key</strong></th><th align="right"><strong>Best for</strong></th></tr><tr><td align="right">Estimate mean within \(\pm t\) &#40;Hoeffding&#41;</td><td align="right">\(n \geq \frac{\ln(2/\delta)}{2t^2}\)</td><td align="right">Need \(t^2\) for accuracy</td><td align="right">Any bounded variables</td></tr><tr><td align="right">Estimate mean &#40;Chernoff, relative error&#41;</td><td align="right">\(n \geq \frac{3\ln(1/\delta)}{\delta^2 p}\)</td><td align="right">Tighter for small \(p\)</td><td align="right">Rare events &#40;Bernoulli&#41;</td></tr><tr><td align="right">Find \(\geq 1\) good item</td><td align="right">\(n \geq \frac{\ln(1/\delta)}{\epsilon}\)</td><td align="right">Just need \(\epsilon\), much easier</td><td align="right">Detection problems</td></tr><tr><td align="right">Test \(N\) items, no false alarms</td><td align="right">\(n \geq \frac{\ln(N/\delta)}{2\epsilon^2}\)</td><td align="right">Union bound adds \(\ln N\)</td><td align="right">Multiple testing</td></tr></table>
+<hr />
+<h2 id="common_gotchas"><a href="#common_gotchas" class="header-anchor">Common Gotchas</a></h2>
+<ol>
+<li><p><strong>Independence matters</strong>: If your samples aren&#39;t independent, all bets are off</p>
+</li>
+<li><p><strong>The \(t^2\) hurts</strong>: To halve your error, you need 4× the samples</p>
+</li>
+<li><p><strong>Bounded range</strong>: Hoeffding assumes values in \([a,b]\). If not, rescale first</p>
+</li>
+<li><p><strong>One-sided vs two-sided</strong>: The formula above is two-sided &#40;\(|\bar{X} - \mu| > t\)&#41;. For one-sided &#40;just \(\bar{X} > \mu + t\)&#41;, drop the factor of 2</p>
+</li>
+<li><p><strong>Chernoff vs Hoeffding choice</strong>: </p>
+<ul>
+<li><p>Use <strong>Chernoff</strong> when you have Bernoulli variables and small probabilities &#40;gives tighter bounds&#41;</p>
+</li>
+<li><p>Use <strong>Hoeffding</strong> when you have general bounded variables or don&#39;t know the distribution well &#40;more robust&#41;</p>
+</li>
+</ul>
+</li>
+</ol>
+<hr />
+<h2 id="when_should_i_use_hoeffding_vs_chernoff"><a href="#when_should_i_use_hoeffding_vs_chernoff" class="header-anchor">When Should I Use Hoeffding vs Chernoff?</a></h2>
+<p>Here&#39;s a practical decision tree:</p>
+<h3 id="use_hoeffding_when"><a href="#use_hoeffding_when" class="header-anchor">Use <strong>Hoeffding</strong> when:</a></h3>
+<ul>
+<li><p>✅ Your data can take <strong>any values</strong> in a range &#40;not just 0/1&#41;</p>
+<ul>
+<li><p><em>Example: Survey responses on a 1-10 scale, test scores, temperatures</em></p>
+</li>
+</ul>
+</li>
+<li><p>✅ You want to think in terms of <strong>absolute error</strong> &#40;&quot;within ±0.05&quot;&#41;</p>
+</li>
+<li><p>✅ You want <strong>one formula that works everywhere</strong> &#40;simpler, more robust&#41;</p>
+</li>
+<li><p>✅ You&#39;re not sure about the underlying distribution</p>
+</li>
+</ul>
+<p><strong>Hoeffding is the &quot;safe default&quot;</strong>—it always works for bounded variables.</p>
+<hr />
+<h3 id="use_chernoff_when"><a href="#use_chernoff_when" class="header-anchor">Use <strong>Chernoff</strong> when:</a></h3>
+<ul>
+<li><p>✅ Your data is <strong>binary</strong> &#40;0/1, success/failure, clicked/didn&#39;t click&#41;</p>
+</li>
+<li><p>✅ The probability of success is <strong>small</strong> &#40;\(p \ll 0.5\)&#41;</p>
+<ul>
+<li><p><em>Example: Rare disease detection, click-through rates, defect rates</em></p>
+</li>
+</ul>
+</li>
+<li><p>✅ You want to think in terms of <strong>relative error</strong> &#40;&quot;within 20&#37; of the true rate&quot;&#41;</p>
+</li>
+<li><p>✅ You want the <strong>tightest possible bound</strong> for your specific case</p>
+</li>
+</ul>
+<p><strong>Chernoff gives you extra juice when dealing with rare events.</strong></p>
+<hr />
+<h3 id="quick_example"><a href="#quick_example" class="header-anchor">Quick Example</a></h3>
+<p>Say you&#39;re estimating a click-through rate of 2&#37; &#40;p &#61; 0.02&#41;:</p>
+<p><strong>Hoeffding approach:</strong> &quot;I want my estimate within ±0.01 &#40;absolute&#41;&quot;</p>
+<ul>
+<li><p>Need \(n \approx \frac{\ln(2/\delta)}{2(0.01)^2} \approx 18{,}000\) samples</p>
+</li>
+</ul>
+<p><strong>Chernoff approach:</strong> &quot;I want my estimate within 50&#37; relative error&quot; &#40;so between 1&#37; and 3&#37;&#41;</p>
+<ul>
+<li><p>Here \(\delta = 0.5\), \(\mu = 0.02n\)</p>
+</li>
+<li><p>Need \(n \approx \frac{3\ln(1/\delta)}{\delta^2 \mu} = \frac{3\ln(1/\delta)}{0.25 \times 0.02} \approx\) fewer samples</p>
+</li>
+</ul>
+<p>For rare events, Chernoff&#39;s relative error formulation often needs <strong>fewer samples</strong> than Hoeffding&#39;s absolute error.</p>
+<hr />
+<h3 id="the_rule_of_thumb"><a href="#the_rule_of_thumb" class="header-anchor">The Rule of Thumb</a></h3>
+<ul>
+<li><p><strong>General bounded data or don&#39;t know the distribution?</strong> → Use <strong>Hoeffding</strong></p>
+</li>
+<li><p><strong>Binary data with small probabilities?</strong> → Use <strong>Chernoff</strong> &#40;you&#39;ll get tighter bounds&#41;</p>
+</li>
+<li><p><strong>Binary data with probabilities near 0.5?</strong> → Both work similarly, use <strong>Hoeffding</strong> &#40;simpler&#41;</p>
+</li>
+</ul>
+<hr />
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>Chernoff/Hoeffding bounds are your tool for answering: <strong>&quot;How many samples do I need to be confident?&quot;</strong></p>
+<p>The answer is usually <strong>surprisingly small</strong>—often logarithmic in the problem size—because of exponential concentration. That&#39;s what makes modern data science and machine learning possible: you don&#39;t need to see everything, just enough to be statistically confident.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 03, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>
