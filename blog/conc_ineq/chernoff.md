@@ -429,18 +429,29 @@ Here's a practical decision tree:
 
 ---
 
-### Quick Example
+### Quick Example: How Much Tighter is Chernoff?
 
 Say you're estimating a click-through rate of 2% (p = 0.02):
 
 **Hoeffding approach:** "I want my estimate within ±0.01 (absolute)"
-- Need $n \approx \frac{\ln(2/\delta)}{2(0.01)^2} \approx 18{,}000$ samples
+- Need $n \approx \frac{\ln(2/\delta)}{2(0.01)^2} = \frac{\ln(40)}{0.0002} \approx 18{,}450$ samples
 
 **Chernoff approach:** "I want my estimate within 50% relative error" (so between 1% and 3%)
-- Here $\delta = 0.5$, $p = 0.02$
-- Need $n \approx \frac{3\ln(2/\delta_{conf})}{\delta^2 p} = \frac{3\ln(40)}{0.25 \times 0.02} \approx 2{,}200$ samples
+- Here $\delta = 0.5$ (relative error), $p = 0.02$, $\delta_{conf} = 0.05$
+- Need $n \approx \frac{3\ln(2/0.05)}{(0.5)^2 \times 0.02} = \frac{3 \times 3.69}{0.005} \approx 2{,}214$ samples
 
-For rare events, Chernoff's relative error formulation often needs **fewer samples** than Hoeffding's absolute error.
+**Result:** Chernoff needs **2,214 samples** vs Hoeffding's **18,450 samples**—that's **8.3× fewer samples!** 
+
+> **Why such a huge difference?**
+>
+> - Hoeffding: $n \propto \frac{1}{t^2}$ where $t = 0.01$ (absolute tolerance)
+> - Chernoff: $n \propto \frac{1}{\delta^2 p}$ where $\delta = 0.5$, $p = 0.02$
+>
+> **The key:** Chernoff has that $p$ in the denominator. When $p$ is small (rare events), the sample complexity goes *down*. Hoeffding doesn't know about $p$, so it has to be conservative for all possible probabilities.
+>
+> **The tradeoff:** Chernoff requires you to think in relative terms ("within 50% of truth") and you need to know roughly what $p$ is beforehand. Hoeffding just asks for absolute accuracy, no prior knowledge needed.
+>
+> **Bottom line:** For rare events ($p < 0.1$), Chernoff can be **5-10× more sample-efficient** than Hoeffding!
 
 ---
 
