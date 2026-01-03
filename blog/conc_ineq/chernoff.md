@@ -210,30 +210,57 @@ The $t^2$ in the denominator is the key—this is why estimation needs more samp
 
 **Setup:** For Bernoulli with $X = \sum_{i=1}^n X_i$ and $E[X] = np$ (where $p$ is success probability), Chernoff gives:
 
-$$P(X \geq (1+\delta)np) \leq e^{-\frac{\delta^2 np}{3}}$$
+$P(X \geq (1+\delta)np) \leq e^{-\frac{\delta^2 np}{3}}$
 
 For two-sided (both upper and lower deviation), we get:
 
-$$P(|X - np| > \delta \cdot np) \leq 2e^{-\frac{\delta^2 np}{3}}$$
+$P(|X - np| > \delta \cdot np) \leq 2e^{-\frac{\delta^2 np}{3}}$
 
 **Goal:** We want the empirical frequency $\hat{p} = X/n$ to be within relative error $\delta$ of true $p$. Set failure probability ≤ $\delta_{conf}$:
 
-$$2e^{-\frac{\delta^2 np}{3}} \leq \delta_{conf}$$
+$2e^{-\frac{\delta^2 np}{3}} \leq \delta_{conf}$
 
 **Solve for $n$:**
 
-$$e^{-\frac{\delta^2 np}{3}} \leq \frac{\delta_{conf}}{2}$$
+$e^{-\frac{\delta^2 np}{3}} \leq \frac{\delta_{conf}}{2}$
 
 Take natural log:
 
-$$-\frac{\delta^2 np}{3} \leq \ln(\delta_{conf}/2)$$
-$$\frac{\delta^2 np}{3} \geq \ln(2/\delta_{conf})$$
-$$n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$$
+$-\frac{\delta^2 np}{3} \leq \ln(\delta_{conf}/2)$
+$\frac{\delta^2 np}{3} \geq \ln(2/\delta_{conf})$
+$n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$
 
 **Key difference from Hoeffding:** 
 - Chernoff has $p$ in denominator (works better when $p$ is small!)
 - Uses **relative** error $\delta$ (like "within 20%") instead of **absolute** error $t$
 - For small $p$ (rare events), this gives tighter bounds than Hoeffding
+
+---
+
+### Theorem Template: Pattern A (Chernoff)
+
+> **Theorem (Bernoulli Frequency Estimation - Chernoff Bound)**
+>
+> Let $X_1, \ldots, X_n$ be i.i.d. Bernoulli random variables with success probability $p$. Define the empirical frequency $\hat{p} = \frac{1}{n}\sum_{i=1}^n X_i$.
+>
+> **Given:**
+> - Target probability $p$ (or lower bound $p_{min}$ if unknown)
+> - Relative error tolerance $\delta \in (0, 1]$ (e.g., $\delta = 0.2$ for 20% relative error)
+> - Confidence level $1 - \delta_{conf}$ (e.g., $\delta_{conf} = 0.05$ for 95% confidence)
+>
+> **Guarantee:** If we take
+>
+> $n \geq \frac{3\ln(2/\delta_{conf})}{\delta^2 p}$
+>
+> samples, then with probability at least $1 - \delta_{conf}$:
+>
+> $|\hat{p} - p| \leq \delta \cdot p$
+>
+> **In words:** Our estimate $\hat{p}$ is within $\delta$ *relative* to the true probability $p$.
+>
+> **Example:** For $p = 0.02$, $\delta = 0.5$ (50% relative error), $\delta_{conf} = 0.05$ (95% confidence):
+> - Sample size: $n \geq \frac{3\ln(40)}{0.25 \times 0.02} \approx 2{,}214$
+> - Guarantee: With 95% confidence, $\hat{p} \in [0.01, 0.03]$ (i.e., between 1% and 3%)
 
 ---
 
