@@ -152,7 +152,21 @@ $$(1-\epsilon)^n \leq \delta$$
 
 **Key trick:** Use the approximation $(1-\epsilon)^n \approx e^{-n\epsilon}$ (valid for small $\epsilon$):
 
-$$e^{-n\epsilon} \leq \delta$$
+$e^{-n\epsilon} \leq \delta$
+
+> **Why is $(1-\epsilon)^n \leq e^{-n\epsilon}$?**
+> 
+> This is actually an inequality, not just an approximation, and **yes, convexity is involved!**
+> 
+> **The key inequality:** $1 - x \leq e^{-x}$ for all $x \geq 0$
+> 
+> You can see this by looking at the functions: $e^{-x}$ curves upward (convex), while $1-x$ is a straight line. The exponential always stays above the line.
+> 
+> **Apply it $n$ times:** If $1 - \epsilon \leq e^{-\epsilon}$, then raising both sides to the $n$-th power:
+> 
+> $(1-\epsilon)^n \leq (e^{-\epsilon})^n = e^{-n\epsilon}$
+> 
+> **Practically:** For small $\epsilon$, they're nearly equal. For example, $(1-0.01)^{100} = 0.366$ while $e^{-1} = 0.368$. But mathematically, we use the inequality $(1-\epsilon)^n \leq e^{-n\epsilon}$ to get our bound, and this holds for any $\epsilon \in [0,1]$.
 
 **Solve for $n$:** Take natural log of both sides:
 
