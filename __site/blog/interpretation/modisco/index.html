@@ -98,7 +98,7 @@ Window &#91;6-10&#93; sum: |0.6| &#43; |0.5| &#43; |0.3| &#43; |0.1| &#43; |0.0|
 <h3 id="step_4_the_clustering_magic_this_is_the_interesting_part"><a href="#step_4_the_clustering_magic_this_is_the_interesting_part" class="header-anchor">Step 4: The Clustering Magic &#40;This is the interesting part&#33;&#41;</a></h3>
 <p>Now TF-MoDISco clusters seqlets that have similar contribution patterns. This is NOT just sequence similarity—two seqlets with the same sequence can be in different clusters if their contribution patterns differ&#33;</p>
 <p><strong>The similarity metric:</strong> TF-MoDISco uses a correlation-based similarity between seqlet contribution profiles:</p>
-\[\text{sim}(s_1, s_2) = \max_{\text{offset}} \text{corr}(\text{contrib}_{s_1}, \text{contrib}_{s_2}[\text{offset}])\]
+\[\mathrm{ sim}(s_1, s_2) = \max_{\mathrm{ offset}} \mathrm{ corr}(\mathrm{ contrib}_{s_1}, \mathrm{ contrib}_{s_2}[\mathrm{ offset}])\]
 <p>It also considers the reverse complement, so &quot;GATAAG&quot; and &quot;CTTATC&quot; can cluster together.</p>
 <p><strong>The clustering algorithm:</strong></p>
 <ul>
@@ -187,7 +187,7 @@ C:          0.0  0.0  1.0  0.0  0.0</code></pre>
 <p>Let&#39;s be precise about what a CWM &#40;Contribution Weight Matrix&#41; is and isn&#39;t.</p>
 <h3 id="mathematically"><a href="#mathematically" class="header-anchor">Mathematically</a></h3>
 <p>For a motif cluster with \(N\) seqlets, each of length \(L\), the CWM at position \(j\) for nucleotide \(b\) is:</p>
-\[\text{CWM}_{j,b} = \frac{1}{N_b} \sum_{i: s_i[j] = b} c_i[j]\]
+\[\mathrm{ CWM}_{j,b} = \frac{1}{N_b} \sum_{i: s_i[j] = b} c_i[j]\]
 <p>where:</p>
 <ul>
 <li><p>\(s_i[j]\) is the nucleotide at position \(j\) of seqlet \(i\)</p>

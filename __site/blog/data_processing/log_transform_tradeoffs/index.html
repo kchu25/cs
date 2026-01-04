@@ -93,9 +93,9 @@ This is 70x smaller&#33;</code></pre>
 <p>Your model sees the tiny error near zero as <strong>70 times more important</strong> than a similar absolute error at large values. During training, it will obsess over getting those tiny values &quot;right&quot; and may sacrifice accuracy on large values.</p>
 <h2 id="the_sensitivity_ratio"><a href="#the_sensitivity_ratio" class="header-anchor">The Sensitivity Ratio</a></h2>
 <p>Let&#39;s formalize this. Define the <strong>sensitivity ratio</strong> as how much more sensitive the transform is at small values vs. large values:</p>
-\[\text{Sensitivity Ratio} = \frac{|\frac{d}{dy}f(y)|_{y=small}}{|\frac{d}{dy}f(y)|_{y=large}}\]
+\[\mathrm{ Sensitivity Ratio} = \frac{|\frac{d}{dy}f(y)|_{y=small}}{|\frac{d}{dy}f(y)|_{y=large}}\]
 <p>For \(\log(y)\):</p>
-\[\text{Ratio} = \frac{1/0.1}{1/50} = \frac{10}{0.02} = 500\times\]
+\[\mathrm{ Ratio} = \frac{1/0.1}{1/50} = \frac{10}{0.02} = 500\times\]
 <p><strong>The model is 500x more sensitive to changes at 0.1 than at 50&#33;</strong></p>
 <p>This is why log transforms make your model super accurate on small values but can hurt performance on large values, even though the multiplicative property should help large values. The gradient dynamics dominate during training.</p>
 <h2 id="solutions_controlling_the_sensitivity_profile"><a href="#solutions_controlling_the_sensitivity_profile" class="header-anchor">Solutions: Controlling the Sensitivity Profile</a></h2>
@@ -109,24 +109,24 @@ This is 70x smaller&#33;</code></pre>
 <p><strong>The gradient behavior:</strong> With \(\log(y+100)\), the model treats errors at y&#61;0.1 only 1.5x more importantly than errors at y&#61;50. Much more balanced&#33;</p>
 <p><strong>Trade-off:</strong> You lose some of the logarithmic compression for large values. But if you care about large values, that&#39;s actually good&#33;</p>
 <h3 id="solution_2_arcsinh_transform"><a href="#solution_2_arcsinh_transform" class="header-anchor">Solution 2: arcsinh Transform</a></h3>
-<p>The inverse hyperbolic sine: \(\text{arcsinh}(y) = \log(y + \sqrt{y^2 + 1})\)</p>
+<p>The inverse hyperbolic sine: \(\mathrm{ arcsinh}(y) = \log(y + \sqrt{y^2 + 1})\)</p>
 <p>The derivative is:</p>
-\[\frac{d}{dy}\text{arcsinh}(y) = \frac{1}{\sqrt{y^2 + 1}}\]
+\[\frac{d}{dy}\mathrm{ arcsinh}(y) = \frac{1}{\sqrt{y^2 + 1}}\]
 <p>Near zero: \(\sqrt{0^2 + 1} = 1\), so derivative ≈ 1 For large y: \(\sqrt{y^2 + 1} \approx y\), so derivative ≈ \(\frac{1}{y}\) &#40;like log&#33;&#41;</p>
-<table><tr><th align="right">y value</th><th align="right">\(\text{arcsinh}(y)\)</th><th align="right">Derivative</th><th align="right">Log derivative &#40;for comparison&#41;</th></tr><tr><td align="right">0.01</td><td align="right">0.0100</td><td align="right">1.000</td><td align="right">100</td></tr><tr><td align="right">0.1</td><td align="right">0.0998</td><td align="right">0.995</td><td align="right">10</td></tr><tr><td align="right">1.0</td><td align="right">0.881</td><td align="right">0.707</td><td align="right">1</td></tr><tr><td align="right">10</td><td align="right">2.998</td><td align="right">0.100</td><td align="right">0.1</td></tr><tr><td align="right">50</td><td align="right">4.605</td><td align="right">0.020</td><td align="right">0.02</td></tr><tr><td align="right">100</td><td align="right">5.298</td><td align="right">0.010</td><td align="right">0.01</td></tr></table>
+<table><tr><th align="right">y value</th><th align="right">\(\mathrm{ arcsinh}(y)\)</th><th align="right">Derivative</th><th align="right">Log derivative &#40;for comparison&#41;</th></tr><tr><td align="right">0.01</td><td align="right">0.0100</td><td align="right">1.000</td><td align="right">100</td></tr><tr><td align="right">0.1</td><td align="right">0.0998</td><td align="right">0.995</td><td align="right">10</td></tr><tr><td align="right">1.0</td><td align="right">0.881</td><td align="right">0.707</td><td align="right">1</td></tr><tr><td align="right">10</td><td align="right">2.998</td><td align="right">0.100</td><td align="right">0.1</td></tr><tr><td align="right">50</td><td align="right">4.605</td><td align="right">0.020</td><td align="right">0.02</td></tr><tr><td align="right">100</td><td align="right">5.298</td><td align="right">0.010</td><td align="right">0.01</td></tr></table>
 <p><strong>Beautiful property:</strong> Linear near zero &#40;derivative &#61; 1&#41;, logarithmic for large values&#33;</p>
 <p><strong>Sensitivity ratio:</strong> At y&#61;0.1 vs y&#61;50 → 0.995/0.020 &#61; <strong>50x</strong></p>
 <p>Still sensitive, but the crucial difference is <strong>near zero it acts like identity</strong>, so small noise doesn&#39;t explode. For large values, it&#39;s still logarithmic so you keep the multiplicative scaling property.</p>
 <h3 id="solution_3_two-regime_transform"><a href="#solution_3_two-regime_transform" class="header-anchor">Solution 3: Two-Regime Transform</a></h3>
 <p>Explicitly define different behavior for small vs. large values:</p>
 \[f(y) = \begin{cases}
-y & \text{if } y < \theta \\
-\theta + \log\left(\frac{y}{\theta}\right) & \text{if } y \geq \theta
+y & \mathrm{ if} y < \theta \\
+\theta + \log\left(\frac{y}{\theta}\right) & \mathrm{ if} y \geq \theta
 \end{cases}\]
 <p>The derivative is:</p>
 \[f'(y) = \begin{cases}
-1 & \text{if } y < \theta \\
-\frac{1}{y} & \text{if } y \geq \theta
+1 & \mathrm{ if} y < \theta \\
+\frac{1}{y} & \mathrm{ if} y \geq \theta
 \end{cases}\]
 <p>With \(\theta = 1.0\):</p>
 <ul>
@@ -207,9 +207,9 @@ y_transformed &#61; np.where&#40;y &lt; theta,
 <h2 id="visualizing_gradient_behavior"><a href="#visualizing_gradient_behavior" class="header-anchor">Visualizing Gradient Behavior</a></h2>
 <p>Let&#39;s see how gradients flow during training with different transforms:</p>
 <p>Imagine your model predicts \(\hat{y} = 10\) when truth is \(y = 11\) &#40;error of 1&#41;.</p>
-<table><tr><th align="right">Transform</th><th align="right">Transformed error</th><th align="right">Gradient magnitude</th><th align="right">Update strength</th></tr><tr><td align="right">None</td><td align="right">\(10 - 11 = -1\)</td><td align="right">1.0</td><td align="right">Medium</td></tr><tr><td align="right">\(\log(y)\)</td><td align="right">\(\log(10) - \log(11) = -0.095\)</td><td align="right">0.1 &#40;since \(\frac{1}{10}\)&#41;</td><td align="right">Small</td></tr><tr><td align="right">\(\log(y+100)\)</td><td align="right">\(\log(110) - \log(111) = -0.009\)</td><td align="right">0.009 &#40;since \(\frac{1}{110}\)&#41;</td><td align="right">Tiny</td></tr><tr><td align="right">\(\text{arcsinh}(y)\)</td><td align="right">\(2.998 - 3.092 = -0.094\)</td><td align="right">0.1</td><td align="right">Small</td></tr><tr><td align="right">Box-Cox λ&#61;2</td><td align="right">\(49.5 - 60 = -10.5\)</td><td align="right">10.0 &#40;since y&#61;10&#41;</td><td align="right">Huge&#33;</td></tr></table>
+<table><tr><th align="right">Transform</th><th align="right">Transformed error</th><th align="right">Gradient magnitude</th><th align="right">Update strength</th></tr><tr><td align="right">None</td><td align="right">\(10 - 11 = -1\)</td><td align="right">1.0</td><td align="right">Medium</td></tr><tr><td align="right">\(\log(y)\)</td><td align="right">\(\log(10) - \log(11) = -0.095\)</td><td align="right">0.1 &#40;since \(\frac{1}{10}\)&#41;</td><td align="right">Small</td></tr><tr><td align="right">\(\log(y+100)\)</td><td align="right">\(\log(110) - \log(111) = -0.009\)</td><td align="right">0.009 &#40;since \(\frac{1}{110}\)&#41;</td><td align="right">Tiny</td></tr><tr><td align="right">\(\mathrm{ arcsinh}(y)\)</td><td align="right">\(2.998 - 3.092 = -0.094\)</td><td align="right">0.1</td><td align="right">Small</td></tr><tr><td align="right">Box-Cox λ&#61;2</td><td align="right">\(49.5 - 60 = -10.5\)</td><td align="right">10.0 &#40;since y&#61;10&#41;</td><td align="right">Huge&#33;</td></tr></table>
 <p>Now same absolute error but at \(\hat{y} = 0.1\), truth \(y = 0.11\):</p>
-<table><tr><th align="right">Transform</th><th align="right">Transformed error</th><th align="right">Gradient magnitude</th><th align="right">Update strength</th></tr><tr><td align="right">None</td><td align="right">\(0.1 - 0.11 = -0.01\)</td><td align="right">0.01</td><td align="right">Tiny</td></tr><tr><td align="right">\(\log(y)\)</td><td align="right">\(\log(0.1) - \log(0.11) = -0.095\)</td><td align="right">10.0 &#40;since \(\frac{1}{0.1}\)&#41;</td><td align="right"><strong>Huge&#33;</strong></td></tr><tr><td align="right">\(\log(y+100)\)</td><td align="right">\(\log(100.1) - \log(100.11) = -0.001\)</td><td align="right">0.001</td><td align="right">Tiny</td></tr><tr><td align="right">\(\text{arcsinh}(y)\)</td><td align="right">\(0.0998 - 0.1098 = -0.010\)</td><td align="right">1.0</td><td align="right">Medium</td></tr><tr><td align="right">Box-Cox λ&#61;2</td><td align="right">\(-0.495 - -0.494 = -0.001\)</td><td align="right">0.1</td><td align="right">Tiny</td></tr></table>
+<table><tr><th align="right">Transform</th><th align="right">Transformed error</th><th align="right">Gradient magnitude</th><th align="right">Update strength</th></tr><tr><td align="right">None</td><td align="right">\(0.1 - 0.11 = -0.01\)</td><td align="right">0.01</td><td align="right">Tiny</td></tr><tr><td align="right">\(\log(y)\)</td><td align="right">\(\log(0.1) - \log(0.11) = -0.095\)</td><td align="right">10.0 &#40;since \(\frac{1}{0.1}\)&#41;</td><td align="right"><strong>Huge&#33;</strong></td></tr><tr><td align="right">\(\log(y+100)\)</td><td align="right">\(\log(100.1) - \log(100.11) = -0.001\)</td><td align="right">0.001</td><td align="right">Tiny</td></tr><tr><td align="right">\(\mathrm{ arcsinh}(y)\)</td><td align="right">\(0.0998 - 0.1098 = -0.010\)</td><td align="right">1.0</td><td align="right">Medium</td></tr><tr><td align="right">Box-Cox λ&#61;2</td><td align="right">\(-0.495 - -0.494 = -0.001\)</td><td align="right">0.1</td><td align="right">Tiny</td></tr></table>
 <p><strong>Key insight:</strong> Log transforms make gradient updates <strong>100x stronger</strong> for errors near zero compared to errors at 10. Box-Cox λ&#61;2 does the opposite - 100x stronger at 10 than at 0.1&#33;</p>
 <h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
 <p>You found that log transforms help predict large values but are sensitive near zero - this is because:</p>

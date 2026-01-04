@@ -172,7 +172,7 @@ init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
 <p>Here&#39;s the catch: the L0 norm is <strong>non-differentiable</strong> and <strong>combinatorial</strong>. With \(|\theta|\) parameters, there are \(2^{|\theta|}\) possible on/off configurations to consider. You can&#39;t just throw gradient descent at it&#33;</p>
 <h3 id="why_is_l0_non-differentiable"><a href="#why_is_l0_non-differentiable" class="header-anchor">Why is L0 Non-Differentiable?</a></h3>
 <p>The L0 norm uses the indicator function \(\mathbb{I}[\theta_j \neq 0]\):</p>
-\(\mathbb{I}[\theta_j \neq 0] = \begin{cases} 1 & \text{if } \theta_j \neq 0 \\ 0 & \text{if } \theta_j = 0 \end{cases}\)
+\(\mathbb{I}[\theta_j \neq 0] = \begin{cases} 1 & \mathrm{ if} \theta_j \neq 0 \\ 0 & \mathrm{ if} \theta_j = 0 \end{cases}\)
 <p>Let&#39;s try to compute the gradient:</p>
 \(\frac{\partial}{\partial \theta_j} \mathbb{I}[\theta_j \neq 0] = \, ?\)
 <p><strong>At \(\theta_j \neq 0\):</strong> The function equals 1 &#40;constant&#41;, so the derivative is 0.</p>
@@ -223,7 +223,7 @@ init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
 </li>
 <li><p><strong>Lipschitz continuity fails</strong>: For any \(\theta\) with \(\|\theta\|_0 = k\): \(\lim_{\epsilon \to 0^+} \|\theta + \epsilon e_j\|_0 = k+1 \neq k\) where \(e_j\) is a standard basis vector with \(\theta_j = 0\). The function &quot;jumps&quot; discontinuously.</p>
 </li>
-<li><p><strong>Subdifferential is uninformative</strong>: The subdifferential of \(\|\theta\|_0\) at \(\theta\) is: \(\partial \|\theta\|_0 = \begin{cases} \{0\} & \text{if } \theta_j \neq 0 \\ [-\infty, \infty] & \text{if } \theta_j = 0 \end{cases}\) When \(\theta_j = 0\), any direction is a valid subgradient&#33;</p>
+<li><p><strong>Subdifferential is uninformative</strong>: The subdifferential of \(\|\theta\|_0\) at \(\theta\) is: \(\partial \|\theta\|_0 = \begin{cases} \{0\} & \mathrm{ if} \theta_j \neq 0 \\ [-\infty, \infty] & \mathrm{ if} \theta_j = 0 \end{cases}\) When \(\theta_j = 0\), any direction is a valid subgradient&#33;</p>
 </li>
 </ol>
 <hr />
@@ -232,17 +232,17 @@ init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
 \[\theta_j = \tilde{\theta}_j \cdot z_j, \quad z_j \in \{0, 1\}\]
 <p>Each parameter \(\tilde{\theta}_j\) has a binary gate \(z_j\) that decides whether it&#39;s &quot;on&quot; &#40;1&#41; or &quot;off&quot; &#40;0&#41;. The network then optimizes:</p>
 \[R(\tilde{\theta}, \pi) = \mathbb{E}_{q(z|\pi)}\left[\frac{1}{N}\sum_{i=1}^N \mathcal{L}(h(x_i; \tilde{\theta} \odot z), y_i)\right] + \lambda \sum_{j=1}^{|\theta|} \pi_j\]
-<p>where \(q(z_j|\pi_j) = \text{Bernoulli}(\pi_j)\).</p>
+<p>where \(q(z_j|\pi_j) = \mathrm{ Bernoulli}(\pi_j)\).</p>
 <p>But wait - we still can&#39;t differentiate through discrete binary gates&#33;</p>
 <hr />
 <h2 id="the_hard_concrete_distribution"><a href="#the_hard_concrete_distribution" class="header-anchor">The Hard Concrete Distribution</a></h2>
 <p>Here&#39;s where things get really clever. Instead of discrete gates, they use <strong>continuous random variables</strong> passed through a hard-sigmoid:</p>
 <ol>
-<li><p>Sample \(s \sim q(s|\phi)\) from a continuous distribution</p>
+<li><p>Sample \(s \sim q(s|\varphi)\) from a continuous distribution</p>
 </li>
 <li><p>Apply hard-sigmoid: \(z = \min(1, \max(0, s))\)</p>
 </li>
-<li><p>This allows \(z\) to be exactly 0 or 1, while still being differentiable w.r.t. \(\phi\)&#33;</p>
+<li><p>This allows \(z\) to be exactly 0 or 1, while still being differentiable w.r.t. \(\varphi\)&#33;</p>
 </li>
 </ol>
 <p>The <strong>hard concrete distribution</strong> is created by:</p>
@@ -256,11 +256,11 @@ init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
 </ul>
 <p>The sampling procedure is:</p>
 \[u \sim U(0,1)\]
-\[s = \text{Sigmoid}(\log u - \log(1-u) + \log \alpha)/\beta\]
+\[s = \mathrm{ Sigmoid}(\log u - \log(1-u) + \log \alpha)/\beta\]
 \[\bar{s} = s(\zeta - \gamma) + \gamma\]
 \[z = \min(1, \max(0, \bar{s}))\]
 <p>The probability of a gate being active is:</p>
-\[q(z \neq 0|\phi) = 1 - Q(s \leq 0|\phi)\]
+\[q(z \neq 0|\varphi) = 1 - Q(s \leq 0|\varphi)\]
 <p>This can be computed in closed form and differentiated&#33;</p>
 <hr />
 <h2 id="why_this_works"><a href="#why_this_works" class="header-anchor">Why This Works</a></h2>
@@ -314,7 +314,7 @@ init_3 &#61; &#91;0.0, 0.0, 1.0&#93;  # stuck on θ₃-axis forever</code></pre>
 <hr />
 <h2 id="the_math_connection"><a href="#the_math_connection" class="header-anchor">The Math Connection</a></h2>
 <p>There&#39;s a beautiful theoretical connection: this approach is actually performing <strong>variational inference</strong> with spike-and-slab priors&#33; The L0 penalty emerges naturally from:</p>
-\[p(z) = \text{Bernoulli}(\pi), \quad p(\theta|z=0) = \delta(\theta), \quad p(\theta|z=1) = \mathcal{N}(\theta|0, 1)\]
+\[p(z) = \mathrm{ Bernoulli}(\pi), \quad p(\theta|z=0) = \delta(\theta), \quad p(\theta|z=1) = \mathcal{N}(\theta|0, 1)\]
 <p>The method optimizes a variational lower bound where \(\lambda\) represents the &quot;code cost&quot; - the amount of information each parameter encodes about the data.</p>
 <hr />
 <h2 id="practical_details"><a href="#practical_details" class="header-anchor">Practical Details</a></h2>

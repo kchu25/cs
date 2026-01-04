@@ -254,9 +254,9 @@
 <h3 id="case_1_when_additivity_is_better"><a href="#case_1_when_additivity_is_better" class="header-anchor">Case 1: When Additivity IS Better</a></h3>
 <p><strong>Scenario</strong>: You&#39;re combining \(k\) independent tasks.</p>
 <ul>
-<li><p><strong>Additive</strong>: \(T(k \text{ tasks}) = k \cdot T(1 \text{ task}) = O(kn)\)</p>
+<li><p><strong>Additive</strong>: \(T(k \mathrm{ tasks}) = k \cdot T(1 \mathrm{ task}) = O(kn)\)</p>
 </li>
-<li><p><strong>Multiplicative</strong>: \(T(k \text{ tasks}) = T(1)^k = O(n^k)\)</p>
+<li><p><strong>Multiplicative</strong>: \(T(k \mathrm{ tasks}) = T(1)^k = O(n^k)\)</p>
 </li>
 </ul>
 <p>Here additivity is clearly better: linear vs polynomial growth.</p>
@@ -280,7 +280,7 @@
 </ol>
 <h3 id="case_3_the_constant_matters"><a href="#case_3_the_constant_matters" class="header-anchor">Case 3: The &quot;Constant&quot; Matters</a></h3>
 <p>Just because something is additive doesn&#39;t mean it&#39;s efficient:</p>
-<p>\(T_1(n) = 2^{100} \cdot n \quad \text{(additive but impractical)}\) \(T_2(n) = n^2 \quad \text{(multiplicative but fast for small } n\text{)}\)</p>
+<p>\(T_1(n) = 2^{100} \cdot n \quad \mathrm{ (additive but impractical)}\) \(T_2(n) = n^2 \quad \mathrm{ (multiplicative but fast for small} n\mathrm{ )}\)</p>
 <p>For \(n < 2^{50}\), the &quot;worse&quot; multiplicative algorithm is actually faster&#33;</p>
 <h3 id="case_4_additivity_at_wrong_granularity"><a href="#case_4_additivity_at_wrong_granularity" class="header-anchor">Case 4: Additivity at Wrong Granularity</a></h3>
 <p><strong>Example</strong>: Matrix chain multiplication</p>
@@ -293,8 +293,8 @@
 </ul>
 <p>The issue: additivity at the wrong level of abstraction can miss optimization opportunities.</p>
 <h3 id="case_5_parallel_vs_sequential_additivity"><a href="#case_5_parallel_vs_sequential_additivity" class="header-anchor">Case 5: Parallel vs Sequential Additivity</a></h3>
-<p><strong>Sequential additivity</strong>: \(T_{\text{sequential}}(A + B) = T(A) + T(B)\)</p>
-<p><strong>Parallel &quot;additivity&quot;</strong>: \(T_{\text{parallel}}(A + B) = \max(T(A), T(B))\)</p>
+<p><strong>Sequential additivity</strong>: \(T_{\mathrm{ sequential}}(A + B) = T(A) + T(B)\)</p>
+<p><strong>Parallel &quot;additivity&quot;</strong>: \(T_{\mathrm{ parallel}}(A + B) = \max(T(A), T(B))\)</p>
 <p>Parallel composition is <strong>better than additive</strong> because independent tasks run simultaneously&#33;</p>
 <h3 id="the_real_principle_subadditivity_is_the_goal"><a href="#the_real_principle_subadditivity_is_the_goal" class="header-anchor">The Real Principle: Subadditivity Is the Goal</a></h3>
 <p>What we really want is <strong>subadditivity</strong>: \(C(A \cup B) < C(A) + C(B)\)</p>

@@ -55,7 +55,7 @@
 <p>Here&#39;s the catch with hashing: for <em>any</em> fixed hash function, an adversary could craft a terrible set of keys that all collide. It&#39;s like the pigeonhole principle coming back to haunt you.</p>
 <p><strong>The Solution: Randomize Your Hash Function&#33;</strong></p>
 <p>This is the key insight of <strong>universal hashing</strong>:</p>
-\[\text{For any } x \neq y \text{ in the universe } U: \quad \Pr_{h \sim \mathcal{H}}[h(x) = h(y)] \leq \frac{1}{M}\]
+\[\mathrm{ For any} x \neq y \mathrm{ in the universe} U: \quad \Pr_{h \sim \mathcal{H}}[h(x) = h(y)] \leq \frac{1}{M}\]
 <p>Think of it like using randomization in algorithms: even if the data is adversarial, your algorithm&#39;s random choices prevent the adversary from consistently forcing bad outcomes&#33;</p>
 <h3 id="what_this_guarantees"><a href="#what_this_guarantees" class="header-anchor">What This Guarantees</a></h3>
 <p>If you pick your hash function at random from a universal family, then for any element \(x\), the expected number of other elements in your set \(S\) that collide with \(x\) is at most \(\frac{N}{M}\).</p>
@@ -101,7 +101,7 @@
 <h3 id="why_universal_hashing_is_perfect_here"><a href="#why_universal_hashing_is_perfect_here" class="header-anchor">Why Universal Hashing is Perfect Here</a></h3>
 <p>When you use the prime-based universal hash construction for Count-Min Sketch:</p>
 <p><strong>1. Independent Hash Functions</strong> You pick \(d\) different random coefficient vectors \((r_1^{(j)}, r_2^{(j)}, \ldots, r_k^{(j)})\) for \(j = 1, \ldots, d\). Each gives you an independent hash function from the universal family. This independence is <em>crucial</em> for Count-Min&#39;s error guarantees&#33;</p>
-<p><strong>2. The Error Bound Relies on Universality</strong> The beautiful error guarantee of Count-Min Sketch is: \(\text{Estimated frequency} \leq \text{True frequency} + \frac{2}{w} \times \text{Total count}\)</p>
+<p><strong>2. The Error Bound Relies on Universality</strong> The beautiful error guarantee of Count-Min Sketch is: \(\mathrm{ Estimated frequency} \leq \mathrm{ True frequency} + \frac{2}{w} \times \mathrm{ Total count}\)</p>
 <p>with probability at least \(1 - e^{-d}\).</p>
 <p>This bound <strong>directly depends</strong> on the collision probability being \(\leq 1/w\)&#33; If your hash function isn&#39;t universal, all bets are off. You could have way more collisions than expected, and your estimates would be garbage.</p>
 <p><strong>3. Prime Width is Standard</strong> In practice, many Count-Min Sketch implementations choose \(w\) to be prime &#40;or close to prime&#41; precisely because they&#39;re using this universal hash construction&#33; It&#39;s not just theoretical pedantry - it&#39;s ensuring your frequency estimates are actually reliable.</p>

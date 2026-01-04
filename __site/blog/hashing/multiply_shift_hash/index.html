@@ -108,9 +108,9 @@
 </ul>
 <h2 id="the_famous_constant_knuths_magic_number"><a href="#the_famous_constant_knuths_magic_number" class="header-anchor">The Famous Constant: Knuth&#39;s Magic Number</a></h2>
 <p>You&#39;ll often see multiply-shift hashing with \(a = 2654435769\) for 32-bit keys. This isn&#39;t random - it&#39;s:</p>
-\[a = \lfloor 2^{32} / \phi \rfloor\]
-<p>where \(\phi = \frac{1 + \sqrt{5}}{2}\) is the golden ratio&#33;</p>
-<p><strong>Why the golden ratio?</strong> Donald Knuth suggested this because \(\phi\) has nice properties related to distributing points uniformly. When you multiply by a number related to \(\phi\), you get good distribution properties &#40;related to Fibonacci hashing and the low-discrepancy sequences&#41;.</p>
+\[a = \lfloor 2^{32} / \varphi \rfloor\]
+<p>where \(\varphi = \frac{1 + \sqrt{5}}{2}\) is the golden ratio&#33;</p>
+<p><strong>Why the golden ratio?</strong> Donald Knuth suggested this because \(\varphi\) has nice properties related to distributing points uniformly. When you multiply by a number related to \(\varphi\), you get good distribution properties &#40;related to Fibonacci hashing and the low-discrepancy sequences&#41;.</p>
 <p>For 64-bit keys, the analogous constant is \(a = 11400714819323198485\).</p>
 <h2 id="comparison_with_prime-based_hashing"><a href="#comparison_with_prime-based_hashing" class="header-anchor">Comparison with Prime-Based Hashing</a></h2>
 <table><tr><th align="right">Feature</th><th align="right">Prime-Based Polynomial</th><th align="right">Multiply-Shift</th></tr><tr><td align="right"><strong>Theoretical Guarantee</strong></td><td align="right">Strictly universal</td><td align="right">Almost universal</td></tr><tr><td align="right"><strong>Table Size</strong></td><td align="right">Any prime \(M\)</td><td align="right">Power of 2: \(M = 2^b\)</td></tr><tr><td align="right"><strong>Speed</strong></td><td align="right">Slower &#40;modulo by prime&#41;</td><td align="right">Faster &#40;shift operation&#41;</td></tr><tr><td align="right"><strong>Implementation</strong></td><td align="right">Need to find primes</td><td align="right">Just pick odd \(a\)</td></tr><tr><td align="right"><strong>Practical Performance</strong></td><td align="right">Excellent</td><td align="right">Excellent</td></tr></table>

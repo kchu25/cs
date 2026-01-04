@@ -117,7 +117,7 @@
 <p><strong>Definition:</strong> A configuration is \(\epsilon\)-frequent if it appears in at least fraction \(\epsilon\) of all possible configurations.</p>
 <p><strong>Theorem &#40;Chernoff Bound&#41;:</strong></p>
 <p>If configuration \(\mathcal{C}\) has true frequency \(p \geq \epsilon\), then after \(n\) uniform samples, with probability at least \(1 - \delta\):</p>
-\[\mathbb{P}[\mathcal{C} \text{ is sampled}] \geq 1 - \exp\left(-\frac{n\epsilon}{2}\right)\]
+\[\mathbb{P}[\mathcal{C} \mathrm{ is sampled}] \geq 1 - \exp\left(-\frac{n\epsilon}{2}\right)\]
 <p><strong>Sample complexity to find \(\epsilon\)-frequent patterns:</strong></p>
 \[n \geq \frac{2\ln(2/\delta)}{\epsilon^2}\]
 <p><strong>Example:</strong></p>
@@ -336,7 +336,7 @@ def new_method&#40;Z, q, epsilon&#61;0.01, delta&#61;0.01&#41;:
 </li>
 </ol>
 </a></h3>
-<p><strong>Property:</strong> \(\mathbb{E}[\text{# times config } \mathcal{C} \text{ is sampled}] = n \cdot p_{\mathcal{C}}\)</p>
+<p><strong>Property:</strong> \(\mathbb{E}[\mathrm{ # times config} \mathcal{C} \mathrm{ is sampled}] = n \cdot p_{\mathcal{C}}\)</p>
 <p>where \(p_{\mathcal{C}} = 1/\binom{m}{q}\) is the true probability.</p>
 <p><strong>Implication:</strong> Expected sample counts are proportional to true frequencies - no systematic bias.</p>
 <h3 id="ol_start2_consistency"><a href="#ol_start2_consistency" class="header-anchor"><ol start="2">
@@ -619,8 +619,8 @@ for filter_combo in combinations&#40;range&#40;K&#41;, q&#41;:
 <h2 id="appendix_proof_sketch"><a href="#appendix_proof_sketch" class="header-anchor">Appendix: Proof Sketch</a></h2>
 <p><strong>Theorem:</strong> After \(n \geq \frac{2\ln(2/\delta)}{\epsilon^2}\) uniform samples, with probability \(\geq 1-\delta\), all \(\epsilon\)-frequent configurations are discovered.</p>
 <p><strong>Proof:</strong> Let \(\mathcal{C}\) be a configuration with true frequency \(p \geq \epsilon\).</p>
-<p>Let \(X_i = \mathbb{1}[\text{sample } i \text{ is } \mathcal{C}]\).</p>
-<p>Then \(\sum_{i=1}^n X_i \sim \text{Binomial}(n, p)\).</p>
+<p>Let \(X_i = \mathbb{1}[\mathrm{ sample} i \mathrm{ is} \mathcal{C}]\).</p>
+<p>Then \(\sum_{i=1}^n X_i \sim \mathrm{ Binomial}(n, p)\).</p>
 <p>By Chernoff bound:</p>
 \[\mathbb{P}\left[\sum_{i=1}^n X_i = 0\right] \leq \exp(-np) \leq \exp(-n\epsilon)\]
 <p>Setting \(\exp(-n\epsilon) = \delta\):</p>

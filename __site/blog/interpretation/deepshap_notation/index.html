@@ -58,11 +58,11 @@
 <h2 id="question_2_why_can_marginal_contribution_be_written_as_sum_over_references"><a href="#question_2_why_can_marginal_contribution_be_written_as_sum_over_references" class="header-anchor">Question 2: Why can marginal contribution be written as sum over references?</a></h2>
 <h3 id="the_true_marginal_contribution"><a href="#the_true_marginal_contribution" class="header-anchor">The True Marginal Contribution</a></h3>
 <p>From the Shapley formula, the marginal contribution of feature \(i\) is:</p>
-\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
 <p>This averages over <strong>coalitions</strong> \(S\) &#40;all possible subsets of features&#41;.</p>
 <h3 id="expanding_with_references"><a href="#expanding_with_references" class="header-anchor">Expanding with References</a></h3>
 <p>Since \(f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\), we can write:</p>
-\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[\underbrace{f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})}_{\text{feature } i \text{ present}} - \underbrace{f(x_S, r_{\bar{S}})}_{\text{feature } i \text{ absent}}]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[\underbrace{f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})}_{\mathrm{ feature} i \mathrm{ present}} - \underbrace{f(x_S, r_{\bar{S}})}_{\mathrm{ feature} i \mathrm{ absent}}]\]
 <h3 id="why_this_is_a_sum_over_references"><a href="#why_this_is_a_sum_over_references" class="header-anchor">Why This is a &quot;Sum&quot; Over References</a></h3>
 <p>Each term in this double expectation involves:</p>
 <ol>
@@ -102,10 +102,10 @@
 <p>This reference effectively captures scenarios where feature 2 is active but features 1 and 3 are not, corresponding roughly to coalition \(S = \{2\}\).</p>
 <h3 id="why_deeplifts_single_x_r_pair_works"><a href="#why_deeplifts_single_x_r_pair_works" class="header-anchor">Why DeepLIFT&#39;s Single \((x, r)\) Pair Works</a></h3>
 <p>For one reference \(r\), DeepLIFT computes:</p>
-\[C_{\Delta x_i \Delta f}(x, r) = \phi_i(x, r) \cdot (x_i - r_i)\]
+\[C_{\Delta x_i \Delta f}(x, r) = \varphi_i(x, r) \cdot (x_i - r_i)\]
 <p>This linearization captures the contribution of feature \(i\) along the path from \(r\) to \(x\).</p>
 <p><strong>By averaging over multiple references:</strong></p>
-\[\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
+\[\varphi_i^{\mathrm{ DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
 <p>You&#39;re averaging these different paths, which approximates the coalition-weighted average that the Shapley formula requires.</p>
 <h3 id="the_mathematical_connection"><a href="#the_mathematical_connection" class="header-anchor">The Mathematical Connection</a></h3>
 <p>The approximation works because:</p>

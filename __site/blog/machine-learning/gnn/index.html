@@ -194,7 +194,7 @@
 </ol>
 <p><strong>More expressive architectures:</strong></p>
 <p>What if we use <strong>different weight matrices</strong> for self vs. neighbors?</p>
-\(h_i^{(l+1)} = \sigma\left(W_{\text{self}} h_i^{(l)} + \sum_{j \in \mathcal{N}(i)} W_{\text{neighbor}} h_j^{(l)}\right)\)
+\(h_i^{(l+1)} = \sigma\left(W_{\mathrm{ self}} h_i^{(l)} + \sum_{j \in \mathcal{N}(i)} W_{\mathrm{ neighbor}} h_j^{(l)}\right)\)
 <p>Now we can&#39;t write it as a simple \(\tilde{A}HW\) anymore&#33; We need:</p>
 <ul>
 <li><p>Separate transformation for the node itself</p>
@@ -322,7 +322,7 @@
 <li><p><strong>Advanced approach</strong>: Message Passing Neural Networks &#40;MPNNs&#41; that explicitly compute:</p>
 </li>
 </ul>
-\[m_{ij} = \phi(h_i, h_j, e_{ij})\]
+\[m_{ij} = \varphi(h_i, h_j, e_{ij})\]
 <p>where \(e_{ij}\) is the edge feature. Then aggregate these messages.</p>
 <p>But the basic GNN doesn&#39;t use edge features—just whether edges exist &#40;in \(A\)&#41;&#33;</p>
 <div class="page-foot">

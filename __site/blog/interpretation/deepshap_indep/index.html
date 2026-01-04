@@ -28,7 +28,7 @@
 <p>Hey&#33; Let me clarify the core confusion about DeepSHAP and how independence makes it work. I&#39;ll focus on making the independence assumption crystal clear.</p>
 <h2 id="the_setup_what_were_trying_to_compute"><a href="#the_setup_what_were_trying_to_compute" class="header-anchor">The Setup: What We&#39;re Trying to Compute</a></h2>
 <p>The true Shapley value for feature \(i\) is:</p>
-\[\phi_i^{\text{Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+\[\varphi_i^{\mathrm{ Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
 <p>This has two expectations:</p>
 <ul>
 <li><p><strong>Inner</strong>: average over all coalitions \(S\) &#40;exponentially many&#33;&#41;</p>
@@ -57,7 +57,7 @@
 </ol>
 </a></h3>
 <p>The model \(f(x_1, \ldots, x_n)\) has &quot;independent features&quot; if:</p>
-\(\frac{\partial^2 f}{\partial x_i \partial x_j} = 0 \text{ for all } i \neq j\)
+\(\frac{\partial^2 f}{\partial x_i \partial x_j} = 0 \mathrm{ for all} i \neq j\)
 <p><strong>What this means</strong>: The model has no interaction terms. The effect of feature \(i\) doesn&#39;t depend on the value of feature \(j\).</p>
 <p><strong>This is about the structure of \(f\)</strong>.</p>
 <h3 id="critical_point_these_are_not_the_same_thing"><a href="#critical_point_these_are_not_the_same_thing" class="header-anchor">CRITICAL POINT: These Are NOT the Same Thing&#33;</a></h3>
@@ -95,7 +95,7 @@
 </li>
 </ul>
 <p><strong>Concrete example with \(n=5\) features, \(S = \{2, 5\}\), \(i=3\):</strong></p>
-\[\frac{\partial f}{\partial x_3}(\underbrace{r_1}_{\text{not in } S}, \underbrace{x_2}_{\text{in } S}, \underbrace{z_3}_{i}, \underbrace{r_4}_{\text{not in } S}, \underbrace{x_5}_{\text{in } S})\]
+\[\frac{\partial f}{\partial x_3}(\underbrace{r_1}_{\mathrm{ not in} S}, \underbrace{x_2}_{\mathrm{ in} S}, \underbrace{z_3}_{i}, \underbrace{r_4}_{\mathrm{ not in} S}, \underbrace{x_5}_{\mathrm{ in} S})\]
 <p>Different coalitions give different combinations of which features are at \(x\) vs \(r\).</p>
 <hr />
 <h2 id="example_1_linear_model_perfect_independence"><a href="#example_1_linear_model_perfect_independence" class="header-anchor">Example 1: Linear Model &#40;Perfect Independence&#41;</a></h2>
@@ -140,7 +140,7 @@
 \(f(x_{S \cup \{3\}}, r_{\overline{S \cup \{3\}}}) - f(x_S, r_{\bar{S}}) = \int_{r_3}^{x_3} \frac{\partial f}{\partial z_3} \, dz_3 = \int_{r_3}^{x_3} \beta_3 \, dz_3 = \beta_3 (x_3 - r_3)\)
 <p><strong>The key point</strong>: Because \(\frac{\partial f}{\partial x_3} = \beta_3\) is constant &#40;independent of all feature values&#41;, the integral gives the same result <strong>regardless of which coalition \(S\) we&#39;re in</strong>. The values of features in \(S\) don&#39;t appear anywhere in this calculation&#33;</p>
 <p>Every coalition gives the same marginal contribution: \(\beta_3 (x_3 - r_3)\)</p>
-<p>Therefore: \(\mathbb{E}_S[\text{marginal}] = \beta_3 (x_3 - r_3)\)</p>
+<p>Therefore: \(\mathbb{E}_S[\mathrm{ marginal}] = \beta_3 (x_3 - r_3)\)</p>
 <p><strong>The exponential average reduced to a single calculation&#33;</strong></p>
 <hr />
 <h2 id="example_2_model_with_interactions_independence_violated"><a href="#example_2_model_with_interactions_independence_violated" class="header-anchor">Example 2: Model with Interactions &#40;Independence VIOLATED&#41;</a></h2>
@@ -167,7 +167,7 @@
 <p>These are DIFFERENT. You must actually compute and average them. No shortcut&#33;</p>
 <hr />
 <h2 id="example_3_neural_network_approximate_independence"><a href="#example_3_neural_network_approximate_independence" class="header-anchor">Example 3: Neural Network &#40;Approximate Independence&#41;</a></h2>
-\[f(x) = \text{ReLU}(w_1 x_1 + w_2 x_2 + w_3 x_3 + b)\]
+\[f(x) = \mathrm{ ReLU}(w_1 x_1 + w_2 x_2 + w_3 x_3 + b)\]
 <p>In regions where the ReLU is active &#40;\(w_1 x_1 + w_2 x_2 + w_3 x_3 + b > 0\)&#41;:</p>
 \[\frac{\partial f}{\partial x_1} = w_1\]
 <p><strong>Key observation</strong>: Within a linear region, gradient is constant &#40;like the linear model&#41;&#33;</p>
@@ -204,13 +204,13 @@
 <p>We computed an expectation over \(2^{n-1}\) coalitions, but got a single value because all terms were identical.</p>
 <h3 id="step_3_deeplift_approximates_this"><a href="#step_3_deeplift_approximates_this" class="header-anchor">Step 3: DeepLIFT Approximates This</a></h3>
 <p>DeepLIFT integrates along the full path from \(r\) to \(x\):</p>
-\[\phi_i(x, r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x - r)) dt\]
+\[\varphi_i(x, r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x - r)) dt\]
 <p>Under independence, this approximately equals:</p>
 \[\int_0^1 g_i(r_i + t(x_i - r_i)) dt\]
 <p>Because the gradient only depends on \(x_i\), not on where the other features are along the path.</p>
 <h3 id="step_4_multiple_references"><a href="#step_4_multiple_references" class="header-anchor">Step 4: Multiple References</a></h3>
 <p>Finally, we average over references:</p>
-\[\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[\phi_i(x, r) \cdot (x_i - r_i)] \approx \frac{1}{K} \sum_{k=1}^K \phi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\]
+\[\varphi_i^{\mathrm{ DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[\varphi_i(x, r) \cdot (x_i - r_i)] \approx \frac{1}{K} \sum_{k=1}^K \varphi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\]
 <hr />
 <h2 id="summary_what_independence_does"><a href="#summary_what_independence_does" class="header-anchor">Summary: What Independence Does</a></h2>
 <p><strong>Functional independence</strong> &#40;\(\frac{\partial^2 f}{\partial x_i \partial x_j} = 0\)&#41; means:</p>
@@ -315,7 +315,7 @@
 </li>
 </ol>
 </a></h3>
-<p><strong>The additive assumption</strong>: \(f(x) - f(r) = \sum_i \phi_i (x_i - r_i)\)</p>
+<p><strong>The additive assumption</strong>: \(f(x) - f(r) = \sum_i \varphi_i (x_i - r_i)\)</p>
 <p><strong>Problem</strong>: This can&#39;t capture feature interactions accurately. If features \(x_i\) and \(x_j\) strongly interact, the contribution of \(x_i\) depends on \(x_j\)&#39;s value, but SHAP averages over all possible \(x_j\) values.</p>
 <p><strong>Example from text</strong>: The phrase &quot;not good&quot; has meaning that&#39;s not the sum of &quot;not&quot; &#43; &quot;good&quot; individually.</p>
 <p><strong>Impact</strong>: SHAP values can be misleading for models with strong non-linear interactions.</p>

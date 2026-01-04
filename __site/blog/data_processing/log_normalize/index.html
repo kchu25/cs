@@ -29,9 +29,9 @@
 <p>A specialized normalization that combines logarithmic transformation with min-max scaling, useful for data spanning multiple orders of magnitude.</p>
 <h2 id="range_0_1"><a href="#range_0_1" class="header-anchor">Range: &#91;0, 1&#93;</a></h2>
 <h3 id="forward_transform"><a href="#forward_transform" class="header-anchor">Forward Transform</a></h3>
-\[y_{\text{norm}} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\]
+\[y_{\mathrm{ norm}} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\]
 <h3 id="inverse_transform"><a href="#inverse_transform" class="header-anchor">Inverse Transform</a></h3>
-\[y = \exp\left(y_{\text{norm}} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+\[y = \exp\left(y_{\mathrm{ norm}} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
 <h3 id="neural_network_settings"><a href="#neural_network_settings" class="header-anchor">Neural Network Settings</a></h3>
 <ul>
 <li><p><strong>Output Activation:</strong> Sigmoid</p>
@@ -44,9 +44,9 @@
 <hr />
 <h2 id="range_-1_1"><a href="#range_-1_1" class="header-anchor">Range: &#91;-1, 1&#93;</a></h2>
 <h3 id="forward_transform__2"><a href="#forward_transform__2" class="header-anchor">Forward Transform</a></h3>
-\[y_{\text{norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
+\[y_{\mathrm{ norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
 <h3 id="inverse_transform__2"><a href="#inverse_transform__2" class="header-anchor">Inverse Transform</a></h3>
-\[y = \exp\left(\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+\[y = \exp\left(\frac{y_{\mathrm{ norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
 <h3 id="neural_network_settings__2"><a href="#neural_network_settings__2" class="header-anchor">Neural Network Settings</a></h3>
 <ul>
 <li><p><strong>Output Activation:</strong> Tanh</p>
@@ -107,9 +107,9 @@
 <h2 id="log_transforms_sensitivity_near_zero_vs_large_values"><a href="#log_transforms_sensitivity_near_zero_vs_large_values" class="header-anchor">Log Transforms: Sensitivity Near Zero vs Large Values</a></h2>
 <p><strong>Problem:</strong> Standard log is extremely sensitive near zero &#40;log&#40;0.001&#41; &#61; -6.9, log&#40;0.0001&#41; &#61; -9.2&#41; but less sensitive for large values.</p>
 <h3 id="solution_1_arcsinh_transform"><a href="#solution_1_arcsinh_transform" class="header-anchor">Solution 1: Arcsinh Transform</a></h3>
-\[y_{\text{norm}} = \sinh^{-1}(y) = \log(y + \sqrt{y^2 + 1})\]
+\[y_{\mathrm{ norm}} = \sinh^{-1}(y) = \log(y + \sqrt{y^2 + 1})\]
 <p><strong>Inverse:</strong></p>
-\[y = \sinh(y_{\text{norm}}) = \frac{e^{y_{\text{norm}}} - e^{-y_{\text{norm}}}}{2}\]
+\[y = \sinh(y_{\mathrm{ norm}}) = \frac{e^{y_{\mathrm{ norm}}} - e^{-y_{\mathrm{ norm}}}}{2}\]
 <p><strong>Behavior:</strong></p>
 <ul>
 <li><p><strong>Near zero:</strong> Linear with derivative &#61; 1 &#40;standard sensitivity, like identity&#41;</p>
@@ -121,9 +121,9 @@
 </ul>
 <p><strong>Use when:</strong> You want a smooth transition from linear to logarithmic, without arbitrary constants</p>
 <h3 id="solution_2_log1_y_transform"><a href="#solution_2_log1_y_transform" class="header-anchor">Solution 2: Log&#40;1 &#43; y&#41; Transform</a></h3>
-\[y_{\text{norm}} = \log(1 + y)\]
+\[y_{\mathrm{ norm}} = \log(1 + y)\]
 <p><strong>Inverse:</strong></p>
-\[y = e^{y_{\text{norm}}} - 1\]
+\[y = e^{y_{\mathrm{ norm}}} - 1\]
 <p><strong>Behavior:</strong></p>
 <ul>
 <li><p><strong>Near zero:</strong> More linear than log&#40;y&#41;, derivative ≈ 1 at y&#61;0</p>
@@ -134,9 +134,9 @@
 </li>
 </ul>
 <h3 id="solution_3_logy_c_with_large_constant"><a href="#solution_3_logy_c_with_large_constant" class="header-anchor">Solution 3: Log&#40;y &#43; c&#41; with Large Constant</a></h3>
-\[y_{\text{norm}} = \log(y + c)\]
+\[y_{\mathrm{ norm}} = \log(y + c)\]
 <p><strong>Inverse:</strong></p>
-\[y = e^{y_{\text{norm}}} - c\]
+\[y = e^{y_{\mathrm{ norm}}} - c\]
 <p><strong>Behavior:</strong></p>
 <ul>
 <li><p><strong>At y&#61;0:</strong> Derivative &#61; 1/c &#40;less sensitive with larger c&#41;</p>
@@ -149,9 +149,9 @@
 <table><tr><th align="right">Constant c</th><th align="right">Derivative at y&#61;0</th><th align="right">Sensitivity Ratio</th></tr><tr><td align="right">3</td><td align="right">0.333</td><td align="right">17.7x</td></tr><tr><td align="right">10</td><td align="right">0.100</td><td align="right">6.0x</td></tr><tr><td align="right">50</td><td align="right">0.020</td><td align="right">2.0x</td></tr><tr><td align="right">100</td><td align="right">0.010</td><td align="right">1.5x</td></tr></table>
 <p><strong>Use when:</strong> You want to reduce sensitivity near zero by making the function flatter. Larger c &#61; less sensitive near zero, but also reduces compression of large values.</p>
 <h3 id="solution_4_shifted_log_with_threshold"><a href="#solution_4_shifted_log_with_threshold" class="header-anchor">Solution 4: Shifted Log with Threshold</a></h3>
-\[y_{\text{norm}} = \begin{cases}
-y & \text{if } y < \theta \\
-\theta + \log(1 + y - \theta) & \text{if } y \geq \theta
+\[y_{\mathrm{ norm}} = \begin{cases}
+y & \mathrm{ if} y < \theta \\
+\theta + \log(1 + y - \theta) & \mathrm{ if} y \geq \theta
 \end{cases}\]
 <p><strong>Behavior:</strong></p>
 <ul>
@@ -163,9 +163,9 @@ y & \text{if } y < \theta \\
 </li>
 </ul>
 <h3 id="solution_5_log-modulus_transform"><a href="#solution_5_log-modulus_transform" class="header-anchor">Solution 5: Log-Modulus Transform</a></h3>
-\[y_{\text{norm}} = \text{sign}(y) \cdot \log(1 + |y|)\]
+\[y_{\mathrm{ norm}} = \mathrm{ sign}(y) \cdot \log(1 + |y|)\]
 <p><strong>Inverse:</strong></p>
-\[y = \text{sign}(y_{\text{norm}}) \cdot (e^{|y_{\text{norm}}|} - 1)\]
+\[y = \mathrm{ sign}(y_{\mathrm{ norm}}) \cdot (e^{|y_{\mathrm{ norm}}|} - 1)\]
 <p><strong>Behavior:</strong></p>
 <ul>
 <li><p>Symmetric for positive and negative</p>
@@ -309,15 +309,15 @@ end</code></pre>
 <hr />
 <h2 id="power_transforms_box-cox_and_yeo-johnson"><a href="#power_transforms_box-cox_and_yeo-johnson" class="header-anchor">Power Transforms: Box-Cox and Yeo-Johnson</a></h2>
 <h3 id="box-cox_transform_y_0_only"><a href="#box-cox_transform_y_0_only" class="header-anchor">Box-Cox Transform &#40;y &gt; 0 only&#41;</a></h3>
-\(y_{\text{norm}} = \begin{cases}
-\frac{y^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0 \\
-\log(y) & \text{if } \lambda = 0
+\(y_{\mathrm{ norm}} = \begin{cases}
+\frac{y^\lambda - 1}{\lambda} & \mathrm{ if} \lambda \neq 0 \\
+\log(y) & \mathrm{ if} \lambda = 0
 \end{cases}\)
 <p><strong>Inverse:</strong> \(y = \begin{cases}
-(\lambda \cdot y_{\text{norm}} + 1)^{1/\lambda} & \text{if } \lambda \neq 0 \\
-e^{y_{\text{norm}}} & \text{if } \lambda = 0
+(\lambda \cdot y_{\mathrm{ norm}} + 1)^{1/\lambda} & \mathrm{ if} \lambda \neq 0 \\
+e^{y_{\mathrm{ norm}}} & \mathrm{ if} \lambda = 0
 \end{cases}\)</p>
-<p><strong>Derivative at y &#40;for λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\text{BoxCox}(y) = y^{\lambda - 1}\)</p>
+<p><strong>Derivative at y &#40;for λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\mathrm{ BoxCox}(y) = y^{\lambda - 1}\)</p>
 <p><strong>Sensitivity Analysis:</strong></p>
 <table><tr><th align="right">λ value</th><th align="right">Name</th><th align="right">Deriv at y&#61;0.1</th><th align="right">Deriv at y&#61;50</th><th align="right">Ratio &#40;0.1:50&#41;</th><th align="right">Effect</th></tr><tr><td align="right"><strong>2.0</strong></td><td align="right">Square</td><td align="right">0.2</td><td align="right">100</td><td align="right"><strong>0.002x</strong></td><td align="right">Very insensitive at zero</td></tr><tr><td align="right"><strong>1.0</strong></td><td align="right">Identity</td><td align="right">1.0</td><td align="right">1.0</td><td align="right"><strong>1x</strong></td><td align="right">Uniform sensitivity</td></tr><tr><td align="right"><strong>0.5</strong></td><td align="right">Square root</td><td align="right">3.16</td><td align="right">0.141</td><td align="right"><strong>22.4x</strong></td><td align="right">Sensitive at zero</td></tr><tr><td align="right"><strong>0.0</strong></td><td align="right">Log</td><td align="right">∞</td><td align="right">0.02</td><td align="right"><strong>∞</strong></td><td align="right">Explodes at zero</td></tr><tr><td align="right"><strong>-0.5</strong></td><td align="right">Inverse sqrt</td><td align="right">31.6</td><td align="right">0.0028</td><td align="right"><strong>11,300x</strong></td><td align="right">Extremely sensitive at zero</td></tr><tr><td align="right"><strong>-1.0</strong></td><td align="right">Inverse</td><td align="right">100</td><td align="right">0.0004</td><td align="right"><strong>250,000x</strong></td><td align="right">Wildly sensitive at zero</td></tr></table>
 <p><strong>Key insights:</strong></p>
@@ -341,13 +341,13 @@ y_norm &#61; &#40;y.^lambda .- 1&#41; ./ lambda
 # Inverse
 y &#61; &#40;lambda .* y_norm .&#43; 1&#41;.^&#40;1/lambda&#41;</code></pre>
 <h3 id="yeo-johnson_transform_handles_negatives_and_zero"><a href="#yeo-johnson_transform_handles_negatives_and_zero" class="header-anchor">Yeo-Johnson Transform &#40;handles negatives and zero&#41;</a></h3>
-\(y_{\text{norm}} = \begin{cases}
-\frac{(y+1)^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0, y \geq 0 \\
-\log(y+1) & \text{if } \lambda = 0, y \geq 0 \\
--\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \text{if } \lambda \neq 2, y < 0 \\
--\log(-y+1) & \text{if } \lambda = 2, y < 0
+\(y_{\mathrm{ norm}} = \begin{cases}
+\frac{(y+1)^\lambda - 1}{\lambda} & \mathrm{ if} \lambda \neq 0, y \geq 0 \\
+\log(y+1) & \mathrm{ if} \lambda = 0, y \geq 0 \\
+-\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \mathrm{ if} \lambda \neq 2, y < 0 \\
+-\log(-y+1) & \mathrm{ if} \lambda = 2, y < 0
 \end{cases}\)
-<p><strong>Derivative at y&#61;0.1 &#40;for positive values, λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\text{YeoJohnson}(y) = (y+1)^{\lambda - 1}\)</p>
+<p><strong>Derivative at y&#61;0.1 &#40;for positive values, λ ≠ 0&#41;:</strong> \(\frac{d}{dy}\mathrm{ YeoJohnson}(y) = (y+1)^{\lambda - 1}\)</p>
 <p><strong>Sensitivity Analysis &#40;positive values only&#41;:</strong></p>
 <table><tr><th align="right">λ value</th><th align="right">Deriv at y&#61;0.1</th><th align="right">Deriv at y&#61;50</th><th align="right">Ratio &#40;0.1:50&#41;</th><th align="right">Effect</th></tr><tr><td align="right"><strong>2.0</strong></td><td align="right">0.289</td><td align="right">2601</td><td align="right"><strong>0.0001x</strong></td><td align="right">Very insensitive at zero</td></tr><tr><td align="right"><strong>1.0</strong></td><td align="right">1.0</td><td align="right">51</td><td align="right"><strong>0.02x</strong></td><td align="right">Like log&#40;y&#43;1&#41;</td></tr><tr><td align="right"><strong>0.5</strong></td><td align="right">3.02</td><td align="right">7.14</td><td align="right"><strong>0.42x</strong></td><td align="right">Moderate</td></tr><tr><td align="right"><strong>0.0</strong></td><td align="right">∞ &#40;≈9.1&#41;</td><td align="right">0.0196</td><td align="right"><strong>≈500x</strong></td><td align="right">Like log&#40;y&#43;1&#41;</td></tr><tr><td align="right"><strong>-0.5</strong></td><td align="right">27.5</td><td align="right">0.0014</td><td align="right"><strong>19,600x</strong></td><td align="right">Very sensitive at zero</td></tr></table>
 <p><strong>Key difference from Box-Cox:</strong> Yeo-Johnson uses <code>&#40;y&#43;1&#41;</code> instead of <code>y</code>, so it handles zero naturally&#33;</p>
@@ -695,26 +695,26 @@ visualize_transforms&#40;y, lambdas&#41;</code></pre>
 <hr />
 <h2 id="proof_of_correctness_-1_1_version"><a href="#proof_of_correctness_-1_1_version" class="header-anchor">Proof of Correctness &#40;&#91;-1, 1&#93; version&#41;</a></h2>
 <p>Starting from forward transform:</p>
-\[y_{\text{norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
+\[y_{\mathrm{ norm}} = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})} - 1\]
 <ol>
-<li><p>Add 1: \(y_{\text{norm}} + 1 = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
+<li><p>Add 1: \(y_{\mathrm{ norm}} + 1 = 2 \cdot \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
 </li>
-<li><p>Divide by 2: \(\frac{y_{\text{norm}} + 1}{2} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
+<li><p>Divide by 2: \(\frac{y_{\mathrm{ norm}} + 1}{2} = \frac{\log(y) - \log(y_{\min})}{\log(y_{\max}) - \log(y_{\min})}\)</p>
 </li>
 <li><p>Multiply by \((\log(y_{\max}) - \log(y_{\min}))\):</p>
 </li>
 </ol>
-\[\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) = \log(y) - \log(y_{\min})\]
+\[\frac{y_{\mathrm{ norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) = \log(y) - \log(y_{\min})\]
 <ol start="4">
 <li><p>Add \(\log(y_{\min})\):</p>
 </li>
 </ol>
-\[\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min}) = \log(y)\]
+\[\frac{y_{\mathrm{ norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min}) = \log(y)\]
 <ol start="5">
 <li><p>Exponentiate:</p>
 </li>
 </ol>
-\[y = \exp\left(\frac{y_{\text{norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
+\[y = \exp\left(\frac{y_{\mathrm{ norm}} + 1}{2} \cdot (\log(y_{\max}) - \log(y_{\min})) + \log(y_{\min})\right)\]
 <p>∎ <strong>Verified:</strong> The inverse correctly recovers the original value.</p>
 <div class="page-foot">
     Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>

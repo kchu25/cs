@@ -27,63 +27,63 @@
 <div class="franklin-content"><h1 id="deepshap_additive_decomposition_and_deeplift_connection"><a href="#deepshap_additive_decomposition_and_deeplift_connection" class="header-anchor">DeepSHAP: Additive Decomposition and DeepLIFT Connection</a></h1>
 <h2 id="the_additive_decomposition_framework"><a href="#the_additive_decomposition_framework" class="header-anchor">The Additive Decomposition Framework</a></h2>
 <p>DeepSHAP provides an <strong>additive decomposition</strong> of a model&#39;s output, meaning it expresses the prediction as a sum of individual feature contributions plus a base value:</p>
-\[f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i\]
+\[f(x) = \varphi_0 + \sum_{i=1}^{M} \varphi_i\]
 <p>where:</p>
 <ul>
 <li><p>\(f(x)\) is the model&#39;s output for input \(x\)</p>
 </li>
-<li><p>\(\phi_0\) is the base value &#40;the baseline prediction&#41;</p>
+<li><p>\(\varphi_0\) is the base value &#40;the baseline prediction&#41;</p>
 </li>
-<li><p>\(\phi_i\) is the contribution of feature \(i\) to the deviation from the base value</p>
+<li><p>\(\varphi_i\) is the contribution of feature \(i\) to the deviation from the base value</p>
 </li>
 <li><p>\(M\) is the total number of features</p>
 </li>
 </ul>
 <blockquote>
-<h3>Understanding \(\phi_0\)</h3>
-<p><strong>Yes, \(\phi_0 = f(x_{\text{ref}})\) is the baseline prediction&#33;</strong></p>
+<h3>Understanding \(\varphi_0\)</h3>
+<p><strong>Yes, \(\varphi_0 = f(x_{\mathrm{ ref}})\) is the baseline prediction&#33;</strong></p>
 <p>More precisely, when using multiple reference points &#40;as DeepSHAP does&#41;:</p>
 </blockquote>
-\[\phi_0 = \mathbb{E}_{x_{\text{ref}}}[f(x_{\text{ref}})] \approx \frac{1}{K}\sum_{k=1}^{K} f(x_{\text{ref}}^{(k)})\]
+\[\varphi_0 = \mathbb{E}_{x_{\mathrm{ ref}}}[f(x_{\mathrm{ ref}})] \approx \frac{1}{K}\sum_{k=1}^{K} f(x_{\mathrm{ ref}}^{(k)})\]
 <blockquote>
 <p>So the additive decomposition becomes:</p>
 </blockquote>
-\[f(x) = \underbrace{f(x_{\text{ref}})}_{\text{baseline}} + \underbrace{\sum_{i=1}^{M} \phi_i}_{\text{feature contributions}}\]
+\[f(x) = \underbrace{f(x_{\mathrm{ ref}})}_{\mathrm{ baseline}} + \underbrace{\sum_{i=1}^{M} \varphi_i}_{\mathrm{ feature contributions}}\]
 <blockquote>
 <p>or equivalently:</p>
 </blockquote>
-\[\underbrace{f(x) - f(x_{\text{ref}})}_{\text{prediction difference}} = \sum_{i=1}^{M} \phi_i\]
+\[\underbrace{f(x) - f(x_{\mathrm{ ref}})}_{\mathrm{ prediction difference}} = \sum_{i=1}^{M} \varphi_i\]
 <blockquote>
 <p><strong>Interpretation</strong>: &quot;The prediction on input \(x\) equals the baseline prediction plus the sum of all feature contributions&quot;</p>
 </blockquote>
-<p><strong>Key Property</strong>: The contributions \(\phi_i\) satisfy the <strong>efficiency property</strong>:</p>
-\[f(x) - f(x_{\text{ref}}) = \sum_{i=1}^{M} \phi_i\]
+<p><strong>Key Property</strong>: The contributions \(\varphi_i\) satisfy the <strong>efficiency property</strong>:</p>
+\[f(x) - f(x_{\mathrm{ ref}}) = \sum_{i=1}^{M} \varphi_i\]
 <p>This means the sum of all feature contributions exactly equals the difference between the prediction and the baseline prediction.</p>
 <hr />
 <h2 id="connection_to_deeplift_scores"><a href="#connection_to_deeplift_scores" class="header-anchor">Connection to DeepLIFT Scores</a></h2>
-<p>DeepSHAP approximates these additive contributions \(\phi_i\) by <strong>aggregating DeepLIFT scores</strong> across multiple reference points. Here&#39;s how:</p>
+<p>DeepSHAP approximates these additive contributions \(\varphi_i\) by <strong>aggregating DeepLIFT scores</strong> across multiple reference points. Here&#39;s how:</p>
 <h3 id="single_reference_deeplift"><a href="#single_reference_deeplift" class="header-anchor"><ol>
 <li><p>Single Reference DeepLIFT</p>
 </li>
 </ol>
 </a></h3>
-<p>For a single reference input \(x_{\text{ref}}\), DeepLIFT computes contribution scores \(C_{\Delta x_i \Delta y}\) that decompose the output difference:</p>
-\[\Delta y = y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>For a single reference input \(x_{\mathrm{ ref}}\), DeepLIFT computes contribution scores \(C_{\Delta x_i \Delta y}\) that decompose the output difference:</p>
+\[\Delta y = y - y_{\mathrm{ ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
 <p>where \(C_{\Delta x_i \Delta y}\) represents how much the change in feature \(i\) contributed to the change in output.</p>
 <h3 id="ol_start2_deepshap_aggregation"><a href="#ol_start2_deepshap_aggregation" class="header-anchor"><ol start="2">
 <li><p>DeepSHAP Aggregation</p>
 </li>
 </ol>
 </a></h3>
-<p>DeepSHAP extends this by considering <strong>multiple reference points</strong> \(\{x_{\text{ref}}^{(k)}\}_{k=1}^{K}\) sampled from a reference distribution &#40;e.g., background dataset&#41;. The SHAP value for feature \(i\) is approximated as:</p>
-\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
-<p>where \(C_{\Delta x_i \Delta y}^{(k)}\) is the DeepLIFT contribution score computed with respect to reference \(x_{\text{ref}}^{(k)}\).</p>
+<p>DeepSHAP extends this by considering <strong>multiple reference points</strong> \(\{x_{\mathrm{ ref}}^{(k)}\}_{k=1}^{K}\) sampled from a reference distribution &#40;e.g., background dataset&#41;. The SHAP value for feature \(i\) is approximated as:</p>
+\[\varphi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
+<p>where \(C_{\Delta x_i \Delta y}^{(k)}\) is the DeepLIFT contribution score computed with respect to reference \(x_{\mathrm{ ref}}^{(k)}\).</p>
 <hr />
 <h2 id="why_this_connection_matters"><a href="#why_this_connection_matters" class="header-anchor">Why This Connection Matters</a></h2>
 <h3 id="additive_decomposition_properties"><a href="#additive_decomposition_properties" class="header-anchor">Additive Decomposition Properties</a></h3>
 <p>The additive form is crucial because it provides:</p>
 <ol>
-<li><p><strong>Local Accuracy</strong>: \(\sum_{i} \phi_i = f(x) - \mathbb{E}[f(X)]\) &#40;approximately&#41;</p>
+<li><p><strong>Local Accuracy</strong>: \(\sum_{i} \varphi_i = f(x) - \mathbb{E}[f(X)]\) &#40;approximately&#41;</p>
 </li>
 <li><p><strong>Missingness</strong>: Features not present have zero contribution</p>
 </li>
@@ -103,7 +103,7 @@
 <hr />
 <h2 id="mathematical_flow"><a href="#mathematical_flow" class="header-anchor">Mathematical Flow</a></h2>
 <p>The complete process can be summarized as:</p>
-\[\boxed{\phi_i = \mathbb{E}_{x_{\text{ref}} \sim \mathcal{D}}[C_{\Delta x_i \Delta y}(x, x_{\text{ref}})]}\]
+\[\boxed{\varphi_i = \mathbb{E}_{x_{\mathrm{ ref}} \sim \mathcal{D}}[C_{\Delta x_i \Delta y}(x, x_{\mathrm{ ref}})]}\]
 <p>This equation encapsulates:</p>
 <ul>
 <li><p><strong>Left side</strong>: The additive SHAP contribution for feature \(i\)</p>
@@ -112,7 +112,7 @@
 </li>
 </ul>
 <p>In practice:</p>
-\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} \text{DeepLIFT}(x, x_{\text{ref}}^{(k)})_i\]
+\[\varphi_i \approx \frac{1}{K} \sum_{k=1}^{K} \mathrm{ DeepLIFT}(x, x_{\mathrm{ ref}}^{(k)})_i\]
 <hr />
 <h2 id="practical_implications"><a href="#practical_implications" class="header-anchor">Practical Implications</a></h2>
 <ol>

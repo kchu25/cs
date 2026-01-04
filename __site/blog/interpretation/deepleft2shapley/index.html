@@ -30,13 +30,13 @@
 <p>How does averaging DeepLIFT contribution scores over multiple reference inputs produce SHAP &#40;Shapley&#41; values? Let&#39;s make this connection mathematically explicit.</p>
 <h2 id="step_1_what_deeplift_gives_you"><a href="#step_1_what_deeplift_gives_you" class="header-anchor">Step 1: What DeepLIFT Gives You</a></h2>
 <p>For a single input \(x\) and reference \(r\), DeepLIFT computes contribution scores:</p>
-\[C_{\Delta x_i \Delta f}(x, r) = \phi_i(x, r) \cdot (x_i - r_i)\]
+\[C_{\Delta x_i \Delta f}(x, r) = \varphi_i(x, r) \cdot (x_i - r_i)\]
 <p>These satisfy the <strong>summation-to-delta</strong> property:</p>
-\[f(x) - f(r) = \sum_{i=1}^{n} C_{\Delta x_i \Delta f}(x, r) = \sum_{i=1}^{n} \phi_i(x, r) \cdot (x_i - r_i)\]
-<p>The coefficients \(\phi_i(x, r)\) depend on both the input and reference, and are computed via the multiplier backward pass through the network.</p>
+\[f(x) - f(r) = \sum_{i=1}^{n} C_{\Delta x_i \Delta f}(x, r) = \sum_{i=1}^{n} \varphi_i(x, r) \cdot (x_i - r_i)\]
+<p>The coefficients \(\varphi_i(x, r)\) depend on both the input and reference, and are computed via the multiplier backward pass through the network.</p>
 <h2 id="step_2_the_shapley_value_definition"><a href="#step_2_the_shapley_value_definition" class="header-anchor">Step 2: The Shapley Value Definition</a></h2>
 <p>The true Shapley value for feature \(i\) is:</p>
-\[\phi_i = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(|F|-|S|-1)!}{|F|!} [f_x(S \cup \{i\}) - f_x(S)]\]
+\[\varphi_i = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!(|F|-|S|-1)!}{|F|!} [f_x(S \cup \{i\}) - f_x(S)]\]
 <p>where:</p>
 <ul>
 <li><p>\(F\) is the set of all features</p>
@@ -47,7 +47,7 @@
 </li>
 </ul>
 <p>This can be rewritten as an expectation:</p>
-\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
 <p>where \(\pi\) is the uniform distribution over all possible feature coalitions.</p>
 <h2 id="step_3_the_reference_distribution_approximation"><a href="#step_3_the_reference_distribution_approximation" class="header-anchor">Step 3: The Reference Distribution Approximation</a></h2>
 <p><strong>Key insight:</strong> Define the function \(f_x(S)\) using a reference distribution \(\mathcal{R}\):</p>
@@ -74,7 +74,7 @@
 </ul>
 <p>This hybrid input lets us measure: <em>&quot;What&#39;s the model output when only features in \(S\) are active?&quot;</em></p>
 <p>With this definition, the Shapley value becomes:</p>
-\(\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
+\(\varphi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
 <p><strong>What this measures:</strong> The marginal contribution of adding feature \(i\) to coalition \(S\):</p>
 <ul>
 <li><p><strong>First term:</strong> \(f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})\) &#61; output when coalition \(S\) AND feature \(i\) are present</p>
@@ -108,15 +108,15 @@
 <p><strong>The approximation:</strong> Under the independence assumption, these two approaches give similar results&#33; DeepLIFT&#39;s linearization implicitly captures the average marginal effect across coalitions, even though it only does one forward-backward pass instead of enumerating all \(2^n\) coalitions.</p>
 <h2 id="step_5_the_averaging_step_deepshap"><a href="#step_5_the_averaging_step_deepshap" class="header-anchor">Step 5: The Averaging Step &#40;DeepSHAP&#41;</a></h2>
 <p>DeepSHAP takes the expectation over the reference distribution:</p>
-\[\phi_i^{\text{DeepSHAP}}(x) = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
-\[= \frac{1}{|R|} \sum_{r \in R} \phi_i(x, r) \cdot (x_i - r_i)\]
+\[\varphi_i^{\mathrm{ DeepSHAP}}(x) = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\]
+\[= \frac{1}{|R|} \sum_{r \in R} \varphi_i(x, r) \cdot (x_i - r_i)\]
 <p>where \(R\) is a finite sample from \(\mathcal{R}\).</p>
 <h2 id="step_6_why_this_equals_the_shapley_value"><a href="#step_6_why_this_equals_the_shapley_value" class="header-anchor">Step 6: Why This Equals the Shapley Value</a></h2>
 <p>Combining steps 3-5:</p>
-\(\phi_i^{\text{DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\)
+\(\varphi_i^{\mathrm{ DeepSHAP}} = \mathbb{E}_{r \sim \mathcal{R}}[C_{\Delta x_i \Delta f}(x, r)]\)
 \(\approx \mathbb{E}_{r \sim \mathcal{R}}\mathbb{E}_{S \sim \pi}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
 \(= \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
-\(= \phi_i^{\text{Shapley}}\)
+\(= \varphi_i^{\mathrm{ Shapley}}\)
 <p><strong>Reading this chain of equalities:</strong></p>
 <ol>
 <li><p><strong>Line 1:</strong> DeepSHAP &#61; average DeepLIFT contributions over references</p>
@@ -136,9 +136,9 @@
 <p>When you vary the reference \(r\), you&#39;re implicitly varying which features are &quot;present&quot; &#40;from \(x\)&#41; vs &quot;absent&quot; &#40;from \(r\)&#41; at each layer. The multiplier chain rule automatically accounts for all possible paths through the network, which corresponds to marginalizing over different feature coalitions.</p>
 <h3 id="the_linearization_trick"><a href="#the_linearization_trick" class="header-anchor">The Linearization Trick</a></h3>
 <p>For any \((x, r)\) pair, DeepLIFT finds coefficients such that:</p>
-\[f(x) - f(r) = \sum_{i=1}^{n} \phi_i(x, r) \cdot (x_i - r_i)\]
+\[f(x) - f(r) = \sum_{i=1}^{n} \varphi_i(x, r) \cdot (x_i - r_i)\]
 <p>This is exact for this pair, but is a <em>linear</em> relationship. When we average over many references:</p>
-\[\mathbb{E}_r[\phi_i(x, r) \cdot (x_i - r_i)] \approx \text{true marginal effect of } x_i\]
+\[\mathbb{E}_r[\varphi_i(x, r) \cdot (x_i - r_i)] \approx \mathrm{ true marginal effect of} x_i\]
 <p>The averaging smooths out the local linearizations into a global approximation of the Shapley value.</p>
 <h2 id="practical_implementation"><a href="#practical_implementation" class="header-anchor">Practical Implementation</a></h2>
 <pre><code class="language-julia">For each input x:
@@ -164,11 +164,11 @@
     Return: Shapley values Φ</code></pre>
 <h2 id="why_averaging_works_intuition"><a href="#why_averaging_works_intuition" class="header-anchor">Why Averaging Works: Intuition</a></h2>
 <ul>
-<li><p><strong>Single reference:</strong> DeepLIFT gives you \(\phi_i(x, r)\) that explains the difference \(f(x) - f(r)\) as a linear function of input differences.</p>
+<li><p><strong>Single reference:</strong> DeepLIFT gives you \(\varphi_i(x, r)\) that explains the difference \(f(x) - f(r)\) as a linear function of input differences.</p>
 </li>
 <li><p><strong>Multiple references:</strong> Different references \(r_1, r_2, \ldots\) represent different &quot;baseline contexts.&quot; Averaging over them gives you the expected marginal contribution of feature \(i\) across all possible contexts.</p>
 </li>
-<li><p><strong>Shapley connection:</strong> The Shapley formula \(\sum_S \text{weight}(S) \cdot [f(S \cup \{i\}) - f(S)]\) is also an average of marginal contributions across contexts &#40;coalitions \(S\)&#41;.</p>
+<li><p><strong>Shapley connection:</strong> The Shapley formula \(\sum_S \mathrm{ weight}(S) \cdot [f(S \cup \{i\}) - f(S)]\) is also an average of marginal contributions across contexts &#40;coalitions \(S\)&#41;.</p>
 </li>
 <li><p><strong>The magic:</strong> DeepLIFT&#39;s linearization &#43; reference averaging implicitly performs the coalition sampling that Shapley requires, but does it through the network structure rather than explicit enumeration.</p>
 </li>
@@ -194,7 +194,7 @@
 <p>Notice: Feature 1 ALWAYS uses \(x_1\), but features 2 and 3 vary with each random \(r\) sample.</p>
 <p><strong>Why this matters:</strong> By averaging over \(r\), we&#39;re integrating out &#40;marginalizing&#41; the variability of absent features, which gives us the expected output when only coalition \(S\) is active. This is exactly what the Shapley formula requires&#33;</p>
 <h2 id="the_approximation_quality"><a href="#the_approximation_quality" class="header-anchor">The Approximation Quality</a></h2>
-<p>The approximation \(\phi_i^{\text{DeepSHAP}} \approx \phi_i^{\text{Shapley}}\) is exact when:</p>
+<p>The approximation \(\varphi_i^{\mathrm{ DeepSHAP}} \approx \varphi_i^{\mathrm{ Shapley}}\) is exact when:</p>
 <ol>
 <li><p>The model \(f\) is linear</p>
 </li>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Integrated Gradients: A Clear Mathematical Explanation</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="integrated_gradients_a_clear_mathematical_explanation"><a href="#integrated_gradients_a_clear_mathematical_explanation" class="header-anchor">Integrated Gradients: A Clear Mathematical Explanation</a></h1>
+<h2 id="the_core_problem"><a href="#the_core_problem" class="header-anchor">The Core Problem</a></h2>
+<p><strong>Attribution</strong>: Given a neural network \(F: \mathbb{R}^n \to [0,1]\) and an input \(\mathbf{x}\), how much did each feature \(x_i\) contribute to the prediction \(F(\mathbf{x})\)?</p>
+<p>The key insight: we need a <strong>baseline</strong> \(\mathbf{x}'\) representing &quot;absence of signal&quot; &#40;e.g., black image, zero embedding&#41;. Attribution measures contribution <em>relative</em> to this baseline.</p>
+<hr />
+<h2 id="why_gradients_fail"><a href="#why_gradients_fail" class="header-anchor">Why Gradients Fail</a></h2>
+<p>The naive approach: use \(\frac{\partial F}{\partial x_i} \cdot x_i\).</p>
+<p><strong>Problem &#40;Sensitivity violation&#41;</strong>: Consider \(f(x) = 1 - \mathrm{ ReLU}(1-x)\).</p>
+<ul>
+<li><p>At baseline \(x=0\): \(f(0) = 0\)</p>
+</li>
+<li><p>At input \(x=2\): \(f(2) = 1\) </p>
+</li>
+<li><p>But gradient at \(x=2\) is <strong>zero</strong> &#40;function is flat there&#33;&#41;</p>
+</li>
+<li><p>So naive gradient gives zero attribution despite the feature completely changing the output.</p>
+</li>
+</ul>
+<p><strong>The issue</strong>: Gradients only capture <em>local</em> behavior at one point. They miss what happened along the path from baseline to input.</p>
+<hr />
+<h2 id="the_solution_integrated_gradients"><a href="#the_solution_integrated_gradients" class="header-anchor">The Solution: Integrated Gradients</a></h2>
+<p>Instead of looking at just one point, <strong>accumulate gradients along the entire path</strong> from baseline to input.</p>
+<h3 id="mathematical_definition"><a href="#mathematical_definition" class="header-anchor">Mathematical Definition</a></h3>
+<p>For the \(i\)-th feature:</p>
+\[\mathrm{ IntegratedGrad}_i(\mathbf{x}) = (x_i - x'_i) \times \int_{\alpha=0}^{1} \frac{\partial F(\mathbf{x}' + \alpha(\mathbf{x} - \mathbf{x}'))}{\partial x_i} d\alpha\]
+<p><strong>Translation</strong>: </p>
+<ul>
+<li><p>\(\mathbf{x}' + \alpha(\mathbf{x} - \mathbf{x}')\) is a point on the straight line from baseline to input &#40;parameterized by \(\alpha \in [0,1]\)&#41;</p>
+</li>
+<li><p>We compute the gradient at <em>every</em> point along this line</p>
+</li>
+<li><p>We integrate &#40;sum up&#41; all these gradients</p>
+</li>
+<li><p>We scale by \((x_i - x'_i)\) to get the final attribution</p>
+</li>
+</ul>
+<h3 id="practical_implementation"><a href="#practical_implementation" class="header-anchor">Practical Implementation</a></h3>
+<p>In practice, approximate the integral with a Riemann sum using \(m\) steps:</p>
+\[\mathrm{ IntegratedGrad}_i(\mathbf{x}) \approx (x_i - x'_i) \times \sum_{k=1}^{m} \frac{\partial F(\mathbf{x}' + \frac{k}{m}(\mathbf{x} - \mathbf{x}'))}{\partial x_i} \times \frac{1}{m}\]
+<p>This is just: <em>compute gradients at \(m\) evenly-spaced points along the path, then average them</em>.</p>
+<p>In code, it&#39;s a simple loop calling your gradient function&#33; The paper recommends \(m = 20\) to \(300\) steps.</p>
+<hr />
+<h2 id="why_this_works_the_axioms"><a href="#why_this_works_the_axioms" class="header-anchor">Why This Works: The Axioms</a></h2>
+<p>The paper proves Integrated Gradients is the <em>unique</em> method satisfying these desirable properties:</p>
+<h3 id="completeness_sanity_check"><a href="#completeness_sanity_check" class="header-anchor"><ol>
+<li><p>Completeness &#40;Sanity Check&#41;</p>
+</li>
+</ol>
+</a></h3>
+\[\sum_{i=1}^{n} \mathrm{ IntegratedGrad}_i(\mathbf{x}) = F(\mathbf{x}) - F(\mathbf{x}')\]
+<p>The attributions <strong>sum exactly</strong> to the difference in prediction. If the baseline has near-zero score, attributions sum to the final prediction.</p>
+<p><em>Proof</em>: This is just the fundamental theorem of calculus for path integrals&#33;</p>
+<h3 id="ol_start2_sensitivitya"><a href="#ol_start2_sensitivitya" class="header-anchor"><ol start="2">
+<li><p>Sensitivity&#40;a&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Definition</strong>: If baseline \(\mathbf{x}'\) and input \(\mathbf{x}\) differ only in feature \(i\) &#40;i.e., \(x_j = x'_j\) for all \(j \neq i\)&#41;, and \(F(\mathbf{x}) \neq F(\mathbf{x}')\), then:</p>
+\(\mathrm{ Attribution}_i(\mathbf{x}, \mathbf{x}') \neq 0\)
+<p><strong>Why Integrated Gradients satisfies this</strong>:</p>
+<p>From Completeness, we know: \(\sum_{j=1}^{n} \mathrm{ IntegratedGrad}_j(\mathbf{x}) = F(\mathbf{x}) - F(\mathbf{x}')\)</p>
+<p>If only feature \(i\) differs, then for all \(j \neq i\): \(x_j = x'_j\), which means: \((x_j - x'_j) = 0 \implies \mathrm{ IntegratedGrad}_j(\mathbf{x}) = 0\)</p>
+<p>So the completeness equation becomes: \(\mathrm{ IntegratedGrad}_i(\mathbf{x}) = F(\mathbf{x}) - F(\mathbf{x}')\)</p>
+<p>Since \(F(\mathbf{x}) \neq F(\mathbf{x}')\) by assumption, we must have \(\mathrm{ IntegratedGrad}_i(\mathbf{x}) \neq 0\). ∎</p>
+<p><strong>Sensitivity&#40;b&#41;</strong> &#40;also called &quot;Dummy&quot; axiom&#41;:</p>
+<p>If feature \(x_i\) has <em>no effect</em> on the function &#40;i.e., \(F(\mathbf{x})\) is independent of \(x_i\) for all \(\mathbf{x}\)&#41;, then: \(\mathrm{ Attribution}_i(\mathbf{x}, \mathbf{x}') = 0 \mathrm{ for all} \mathbf{x}, \mathbf{x}'\)</p>
+<p><strong>Proof for Integrated Gradients</strong>: If \(F\) doesn&#39;t depend on \(x_i\), then \(\frac{\partial F}{\partial x_i} = 0\) everywhere. Therefore: \(\mathrm{ IntegratedGrad}_i(\mathbf{x}) = (x_i - x'_i) \times \int_{\alpha=0}^{1} \underbrace{\frac{\partial F}{\partial x_i}}_{=0} d\alpha = 0\)</p>
+<h3 id="ol_start3_implementation_invariance"><a href="#ol_start3_implementation_invariance" class="header-anchor"><ol start="3">
+<li><p>Implementation Invariance</p>
+</li>
+</ol>
+</a></h3>
+<p><strong>Definition</strong>: Suppose networks \(F\) and \(G\) compute the same function &#40;i.e., \(F(\mathbf{x}) = G(\mathbf{x})\) for all \(\mathbf{x}\)&#41;, even though they have different architectures/parameters. Then their attributions must be identical:</p>
+\(\mathrm{ Attribution}_F(\mathbf{x}, \mathbf{x}') = \mathrm{ Attribution}_G(\mathbf{x}, \mathbf{x}')\)
+<p><strong>Why Integrated Gradients satisfies this</strong>:</p>
+<p>If \(F(\mathbf{x}) = G(\mathbf{x})\) for all \(\mathbf{x}\), then by calculus: \(\frac{\partial F}{\partial x_i}(\mathbf{x}) = \frac{\partial G}{\partial x_i}(\mathbf{x}) \mathrm{ for all} \mathbf{x}, i\)</p>
+<p>This is the fundamental principle: the gradient of a function depends only on the <em>function itself</em>, not how it&#39;s implemented.</p>
+<p>Therefore: \(\begin{align}
+\mathrm{ IntegratedGrad}^F_i(\mathbf{x}) &= (x_i - x'_i) \int_{\alpha=0}^{1} \frac{\partial F(\mathbf{x}' + \alpha(\mathbf{x} - \mathbf{x}'))}{\partial x_i} d\alpha \\
+&= (x_i - x'_i) \int_{\alpha=0}^{1} \frac{\partial G(\mathbf{x}' + \alpha(\mathbf{x} - \mathbf{x}'))}{\partial x_i} d\alpha \\
+&= \mathrm{ IntegratedGrad}^G_i(\mathbf{x})
+\end{align}\)</p>
+<p><strong>The chain rule connection</strong>: This property is why gradients compose nicely. If \(F(\mathbf{x}) = h(g(\mathbf{x}))\), then: \(\frac{\partial F}{\partial x_i} = \frac{\partial h}{\partial g} \cdot \frac{\partial g}{\partial x_i}\)</p>
+<p>The chain rule works regardless of the &quot;implementation detail&quot; \(h\). But discrete gradients \(\frac{\Delta F}{\Delta x_i}\) don&#39;t satisfy a chain rule: \(\frac{F(x_1) - F(x_0)}{x_1 - x_0} \neq \frac{F(x_1) - F(x_0)}{h(x_1) - h(x_0)} \cdot \frac{h(x_1) - h(x_0)}{x_1 - x_0}\)</p>
+<p>This is why DeepLift and LRP, which use discrete gradients, violate Implementation Invariance.</p>
+<h3 id="ol_start4_symmetry_preservation"><a href="#ol_start4_symmetry_preservation" class="header-anchor"><ol start="4">
+<li><p>Symmetry Preservation</p>
+</li>
+</ol>
+</a></h3>
+<p>If two features are interchangeable in the function &#40;e.g., \(F(x_1, x_2) = F(x_2, x_1)\)&#41;, and they have equal values at input and baseline, they should get equal attributions.</p>
+<p>The straight-line path is the <strong>only</strong> path that guarantees this&#33;</p>
+<hr />
+<h2 id="why_other_methods_fail"><a href="#why_other_methods_fail" class="header-anchor">Why Other Methods Fail</a></h2>
+<table><tr><th align="right">Method</th><th align="right">What It Does</th><th align="right">Why It Fails</th></tr><tr><td align="right"><strong>Gradients</strong></td><td align="right">\(\nabla F(\mathbf{x}) \odot \mathbf{x}\)</td><td align="right">Violates Sensitivity &#40;misses flat regions&#41;</td></tr><tr><td align="right"><strong>DeepLift / LRP</strong></td><td align="right">&quot;Discrete gradients&quot; via backprop</td><td align="right">Violates Implementation Invariance &#40;chain rule doesn&#39;t hold for discrete gradients&#41;</td></tr><tr><td align="right"><strong>Deconvolution / Guided Backprop</strong></td><td align="right">Modified backprop &#40;only pass positive signals&#41;</td><td align="right">Violates Sensitivity &#40;ignores features where ReLU is off at input&#41;</td></tr></table>
+<hr />
+<h2 id="the_mathematical_uniqueness_result"><a href="#the_mathematical_uniqueness_result" class="header-anchor">The Mathematical Uniqueness Result</a></h2>
+<p><strong>Theorem</strong>: Integrated Gradients is the <em>unique</em> path-based attribution method that is symmetry-preserving.</p>
+<p><strong>Path method</strong> &#61; any method that integrates gradients along <em>some</em> path from baseline to input.</p>
+<p>The straight-line path \(\mathbf{x}'  + \alpha(\mathbf{x} - \mathbf{x}')\) is special because:</p>
+<ol>
+<li><p>It&#39;s the simplest path mathematically</p>
+</li>
+<li><p>It&#39;s the only one that preserves symmetry</p>
+</li>
+</ol>
+<p><em>Alternative</em>: Shapley values average over all \(n!\) coordinate-wise paths, but this is computationally prohibitive for high-dimensional inputs like images.</p>
+<hr />
+<h2 id="practical_considerations"><a href="#practical_considerations" class="header-anchor">Practical Considerations</a></h2>
+<h3 id="choosing_the_baseline"><a href="#choosing_the_baseline" class="header-anchor">Choosing the Baseline</a></h3>
+<ul>
+<li><p><strong>Images</strong>: Black image &#40;all pixels &#61; 0&#41;</p>
+</li>
+<li><p><strong>Text</strong>: Zero embedding vector</p>
+</li>
+<li><p><strong>Requirement</strong>: Baseline should have near-zero prediction score and represent &quot;absence of signal&quot;</p>
+</li>
+</ul>
+<h3 id="implementation_tips"><a href="#implementation_tips" class="header-anchor">Implementation Tips</a></h3>
+<ol>
+<li><p>Use \(m = 20\) to \(300\) steps</p>
+</li>
+<li><p>Verify: \(\sum_i \mathrm{ IntegratedGrad}_i(\mathbf{x}) \approx F(\mathbf{x}) - F(\mathbf{x}')\) &#40;within 5&#37;&#41;</p>
+</li>
+<li><p>If not close, increase \(m\)</p>
+</li>
+</ol>
+<h3 id="visualization"><a href="#visualization" class="header-anchor">Visualization</a></h3>
+<p>For images: scale pixel intensities by their attributions to see which pixels drove the prediction.</p>
+<hr />
+<h2 id="intuition"><a href="#intuition" class="header-anchor">Intuition</a></h2>
+<p>Think of it this way: </p>
+<ul>
+<li><p>You walk from the baseline &#40;black image&#41; to your input &#40;actual image&#41;</p>
+</li>
+<li><p>At each step, you ask: &quot;If I stopped here, which features would locally matter most?&quot;</p>
+</li>
+<li><p>You sum up all these local answers to get the global attribution</p>
+</li>
+</ul>
+<p>This avoids the pitfalls of just looking at one local neighborhood &#40;gradients&#41; or using non-composable discrete steps &#40;DeepLift/LRP&#41;.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 04, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

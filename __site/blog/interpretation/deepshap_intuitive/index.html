@@ -31,7 +31,7 @@
 <ul>
 <li><p><strong>Shapley values</strong>: average over exponentially many marginal contributions &#40;all coalitions \(S\)&#41;</p>
 </li>
-<li><p><strong>DeepLIFT/DeepSHAP</strong>: one forward-backward pass giving us coefficients \(\phi_i(x,r)\)</p>
+<li><p><strong>DeepLIFT/DeepSHAP</strong>: one forward-backward pass giving us coefficients \(\varphi_i(x,r)\)</p>
 </li>
 </ul>
 <p>How can one backprop approximate an exponential average? The answer is subtle and relies entirely on that independence assumption.</p>
@@ -40,7 +40,7 @@
 <p>Let me explain what I mean.</p>
 <h3 id="the_shapley_formula_what_we_want"><a href="#the_shapley_formula_what_we_want" class="header-anchor">The Shapley Formula &#40;What We Want&#41;</a></h3>
 <p>The true Shapley value for feature \(i\) is:</p>
-\(\phi_i^{\text{Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
+\(\varphi_i^{\mathrm{ Shapley}} = \mathbb{E}_{S \sim \pi} \mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\)
 <p>This has <strong>two</strong> expectations:</p>
 <ol>
 <li><p><strong>Outer expectation over coalitions \(S\)</strong>: average over all possible subsets</p>
@@ -71,15 +71,15 @@
 <p>For each coalition, we average over multiple reference samples, then average across coalitions.</p>
 <h3 id="what_deeplift_computes_what_we_get"><a href="#what_deeplift_computes_what_we_get" class="header-anchor">What DeepLIFT Computes &#40;What We Get&#41;</a></h3>
 <p>DeepLIFT does one backward pass along the path from \(r\) to \(x\) and gives us:</p>
-\[f(x) - f(r) = \sum_{i=1}^n \phi_i(x,r) \cdot (x_i - r_i)\]
-<p>This decomposes the <strong>total change</strong> \(f(x) - f(r)\) into feature contributions. The coefficient \(\phi_i(x,r)\) for feature \(i\) comes from integrating the gradient along the straight-line path:</p>
-\[\phi_i(x,r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) \, dt\]
+\[f(x) - f(r) = \sum_{i=1}^n \varphi_i(x,r) \cdot (x_i - r_i)\]
+<p>This decomposes the <strong>total change</strong> \(f(x) - f(r)\) into feature contributions. The coefficient \(\varphi_i(x,r)\) for feature \(i\) comes from integrating the gradient along the straight-line path:</p>
+\[\varphi_i(x,r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) \, dt\]
 <p>This is computing: &quot;as we move from \(r\) to \(x\) &#40;varying ALL features simultaneously&#41;, how much does the gradient w.r.t. feature \(i\) contribute?&quot;</p>
 <h2 id="the_magic_of_independence"><a href="#the_magic_of_independence" class="header-anchor">The Magic of Independence</a></h2>
 <p>Here&#39;s where it all comes together. The conditional independence assumption actually makes <strong>both</strong> expectations simplify dramatically.</p>
 <h3 id="what_conditional_independence_really_means"><a href="#what_conditional_independence_really_means" class="header-anchor">What Conditional Independence Really Means</a></h3>
 <p>When we say features are conditionally independent given reference distribution \(\mathcal{R}\), we mean:</p>
-\(p(r_i, r_j) = p(r_i) \cdot p(r_j) \text{ for all } i, j\)
+\(p(r_i, r_j) = p(r_i) \cdot p(r_j) \mathrm{ for all} i, j\)
 <p>The reference features are sampled independently. This seems innocent, but it has profound consequences&#33;</p>
 <h3 id="step_1_within_a_single_reference"><a href="#step_1_within_a_single_reference" class="header-anchor">Step 1: Within a Single Reference</a></h3>
 <p>Let&#39;s use the Fundamental Theorem of Calculus for any coalition \(S\) and reference \(r\).</p>
@@ -99,7 +99,7 @@
 <p>We can pull the integral out of the coalition expectation because it no longer depends on \(S\)&#33;</p>
 <h3 id="step_4_connecting_to_deeplift_still_for_fixed_r"><a href="#step_4_connecting_to_deeplift_still_for_fixed_r" class="header-anchor">Step 4: Connecting to DeepLIFT &#40;Still for Fixed \(r\)&#41;</a></h3>
 <p>But wait - this is <strong>still not quite</strong> what DeepLIFT computes. For a given reference \(r\), DeepLIFT integrates along the full path from \(r\) to \(x\):</p>
-\(\phi_i(x,r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) \, dt\)
+\(\varphi_i(x,r) = \int_0^1 \frac{\partial f}{\partial x_i}(r + t(x-r)) \, dt\)
 <p>The difference is:</p>
 <ul>
 <li><p><strong>Coalition integral &#40;single-feature path&#41;</strong>: only varies feature \(i\), others stay at \(r\)</p>
@@ -112,14 +112,14 @@
 \(\frac{\partial f}{\partial x_i}(r_1, \ldots, r_{i-1}, z_i, r_{i+1}, \ldots, r_n) \approx \frac{\partial f}{\partial x_i}(r + t(x-r))\)
 <p>Even though the left side has other features at \(r\) and the right side has them varying along the path, <strong>it doesn&#39;t matter</strong> because there are no interaction terms&#33;</p>
 <p>So for a <strong>fixed reference</strong> \(r\):</p>
-\(\mathbb{E}_{S \sim \pi}[\text{marginal contribution}] \approx \phi_i(x,r) \cdot (x_i - r_i)\)
+\(\mathbb{E}_{S \sim \pi}[\mathrm{ marginal contribution}] \approx \varphi_i(x,r) \cdot (x_i - r_i)\)
 <h3 id="step_6_now_average_over_references"><a href="#step_6_now_average_over_references" class="header-anchor">Step 6: Now Average Over References</a></h3>
 <p>The full Shapley formula has:</p>
-\(\phi_i^{\text{Shapley}} = \mathbb{E}_{r \sim \mathcal{R}} \left[ \mathbb{E}_{S \sim \pi}[\text{marginal contribution w.r.t. } r] \right]\)
-<p>From Step 5, the inner expectation gives \(\phi_i(x,r) \cdot (x_i - r_i)\), so:</p>
-\(\phi_i^{\text{Shapley}} \approx \mathbb{E}_{r \sim \mathcal{R}} [\phi_i(x,r) \cdot (x_i - r_i)]\)
+\(\varphi_i^{\mathrm{ Shapley}} = \mathbb{E}_{r \sim \mathcal{R}} \left[ \mathbb{E}_{S \sim \pi}[\mathrm{ marginal contribution w.r.t.} r] \right]\)
+<p>From Step 5, the inner expectation gives \(\varphi_i(x,r) \cdot (x_i - r_i)\), so:</p>
+\(\varphi_i^{\mathrm{ Shapley}} \approx \mathbb{E}_{r \sim \mathcal{R}} [\varphi_i(x,r) \cdot (x_i - r_i)]\)
 <p><strong>This is what DeepSHAP computes&#33;</strong> Sample multiple references \(r^{(1)}, \ldots, r^{(K)}\), compute DeepLIFT for each, and average:</p>
-\(\phi_i^{\text{DeepSHAP}} = \frac{1}{K} \sum_{k=1}^K \phi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
+\(\varphi_i^{\mathrm{ DeepSHAP}} = \frac{1}{K} \sum_{k=1}^K \varphi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
 <h2 id="the_concrete_intuition"><a href="#the_concrete_intuition" class="header-anchor">The Concrete Intuition</a></h2>
 <p>Think of it this way: </p>
 <p><strong>Without independence</strong> &#40;features interact&#41;:</p>
@@ -132,7 +132,7 @@
 </li>
 <li><p>Coalition \(S = \{2,3\}\): Adding \(x_1\) to \((r_1, x_2, x_3)\) has marginal effect \(D\) ≠ \(A\)</p>
 </li>
-<li><p><strong>Shapley value</strong> &#61; \(\mathbb{E}_{S}[\text{marginal}]\) &#61; properly weighted average of \(A, B, C, D\) over all \(2^{n-1}\) coalitions</p>
+<li><p><strong>Shapley value</strong> &#61; \(\mathbb{E}_{S}[\mathrm{ marginal}]\) &#61; properly weighted average of \(A, B, C, D\) over all \(2^{n-1}\) coalitions</p>
 </li>
 <li><p><strong>You MUST compute all of them and average&#33;</strong></p>
 </li>
@@ -147,15 +147,15 @@
 </li>
 <li><p>Coalition \(S = \{2,3\}\): Adding \(x_1\) to \((r_1, x_2, x_3)\) has marginal effect \(A\) &#40;all equal&#33;&#41;</p>
 </li>
-<li><p><strong>Shapley value</strong> &#61; \(\mathbb{E}_{S}[\text{marginal}]\) &#61; average of \([A, A, A, A, \ldots]\) &#61; \(A\)</p>
+<li><p><strong>Shapley value</strong> &#61; \(\mathbb{E}_{S}[\mathrm{ marginal}]\) &#61; average of \([A, A, A, A, \ldots]\) &#61; \(A\)</p>
 </li>
 <li><p><strong>The coalition expectation is still there, it just equals any single term&#33;</strong></p>
 </li>
 </ul>
 <p>And DeepLIFT&#39;s integral along the full path also gives us \(A\) because the gradient doesn&#39;t depend on where other features are.</p>
 <p><strong>So to directly answer your question:</strong> Yes, exactly&#33; Under independence, computing the coalition expectation reduces to a <strong>single calculation</strong> rather than an average over many terms. </p>
-<p>Mathematically, you&#39;re still computing \(\mathbb{E}_S[\text{marginal}]\), but since every term in that expectation is identical, you only need to evaluate one of them:</p>
-\(\mathbb{E}_S[\text{marginal}] = A \text{ (when all marginal contributions equal } A)\)
+<p>Mathematically, you&#39;re still computing \(\mathbb{E}_S[\mathrm{ marginal}]\), but since every term in that expectation is identical, you only need to evaluate one of them:</p>
+\(\mathbb{E}_S[\mathrm{ marginal}] = A \mathrm{ (when all marginal contributions equal} A)\)
 <p>It&#39;s the difference between:</p>
 <ul>
 <li><p><strong>Hard problem</strong>: &quot;Compute the average of 1000 different numbers&quot; &#40;needs all 1000 evaluations&#41;</p>
@@ -167,7 +167,7 @@
 <p>That&#39;s the computational magic: independence transforms the intractable Shapley coalition average into a single path integral that DeepLIFT can compute in one backward pass.</p>
 <h2 id="why_approximation"><a href="#why_approximation" class="header-anchor">Why &quot;Approximation&quot;?</a></h2>
 <p>So when do we have:</p>
-\[\mathbb{E}_{S}[\text{marginal contribution of } i \text{ in coalition } S] \approx \phi_i(x,r) \cdot (x_i - r_i)\]
+\[\mathbb{E}_{S}[\mathrm{ marginal contribution of} i \mathrm{ in coalition} S] \approx \varphi_i(x,r) \cdot (x_i - r_i)\]
 <p><strong>Exactly true when:</strong></p>
 <ol>
 <li><p>Model is linear: \(f(x) = \sum_i \beta_i x_i\)</p>
@@ -196,13 +196,13 @@
 <h2 id="the_multiple_backprop_confusion_resolved"><a href="#the_multiple_backprop_confusion_resolved" class="header-anchor">The Multiple Backprop Confusion Resolved</a></h2>
 <p>You asked: &quot;When we do multiple backprop, we are only approximating one marginal contribution term. How is that approximating the Shapley value?&quot;</p>
 <p>Now we can answer precisely&#33; Each backprop with reference \(r^{(k)}\) gives:</p>
-\(\phi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
+\(\varphi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
 <p>Under independence, this approximates:</p>
-\(\mathbb{E}_{S \sim \pi}[\text{marginal contribution of } i \text{ in all coalitions w.r.t. reference } r^{(k)}]\)
+\(\mathbb{E}_{S \sim \pi}[\mathrm{ marginal contribution of} i \mathrm{ in all coalitions w.r.t. reference} r^{(k)}]\)
 <p>The <strong>multiple references</strong> give us different &quot;samples&quot; from the reference distribution \(\mathcal{R}\). By averaging:</p>
-\(\frac{1}{K} \sum_{k=1}^K \phi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
+\(\frac{1}{K} \sum_{k=1}^K \varphi_i(x, r^{(k)}) \cdot (x_i - r_i^{(k)})\)
 <p>we&#39;re approximating:</p>
-\(\mathbb{E}_{r \sim \mathcal{R}} \left[ \mathbb{E}_{S \sim \pi}[\text{marginal contribution}] \right]\)
+\(\mathbb{E}_{r \sim \mathcal{R}} \left[ \mathbb{E}_{S \sim \pi}[\mathrm{ marginal contribution}] \right]\)
 <p>which is exactly the Shapley value&#33;</p>
 <p><strong>Key insight:</strong> Each single backprop with one reference already approximates the entire coalition average &#40;inner expectation&#41; under independence. The multiple backprops then approximate the outer expectation over references.</p>
 <h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>

@@ -27,8 +27,8 @@
 <!-- Content appended here -->
 <div class="franklin-content"><h1 id="straight-through_estimator_ste"><a href="#straight-through_estimator_ste" class="header-anchor">Straight-Through Estimator &#40;STE&#41;</a></h1>
 <h2 id="the_problem"><a href="#the_problem" class="header-anchor">The Problem</a></h2>
-<p>Non-differentiable operations like \(\text{argmax}\), \(\text{round}\), or \(\mathbb{1}_{x > 0}\) break backpropagation:</p>
-\[\frac{\partial}{\partial x}\text{argmax}(x) = 0 \text{ or undefined}\]
+<p>Non-differentiable operations like \(\mathrm{ argmax}\), \(\mathrm{ round}\), or \(\mathbb{1}_{x > 0}\) break backpropagation:</p>
+\[\frac{\partial}{\partial x}\mathrm{ argmax}(x) = 0 \mathrm{ or undefined}\]
 <h2 id="the_solution"><a href="#the_solution" class="header-anchor">The Solution</a></h2>
 <p><strong>Use different operations for forward and backward passes:</strong></p>
 <ul>
@@ -90,7 +90,7 @@ samples &#61; gumbel_softmax_ste&#40;logits, τ&#61;0.5&#41;
 # Forward: discrete one-hot vectors
 # Backward: gradients flow through soft distribution</code></pre>
 <h2 id="common_applications"><a href="#common_applications" class="header-anchor">Common Applications</a></h2>
-<table><tr><th align="right">Application</th><th align="right">Hard Operation</th><th align="right">Soft Approximation</th></tr><tr><td align="right"><strong>Binarization</strong></td><td align="right">\(\text{sign}(x)\) or \(\mathbb{1}_{x>0}\)</td><td align="right">\(\text{tanh}(x)\) or \(\sigma(x)\)</td></tr><tr><td align="right"><strong>Quantization</strong></td><td align="right">\(\text{round}(x)\)</td><td align="right">\(x\) &#40;identity&#41;</td></tr><tr><td align="right"><strong>Categorical Sampling</strong></td><td align="right">\(\text{argmax}(x)\)</td><td align="right">\(\text{softmax}(x/\tau)\)</td></tr><tr><td align="right"><strong>Top-k Selection</strong></td><td align="right">\(\text{top-k}(x)\)</td><td align="right">\(\text{softmax}(x/\tau)\)</td></tr></table>
+<table><tr><th align="right">Application</th><th align="right">Hard Operation</th><th align="right">Soft Approximation</th></tr><tr><td align="right"><strong>Binarization</strong></td><td align="right">\(\mathrm{ sign}(x)\) or \(\mathbb{1}_{x>0}\)</td><td align="right">\(\mathrm{ tanh}(x)\) or \(\sigma(x)\)</td></tr><tr><td align="right"><strong>Quantization</strong></td><td align="right">\(\mathrm{ round}(x)\)</td><td align="right">\(x\) &#40;identity&#41;</td></tr><tr><td align="right"><strong>Categorical Sampling</strong></td><td align="right">\(\mathrm{ argmax}(x)\)</td><td align="right">\(\mathrm{ softmax}(x/\tau)\)</td></tr><tr><td align="right"><strong>Top-k Selection</strong></td><td align="right">\(\mathrm{ top-k}(x)\)</td><td align="right">\(\mathrm{ softmax}(x/\tau)\)</td></tr></table>
 <h2 id="why_it_works"><a href="#why_it_works" class="header-anchor">Why It Works</a></h2>
 <ol>
 <li><p><strong>Forward pass gets what you want</strong>: Discrete, fast operations</p>

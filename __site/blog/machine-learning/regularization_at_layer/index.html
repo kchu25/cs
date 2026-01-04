@@ -72,7 +72,7 @@
 </ol>
 </a></h3>
 <p>The transformation through the network typically involves:</p>
-\[\text{Input} \xrightarrow{\text{many layers}} \text{Low-dim manifold} \xrightarrow{\text{final layers}} \text{Output}\]
+\[\mathrm{ Input} \xrightarrow{\mathrm{ many layers}} \mathrm{ Low-dim manifold} \xrightarrow{\mathrm{ final layers}} \mathrm{ Output}\]
 <p>Final embeddings often lie on a <strong>lower-dimensional manifold</strong> that&#39;s easier to regularize. Common techniques like:</p>
 <ul>
 <li><p>L2 normalization: \(\mathbf{z} \leftarrow \frac{\mathbf{z}}{\|\mathbf{z}\|}\)</p>
@@ -85,13 +85,13 @@
 <p>work well because the meaningful structure has already been extracted.</p>
 <h2 id="mathematical_intuition"><a href="#mathematical_intuition" class="header-anchor">Mathematical Intuition</a></h2>
 <p>Consider a loss function with regularization:</p>
-\[\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda \mathcal{R}(\mathbf{h})\]
+\[\mathcal{L} = \mathcal{L}_{\mathrm{ task}} + \lambda \mathcal{R}(\mathbf{h})\]
 <p>where \(\mathbf{h}\) is an embedding layer.</p>
 <h3 id="for_final_layer_mathbfh_l"><a href="#for_final_layer_mathbfh_l" class="header-anchor">For Final Layer \(\mathbf{h}_L\):</a></h3>
-\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{h}_L} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_L}\]
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} = \frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{h}_L} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_L}\]
 <p>Both terms are <strong>direct and strong</strong>.</p>
 <h3 id="for_first_layer_mathbfh_1"><a href="#for_first_layer_mathbfh_1" class="header-anchor">For First Layer \(\mathbf{h}_1\):</a></h3>
-\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{h}_L} \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{h}_{L-1}} \cdots \frac{\partial \mathbf{h}_2}{\partial \mathbf{h}_1} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_1}\]
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{h}_L} \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{h}_{L-1}} \cdots \frac{\partial \mathbf{h}_2}{\partial \mathbf{h}_1} + \lambda \frac{\partial \mathcal{R}}{\partial \mathbf{h}_1}\]
 <p>The regularization gradient is <strong>diluted</strong> through the chain rule.</p>
 <h2 id="practical_examples"><a href="#practical_examples" class="header-anchor">Practical Examples</a></h2>
 <h3 id="effective_final_layer_regularization"><a href="#effective_final_layer_regularization" class="header-anchor">Effective Final Layer Regularization:</a></h3>
@@ -117,12 +117,12 @@
 <h3>📝 Side Note: Why L1 Regularization Often Fails on First Layers</h3>
 <p><strong>The Problem:</strong> Applying L1 regularization to first layer embeddings:</p>
 </blockquote>
-\[\mathcal{L} = \mathcal{L}_{\text{task}} + \lambda \|\mathbf{h}_1\|_1\]
+\[\mathcal{L} = \mathcal{L}_{\mathrm{ task}} + \lambda \|\mathbf{h}_1\|_1\]
 <blockquote>
 <p>often <strong>fails to induce sparsity</strong>. Here&#39;s why:</p>
 <h4>1. <strong>Gradient Competition &#40;When λ is Small&#41;</strong></h4>
 <p>The gradient for first layer weights \(\mathbf{W}_1\):</p>
-\(\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \underbrace{\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_1}}_{\text{task gradient}} + \underbrace{\lambda \cdot \text{sign}(\mathbf{h}_1) \cdot \frac{\partial \mathbf{h}_1}{\partial \mathbf{W}_1}}_{\text{sparsity gradient}}\)
+\(\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \underbrace{\frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{W}_1}}_{\mathrm{ task gradient}} + \underbrace{\lambda \cdot \mathrm{ sign}(\mathbf{h}_1) \cdot \frac{\partial \mathbf{h}_1}{\partial \mathbf{W}_1}}_{\mathrm{ sparsity gradient}}\)
 <p>When λ is too small, the <strong>task gradient dominates</strong>:</p>
 <ul>
 <li><p>It carries information from the final loss through all layers</p>
@@ -138,7 +138,7 @@
 </ul>
 <h4>1b. <strong>Gradient Conflict &#40;When λ is Large&#41;</strong></h4>
 <p>When λ is too large, you see a different failure: <strong>embeddings become unoptimizable</strong>:</p>
-\(\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \text{small varied task signal} + \text{large constant sparsity signal}\)
+\(\frac{\partial \mathcal{L}}{\partial \mathbf{W}_1} = \mathrm{ small varied task signal} + \mathrm{ large constant sparsity signal}\)
 <p><strong>What happens:</strong></p>
 <ul>
 <li><p>The sparsity gradient is <strong>uniform and strong</strong>: always pushes toward zero</p>
@@ -147,7 +147,7 @@
 </li>
 <li><p>L1 &quot;drowns out&quot; the task signal, like noise overwhelming a weak radio signal</p>
 </li>
-<li><p>Updates become dominated by: \(\Delta \mathbf{W}_1 \approx -\eta \lambda \cdot \text{sign}(\mathbf{h}_1)\)</p>
+<li><p>Updates become dominated by: \(\Delta \mathbf{W}_1 \approx -\eta \lambda \cdot \mathrm{ sign}(\mathbf{h}_1)\)</p>
 </li>
 </ul>
 <p><strong>Why training fails:</strong></p>
@@ -178,13 +178,13 @@
 </ul>
 <h4>Why Final Layers Don&#39;t &quot;Drown Out&quot; as Easily</h4>
 <p>Even with the same large λ, final layers remain trainable:</p>
-\(\Delta \mathbf{W}_L = -\eta\left(\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L} + \lambda \cdot \text{sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\right)\)
+\(\Delta \mathbf{W}_L = -\eta\left(\frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{W}_L} + \lambda \cdot \mathrm{ sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\right)\)
 <p><strong>Key differences:</strong></p>
 <p><strong>1. Task gradients are stronger &#40;no dilution&#41;</strong></p>
 <ul>
-<li><p>\(\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L}\) is direct from the loss</p>
+<li><p>\(\frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{W}_L}\) is direct from the loss</p>
 </li>
-<li><p>Magnitude is comparable to or larger than \(\lambda \cdot \text{sign}(\mathbf{h}_L)\)</p>
+<li><p>Magnitude is comparable to or larger than \(\lambda \cdot \mathrm{ sign}(\mathbf{h}_L)\)</p>
 </li>
 <li><p>Can actually compete with sparsity pressure</p>
 </li>
@@ -238,7 +238,7 @@
 <h4>3. <strong>Vanishing Sparsity Signal</strong></h4>
 <p>The chain rule dilutes the sparsity signal:</p>
 </blockquote>
-\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} \prod_{i=2}^{L} \frac{\partial \mathbf{h}_i}{\partial \mathbf{h}_{i-1}} + \lambda \cdot \text{sign}(\mathbf{h}_1)\]
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{h}_1} = \frac{\partial \mathcal{L}}{\partial \mathbf{h}_L} \prod_{i=2}^{L} \frac{\partial \mathbf{h}_i}{\partial \mathbf{h}_{i-1}} + \lambda \cdot \mathrm{ sign}(\mathbf{h}_1)\]
 <blockquote>
 <ul>
 <li><p>The product of Jacobians can be very small &#40;vanishing gradients&#41;</p>
@@ -263,12 +263,12 @@
 <h4>Why Final Layer L1 Works Better</h4>
 <p>For final embeddings \(\mathbf{h}_L\), the gradient looks similar:</p>
 </blockquote>
-\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_L} = \frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L} + \lambda \cdot \text{sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\]
+\[\frac{\partial \mathcal{L}}{\partial \mathbf{W}_L} = \frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{W}_L} + \lambda \cdot \mathrm{ sign}(\mathbf{h}_L) \cdot \frac{\partial \mathbf{h}_L}{\partial \mathbf{W}_L}\]
 <blockquote>
 <p><strong>So why does it work here?</strong> The crucial differences:</p>
 <p><strong>1. Gradient Magnitudes are Comparable</strong></p>
 <ul>
-<li><p>Task gradient \(\frac{\partial \mathcal{L}_{\text{task}}}{\partial \mathbf{W}_L}\) is direct &#40;no chain through many layers&#41;</p>
+<li><p>Task gradient \(\frac{\partial \mathcal{L}_{\mathrm{ task}}}{\partial \mathbf{W}_L}\) is direct &#40;no chain through many layers&#41;</p>
 </li>
 <li><p>It&#39;s typically <strong>smaller</strong> than first layer task gradients because:</p>
 <ul>

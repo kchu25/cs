@@ -109,9 +109,9 @@
 </ul>
 <p><strong>Theorem &#40;Coupon Collector Style&#41;:</strong></p>
 <p>If there are at least \(K \geq \varepsilon N\) significant configurations, the probability we find <strong>at least one</strong> after \(n\) samples is:</p>
-\(\mathbb{P}(\text{find} \geq 1 \text{ significant}) = 1 - \left(1 - \frac{K}{N}\right)^n \geq 1 - (1 - \varepsilon)^n\)
+\(\mathbb{P}(\mathrm{ find} \geq 1 \mathrm{ significant}) = 1 - \left(1 - \frac{K}{N}\right)^n \geq 1 - (1 - \varepsilon)^n\)
 <p>Using the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\):</p>
-\(\mathbb{P}(\text{miss all significant configs}) \leq e^{-n\varepsilon}\)
+\(\mathbb{P}(\mathrm{ miss all significant configs}) \leq e^{-n\varepsilon}\)
 <p>Setting \(e^{-n\varepsilon} = \delta\):</p>
 \(n \geq \frac{\ln(1/\delta)}{\varepsilon}\)
 <p><strong>More conservatively &#40;using Chernoff bound&#41;:</strong></p>
@@ -235,7 +235,7 @@
 </ol>
 </a></h4>
 <p>Let&#39;s compute the <strong>actual</strong> probability of success for \(\varepsilon = 0.01\):</p>
-\(\mathbb{P}(\text{find} \geq 1) = 1 - (1-\varepsilon)^n\)
+\(\mathbb{P}(\mathrm{ find} \geq 1) = 1 - (1-\varepsilon)^n\)
 <table><tr><th align="right">Samples \(n\)</th><th align="right">Actual P&#40;success&#41;</th><th align="right">Bound guarantees?</th><th align="right">Status</th></tr><tr><td align="right">100</td><td align="right">63.4&#37;</td><td align="right">❌ No</td><td align="right">Expected value</td></tr><tr><td align="right">300</td><td align="right">95.0&#37;</td><td align="right">❌ No</td><td align="right">Pretty good&#33;</td></tr><tr><td align="right">500</td><td align="right">99.3&#37;</td><td align="right">❌ No</td><td align="right">Excellent&#33;</td></tr><tr><td align="right">1,000</td><td align="right">99.996&#37;</td><td align="right">❌ No</td><td align="right">Nearly certain</td></tr><tr><td align="right">106,000</td><td align="right">~100&#37;</td><td align="right">✅ Yes</td><td align="right">Theoretical bound</td></tr></table>
 <p><strong>In practice</strong>: 500-1,000 samples would work great, but the theoretical bound says you need 106,000&#33;</p>
 <h4 id="ol_start3_the_concentration_bound_is_loose"><a href="#ol_start3_the_concentration_bound_is_loose" class="header-anchor"><ol start="3">
@@ -243,8 +243,8 @@
 </li>
 </ol>
 </a></h4>
-<p>The Chernoff bound gives an <strong>upper bound</strong> on failure probability: \(\mathbb{P}(\text{miss all}) \leq e^{-n\varepsilon}\)</p>
-<p>The <strong>actual</strong> probability is: \(\mathbb{P}(\text{miss all}) = (1-\varepsilon)^n\)</p>
+<p>The Chernoff bound gives an <strong>upper bound</strong> on failure probability: \(\mathbb{P}(\mathrm{ miss all}) \leq e^{-n\varepsilon}\)</p>
+<p>The <strong>actual</strong> probability is: \(\mathbb{P}(\mathrm{ miss all}) = (1-\varepsilon)^n\)</p>
 <p>For small \(\varepsilon\), we use the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\), which adds conservatism.</p>
 <h3 id="when_are_pessimistic_bounds_useful"><a href="#when_are_pessimistic_bounds_useful" class="header-anchor">When Are Pessimistic Bounds Useful?</a></h3>
 <p>The conservative theoretical bounds are valuable when:</p>
@@ -261,7 +261,7 @@
 <h3 id="practical_recommendations"><a href="#practical_recommendations" class="header-anchor">Practical Recommendations</a></h3>
 <p>For actual implementation, consider these strategies:</p>
 <h4 id="strategy_1_use_expected_value_with_safety_factor"><a href="#strategy_1_use_expected_value_with_safety_factor" class="header-anchor">Strategy 1: Use Expected Value with Safety Factor</a></h4>
-\(n_{\text{practical}} = \frac{k}{\varepsilon}\)
+\(n_{\mathrm{ practical}} = \frac{k}{\varepsilon}\)
 <p>where \(k = 3\) to \(5\) &#40;gives ~95-99&#37; success rate for finding at least one pattern&#41;</p>
 <p><strong>Example</strong>: For \(\varepsilon = 0.01\):</p>
 <ul>

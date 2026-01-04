@@ -40,11 +40,11 @@
 </ol>
 <h2 id="the_mathematical_toolkit"><a href="#the_mathematical_toolkit" class="header-anchor">The Mathematical Toolkit</a></h2>
 <p>Here are the formal structures that let you <em>reason</em> about systems:</p>
-<table><tr><th align="right">Math Structure</th><th align="right">Formal Definition</th><th align="right">OS Applications</th><th align="right">Key Property</th></tr><tr><td align="right"><strong>State Machine</strong></td><td align="right">\((S, s_0, E, \delta)\) where \(\delta: S \times E \to S\)</td><td align="right">Process states, lock states, page states</td><td align="right">Reachability analysis: &quot;Can we reach deadlock state?&quot;</td></tr><tr><td align="right"><strong>Partial Order</strong></td><td align="right">Relation \(\to\) that&#39;s transitive, irreflexive, antisymmetric</td><td align="right">Happens-before, event ordering</td><td align="right">If \(a \not\to b\) and \(b \not\to a\), then \(a \parallel b\) &#40;concurrent&#41;</td></tr><tr><td align="right"><strong>Invariant</strong></td><td align="right">Predicate \(P(s)\) true for all reachable states \(s\)</td><td align="right">Mutual exclusion, memory safety</td><td align="right">\(P(s) = \text{true} \implies\) system is correct</td></tr><tr><td align="right"><strong>Graph</strong></td><td align="right">\(G = (V, E)\)</td><td align="right">Resource allocation, wait-for graphs</td><td align="right">Cycle detection &#61; deadlock detection</td></tr><tr><td align="right"><strong>Function/Mapping</strong></td><td align="right">\(f: A \to B\)</td><td align="right">Page tables, file descriptors</td><td align="right">Composition: \((f \circ g)(x) = f(g(x))\)</td></tr><tr><td align="right"><strong>Probability</strong></td><td align="right">\(P(X), E[X], \text{Var}(X)\)</td><td align="right">Queueing models, performance analysis</td><td align="right">Little&#39;s Law: \(L = \lambda W\)</td></tr></table>
+<table><tr><th align="right">Math Structure</th><th align="right">Formal Definition</th><th align="right">OS Applications</th><th align="right">Key Property</th></tr><tr><td align="right"><strong>State Machine</strong></td><td align="right">\((S, s_0, E, \delta)\) where \(\delta: S \times E \to S\)</td><td align="right">Process states, lock states, page states</td><td align="right">Reachability analysis: &quot;Can we reach deadlock state?&quot;</td></tr><tr><td align="right"><strong>Partial Order</strong></td><td align="right">Relation \(\to\) that&#39;s transitive, irreflexive, antisymmetric</td><td align="right">Happens-before, event ordering</td><td align="right">If \(a \not\to b\) and \(b \not\to a\), then \(a \parallel b\) &#40;concurrent&#41;</td></tr><tr><td align="right"><strong>Invariant</strong></td><td align="right">Predicate \(P(s)\) true for all reachable states \(s\)</td><td align="right">Mutual exclusion, memory safety</td><td align="right">\(P(s) = \mathrm{ true} \implies\) system is correct</td></tr><tr><td align="right"><strong>Graph</strong></td><td align="right">\(G = (V, E)\)</td><td align="right">Resource allocation, wait-for graphs</td><td align="right">Cycle detection &#61; deadlock detection</td></tr><tr><td align="right"><strong>Function/Mapping</strong></td><td align="right">\(f: A \to B\)</td><td align="right">Page tables, file descriptors</td><td align="right">Composition: \((f \circ g)(x) = f(g(x))\)</td></tr><tr><td align="right"><strong>Probability</strong></td><td align="right">\(P(X), E[X], \mathrm{ Var}(X)\)</td><td align="right">Queueing models, performance analysis</td><td align="right">Little&#39;s Law: \(L = \lambda W\)</td></tr></table>
 <h3 id="state_machines_in_detail"><a href="#state_machines_in_detail" class="header-anchor">State Machines in Detail</a></h3>
 <p><strong>Components:</strong></p>
 <ul>
-<li><p>\(S\) &#61; set of states &#40;e.g., \(\{\text{Ready}, \text{Running}, \text{Waiting}, \text{Terminated}\}\)&#41;</p>
+<li><p>\(S\) &#61; set of states &#40;e.g., \(\{\mathrm{ Ready}, \mathrm{ Running}, \mathrm{ Waiting}, \mathrm{ Terminated}\}\)&#41;</p>
 </li>
 <li><p>\(s_0\) &#61; initial state</p>
 </li>
@@ -72,8 +72,8 @@
 Thread 2: write&#40;y&#41;; read&#40;x&#41;;     a₂ → b₂</code></pre>
 <p>Are \(a_1\) and \(a_2\) ordered? No&#33; So 4 possible execution orders exist.</p>
 <h3 id="invariants"><a href="#invariants" class="header-anchor">Invariants</a></h3>
-<p><strong>Definition:</strong> Predicate that&#39;s always true: \(\forall s \in \text{ReachableStates}, P(s) = \text{true}\)</p>
-<table><tr><th align="right">System Component</th><th align="right">Invariant Example</th></tr><tr><td align="right">Mutex</td><td align="right">\(\|\{\text{threads in critical section}\}| \leq 1\)</td></tr><tr><td align="right">Memory allocator</td><td align="right">\(\sum \text{allocated} + \sum \text{free} = \text{total}\)</td></tr><tr><td align="right">Balanced tree</td><td align="right">\(\|\text{height}(\text{left}) - \text{height}(\text{right})\| \leq 1\)</td></tr><tr><td align="right">File system</td><td align="right">\(\text{blocks\_used} = \sum_{i} \text{file\_sizes}[i]\)</td></tr></table>
+<p><strong>Definition:</strong> Predicate that&#39;s always true: \(\forall s \in \mathrm{ ReachableStates}, P(s) = \mathrm{ true}\)</p>
+<table><tr><th align="right">System Component</th><th align="right">Invariant Example</th></tr><tr><td align="right">Mutex</td><td align="right">\(\|\{\mathrm{ threads in critical section}\}| \leq 1\)</td></tr><tr><td align="right">Memory allocator</td><td align="right">\(\sum \mathrm{ allocated} + \sum \mathrm{ free} = \mathrm{ total}\)</td></tr><tr><td align="right">Balanced tree</td><td align="right">\(\|\mathrm{ height}(\mathrm{ left}) - \mathrm{ height}(\mathrm{ right})\| \leq 1\)</td></tr><tr><td align="right">File system</td><td align="right">\(\mathrm{ blocks\_used} = \sum_{i} \mathrm{ file\_sizes}[i]\)</td></tr></table>
 <p><strong>Bugs &#61; Invariant violations.</strong> If you can state your invariants precisely, you can reason about correctness.</p>
 <h3 id="graph_theory_for_resources"><a href="#graph_theory_for_resources" class="header-anchor">Graph Theory for Resources</a></h3>
 <p><strong>Resource Allocation Graph:</strong></p>
@@ -125,15 +125,15 @@ Thread 2: write&#40;y&#41;; read&#40;x&#41;;     a₂ → b₂</code></pre>
 <li><p>If \(U \geq 1\): queue grows unbounded</p>
 </li>
 </ul>
-<p><strong>Application:</strong> If processes arrive at rate \(\lambda = 10/\text{sec}\) and each takes \(S = 0.08\) sec, then \(U = 0.8\) &#40;80&#37; CPU utilization&#41;, and on average \(L = 10 \times W\) processes are in the system.</p>
+<p><strong>Application:</strong> If processes arrive at rate \(\lambda = 10/\mathrm{ sec}\) and each takes \(S = 0.08\) sec, then \(U = 0.8\) &#40;80&#37; CPU utilization&#41;, and on average \(L = 10 \times W\) processes are in the system.</p>
 <h2 id="connecting_math_to_core_concepts"><a href="#connecting_math_to_core_concepts" class="header-anchor">Connecting Math to Core Concepts</a></h2>
 <h3 id="virtualization_function_composition"><a href="#virtualization_function_composition" class="header-anchor">Virtualization &#61; Function Composition</a></h3>
 <p>Virtual memory is layers of mappings:</p>
-\[\text{Virtual Addr} \xrightarrow{\text{TLB}} \text{Page Table} \xrightarrow{f} \text{Physical Addr} \xrightarrow{g} \text{Cache} \xrightarrow{h} \text{DRAM}\]
-<p>Result: \((h \circ g \circ f)(\text{addr})\) — multiple levels of indirection.</p>
+\[\mathrm{ Virtual Addr} \xrightarrow{\mathrm{ TLB}} \mathrm{ Page Table} \xrightarrow{f} \mathrm{ Physical Addr} \xrightarrow{g} \mathrm{ Cache} \xrightarrow{h} \mathrm{ DRAM}\]
+<p>Result: \((h \circ g \circ f)(\mathrm{ addr})\) — multiple levels of indirection.</p>
 <h3 id="concurrency_product_of_state_machines"><a href="#concurrency_product_of_state_machines" class="header-anchor">Concurrency &#61; Product of State Machines</a></h3>
 <p>Two threads \(T_1, T_2\) with state spaces \(S_1, S_2\):</p>
-\[\text{Combined system state space} = S_1 \times S_2\]
+\[\mathrm{ Combined system state space} = S_1 \times S_2\]
 <p>If \(|S_1| = n\) and \(|S_2| = m\), combined system has \(n \times m\) states.</p>
 <p><strong>State explosion:</strong> With \(k\) threads, state space grows as \(\prod_{i=1}^k |S_i|\) — exponential&#33; This is why concurrency is hard.</p>
 <h3 id="persistence_idempotence_ordering"><a href="#persistence_idempotence_ordering" class="header-anchor">Persistence &#61; Idempotence &#43; Ordering</a></h3>
@@ -159,7 +159,7 @@ Thread 2: write&#40;y&#41;; read&#40;x&#41;;     a₂ → b₂</code></pre>
 </ol>
 </a></h3>
 <p>Every OS decision is optimization under constraints:</p>
-\[\text{Maximize } f(\text{throughput, fairness, latency}) \text{ subject to } g(\text{resources}) \leq C\]
+\[\mathrm{ Maximize} f(\mathrm{ throughput, fairness, latency}) \mathrm{ subject to} g(\mathrm{ resources}) \leq C\]
 <p>Examples:</p>
 <ul>
 <li><p>Scheduling: Maximize throughput subject to fairness constraints</p>

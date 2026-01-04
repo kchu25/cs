@@ -25,6 +25,10 @@ website_url   = "https://kchu25.github.io/"
 Add here global latex commands to use throughout your pages.
 -->
 \newcommand{\R}{\mathbb R}
+\newcommand{\E}{\mathbb E}
+\newcommand{\phi}{\varphi}
+\newcommand{\text}[1]{\mathrm{#1}}
+\newcommand{\vee}{\lor}
 
 \newcommand{\xbm}{\bm x}
 \newcommand{\ubm}{\bm u}

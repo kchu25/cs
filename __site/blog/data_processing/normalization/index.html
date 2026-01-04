@@ -27,7 +27,7 @@
 <!-- Content appended here -->
 <div class="franklin-content"><h1 id="neural_network_output_activations_for_normalized_labels"><a href="#neural_network_output_activations_for_normalized_labels" class="header-anchor">Neural Network Output Activations for Normalized Labels</a></h1>
 <h2 id="summary_table"><a href="#summary_table" class="header-anchor">Summary Table</a></h2>
-<table><tr><th align="right">Normalization Type</th><th align="right">Output Activation</th><th align="right">Output Range</th><th align="right">Inverse Transform</th></tr><tr><td align="right"><strong>Log</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \exp(\hat{y})\)</td></tr><tr><td align="right"><strong>Z-score</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot \sigma + \mu\)</td></tr><tr><td align="right"><strong>Min-Max</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\) or \(\mathbb{R}\)</td><td align="right">\(y_{orig} = \hat{y} \cdot (y_{max} - y_{min}) + y_{min}\)</td></tr><tr><td align="right"><strong>Box-Cox</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">Inverse Box-Cox with \(\lambda\)</td></tr><tr><td align="right"><strong>Robust &#40;IQR&#41;</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot IQR + \text{median}\)</td></tr><tr><td align="right"><strong>Quantile/Rank</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\)</td><td align="right">Inverse quantile mapping</td></tr></table>
+<table><tr><th align="right">Normalization Type</th><th align="right">Output Activation</th><th align="right">Output Range</th><th align="right">Inverse Transform</th></tr><tr><td align="right"><strong>Log</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \exp(\hat{y})\)</td></tr><tr><td align="right"><strong>Z-score</strong></td><td align="right">Linear &#40;Identity&#41;</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot \sigma + \mu\)</td></tr><tr><td align="right"><strong>Min-Max</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\) or \(\mathbb{R}\)</td><td align="right">\(y_{orig} = \hat{y} \cdot (y_{max} - y_{min}) + y_{min}\)</td></tr><tr><td align="right"><strong>Box-Cox</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">Inverse Box-Cox with \(\lambda\)</td></tr><tr><td align="right"><strong>Robust &#40;IQR&#41;</strong></td><td align="right">Linear</td><td align="right">\((-\infty, \infty)\)</td><td align="right">\(y_{orig} = \hat{y} \cdot IQR + \mathrm{ median}\)</td></tr><tr><td align="right"><strong>Quantile/Rank</strong></td><td align="right">Sigmoid or Linear</td><td align="right">\([0, 1]\)</td><td align="right">Inverse quantile mapping</td></tr></table>
 <hr />
 <h2 id="log_normalization"><a href="#log_normalization" class="header-anchor"><ol>
 <li><p>Log Normalization</p>
@@ -85,14 +85,14 @@
 </ol>
 </a></h2>
 <p><strong>Transform:</strong> \(y_{norm} = \begin{cases} 
-\frac{y^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0 \\
-\log(y) & \text{if } \lambda = 0
+\frac{y^\lambda - 1}{\lambda} & \mathrm{ if} \lambda \neq 0 \\
+\log(y) & \mathrm{ if} \lambda = 0
 \end{cases}\)</p>
 <p><strong>Output Activation:</strong> Linear</p>
 <p><strong>Reasoning:</strong> Box-Cox is a power transformation that makes data more Gaussian-like. The parameter \(\lambda\) is typically fitted to the data. Output range is unbounded.</p>
 <p><strong>Inverse Transform:</strong> \(y_{original} = \begin{cases} 
-(\lambda \cdot \hat{y} + 1)^{1/\lambda} & \text{if } \lambda \neq 0 \\
-\exp(\hat{y}) & \text{if } \lambda = 0
+(\lambda \cdot \hat{y} + 1)^{1/\lambda} & \mathrm{ if} \lambda \neq 0 \\
+\exp(\hat{y}) & \mathrm{ if} \lambda = 0
 \end{cases}\)</p>
 <p><strong>Use Case:</strong> When dealing with skewed distributions that need stabilization beyond simple log transform.</p>
 <blockquote>
@@ -104,11 +104,11 @@
 </li>
 </ol>
 </a></h2>
-<p><strong>Transform:</strong> \(y_{norm} = \frac{y - \text{median}(y)}{IQR}\)</p>
+<p><strong>Transform:</strong> \(y_{norm} = \frac{y - \mathrm{ median}(y)}{IQR}\)</p>
 <p>where \(IQR = Q_3 - Q_1\) &#40;interquartile range&#41;</p>
 <p><strong>Output Activation:</strong> Linear</p>
 <p><strong>Reasoning:</strong> Similar to z-score but robust to outliers. Values typically centered around 0 but unbounded.</p>
-<p><strong>Inverse Transform:</strong> \(y_{original} = \hat{y} \cdot IQR + \text{median}\)</p>
+<p><strong>Inverse Transform:</strong> \(y_{original} = \hat{y} \cdot IQR + \mathrm{ median}\)</p>
 <p><strong>Use Case:</strong> When your labels contain outliers that would distort mean/std in z-score normalization.</p>
 <blockquote>
 <p><strong>When to use:</strong> Data contains outliers that shouldn&#39;t dominate the scaling. More robust than z-score since median and IQR are resistant to extreme values. Good for data with long tails or contamination. Medical data, sensor readings, or real-world measurements with anomalies. Preserves outlier information while not letting them define the scale.</p>
@@ -120,7 +120,7 @@
 </ol>
 </a></h2>
 <p><strong>Transform:</strong> Map each value to its quantile rank in \([0, 1]\)</p>
-\(y_{norm} = \frac{\text{rank}(y)}{n}\)
+\(y_{norm} = \frac{\mathrm{ rank}(y)}{n}\)
 <p><strong>Output Activation:</strong> </p>
 <ul>
 <li><p><strong>Sigmoid</strong> - Recommended for strict \([0,1]\) bounds</p>
@@ -157,7 +157,7 @@
 </li>
 </ol>
 </a></h2>
-<p><strong>Transform:</strong> \(y_{norm} = \text{arcsinh}(y) = \log(y + \sqrt{y^2 + 1})\)</p>
+<p><strong>Transform:</strong> \(y_{norm} = \mathrm{ arcsinh}(y) = \log(y + \sqrt{y^2 + 1})\)</p>
 <p><strong>Output Activation:</strong> Linear</p>
 <p><strong>Reasoning:</strong> Similar to log but handles zero and negative values gracefully. Approximately linear near zero, logarithmic for large values.</p>
 <p><strong>Inverse Transform:</strong> \(y_{original} = \sinh(\hat{y}) = \frac{e^{\hat{y}} - e^{-\hat{y}}}{2}\)</p>
@@ -172,10 +172,10 @@
 </ol>
 </a></h2>
 <p><strong>Transform:</strong> \(y_{norm} = \begin{cases} 
-\frac{(y+1)^\lambda - 1}{\lambda} & \text{if } \lambda \neq 0, y \geq 0 \\
-\log(y+1) & \text{if } \lambda = 0, y \geq 0 \\
--\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \text{if } \lambda \neq 2, y < 0 \\
--\log(-y+1) & \text{if } \lambda = 2, y < 0
+\frac{(y+1)^\lambda - 1}{\lambda} & \mathrm{ if} \lambda \neq 0, y \geq 0 \\
+\log(y+1) & \mathrm{ if} \lambda = 0, y \geq 0 \\
+-\frac{(-y+1)^{2-\lambda} - 1}{2-\lambda} & \mathrm{ if} \lambda \neq 2, y < 0 \\
+-\log(-y+1) & \mathrm{ if} \lambda = 2, y < 0
 \end{cases}\)</p>
 <p><strong>Output Activation:</strong> Linear</p>
 <p><strong>Reasoning:</strong> Extension of Box-Cox that works with negative values and zeros.</p>
@@ -193,7 +193,7 @@
 <p><strong>Approach:</strong> Instead of choosing activation, use a monotonic neural network layer</p>
 <p><strong>Implementation:</strong> </p>
 <ul>
-<li><p>Use positive weights in final layer: \(\text{weight} = \text{softplus}(w_{raw})\)</p>
+<li><p>Use positive weights in final layer: \(\mathrm{ weight} = \mathrm{ softplus}(w_{raw})\)</p>
 </li>
 <li><p>Or use cumulative sum of squared weights</p>
 </li>
@@ -325,7 +325,7 @@ output &#61; model&#40;x&#41; * scale &#43; shift</code></pre>
 <li><p>Transform uniform to Gaussian via inverse normal CDF &#40;Φ⁻¹&#41;</p>
 </li>
 </ol>
-\(y_{norm} = \Phi^{-1}\left(\frac{\text{rank}(y)}{n+1}\right)\)
+\(y_{norm} = \Phi^{-1}\left(\frac{\mathrm{ rank}(y)}{n+1}\right)\)
 <p><strong>Output Activation:</strong> Linear</p>
 <p><strong>Inverse Transform:</strong> Φ&#40;y_pred&#41; → empirical quantile mapping</p>
 <blockquote>

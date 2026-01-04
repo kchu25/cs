@@ -144,7 +144,7 @@
 </li>
 <li><p>Action: Take every pixel and move it 5 spots to the right</p>
 </li>
-<li><p>Mathematically: \(T_5(\text{image})[x, y] = \text{image}[x-5, y]\)</p>
+<li><p>Mathematically: \(T_5(\mathrm{ image})[x, y] = \mathrm{ image}[x-5, y]\)</p>
 </li>
 </ul>
 <p><strong>For lists and permutations</strong>:</p>
@@ -153,7 +153,7 @@
 </li>
 <li><p>Action: Take the list and swap those elements</p>
 </li>
-<li><p>Mathematically: \(\pi(\text{list})[1] = \text{list}[3]\), \(\pi(\text{list})[3] = \text{list}[1]\)</p>
+<li><p>Mathematically: \(\pi(\mathrm{ list})[1] = \mathrm{ list}[3]\), \(\pi(\mathrm{ list})[3] = \mathrm{ list}[1]\)</p>
 </li>
 </ul>
 <hr />
@@ -262,7 +262,7 @@ OUTPUT:             &quot;Cat detected&quot; at position &#40;15, 10&#41;</code>
 </li>
 <li><p>Then, apply function \(f\) to the transformed input</p>
 </li>
-<li><p>Path: \(x \xrightarrow{\text{transform}} \rho_X(g,x) \xrightarrow{f} f(\rho_X(g,x))\)</p>
+<li><p>Path: \(x \xrightarrow{\mathrm{ transform}} \rho_X(g,x) \xrightarrow{f} f(\rho_X(g,x))\)</p>
 </li>
 </ul>
 <p><strong>Right side</strong>: \(\rho_Y(g, f(x))\)</p>
@@ -271,7 +271,7 @@ OUTPUT:             &quot;Cat detected&quot; at position &#40;15, 10&#41;</code>
 </li>
 <li><p>Then, apply the same transformation \(g\) to the output &#40;using action \(\rho_Y\)&#41;</p>
 </li>
-<li><p>Path: \(x \xrightarrow{f} f(x) \xrightarrow{\text{transform}} \rho_Y(g, f(x))\)</p>
+<li><p>Path: \(x \xrightarrow{f} f(x) \xrightarrow{\mathrm{ transform}} \rho_Y(g, f(x))\)</p>
 </li>
 </ul>
 <p><strong>Equivariance means</strong>: Both paths give the same result&#33; The order doesn&#39;t matter.</p>
@@ -359,9 +359,9 @@ OUTPUT:             &quot;Cat detected&quot; at position &#40;15, 10&#41;</code>
 <p>Let \(T_v\) denote translation by vector \(v = (v_1, v_2)\).</p>
 \[\begin{align}
 (w * T_v(x))[i,j] &= \sum_{k,l} w[k,l] \cdot (T_v(x))[i-k, j-l] \\
-&= \sum_{k,l} w[k,l] \cdot x[i-k-v_1, j-l-v_2] \quad \text{[by def of } T_v\text{]} \\
-&= (w * x)[i-v_1, j-v_2] \quad \text{[shift indices]} \\
-&= T_v(w * x)[i,j] \quad \text{[by def of } T_v\text{]}
+&= \sum_{k,l} w[k,l] \cdot x[i-k-v_1, j-l-v_2] \quad \mathrm{ [by def of} T_v\mathrm{ ]} \\
+&= (w * x)[i-v_1, j-v_2] \quad \mathrm{ [shift indices]} \\
+&= T_v(w * x)[i,j] \quad \mathrm{ [by def of} T_v\mathrm{ ]}
 \end{align}\]
 <p>Therefore: \(w * T_v(x) = T_v(w * x)\) ✓</p>
 <hr />
@@ -379,7 +379,7 @@ OUTPUT:             &quot;Cat detected&quot; at position &#40;15, 10&#41;</code>
 <hr />
 <h2 id="sample_efficiency_through_symmetry"><a href="#sample_efficiency_through_symmetry" class="header-anchor">Sample Efficiency Through Symmetry</a></h2>
 <p>If your function is equivariant and your data has that symmetry:</p>
-\[\text{Training examples needed} \approx \frac{\text{Examples without symmetry}}{|G|}\]
+\[\mathrm{ Training examples needed} \approx \frac{\mathrm{ Examples without symmetry}}{|G|}\]
 <p>where \(|G|\) is the group size &#40;infinite for continuous groups like translations and rotations&#33;&#41;.</p>
 <blockquote>
 <p><strong>What does &quot;your data has that symmetry&quot; mean?</strong></p>

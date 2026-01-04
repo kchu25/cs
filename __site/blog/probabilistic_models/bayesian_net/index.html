@@ -40,8 +40,8 @@
 <p>The magic is that this structure lets us efficiently represent and reason about complex joint probability distributions. Instead of storing every possible combination of variables &#40;which explodes exponentially&#41;, we exploit conditional independence.</p>
 <h3 id="the_core_idea"><a href="#the_core_idea" class="header-anchor">The Core Idea</a></h3>
 <p>A Bayesian network encodes the joint probability distribution:</p>
-\[P(X_1, X_2, \ldots, X_n) = \prod_{i=1}^{n} P(X_i \mid \text{Parents}(X_i))\]
-<p>where \(\text{Parents}(X_i)\) are the direct parent nodes of \(X_i\) in the graph. This factorization is the key insight—each variable only depends on its parents, not on all other variables.</p>
+\[P(X_1, X_2, \ldots, X_n) = \prod_{i=1}^{n} P(X_i \mid \mathrm{ Parents}(X_i))\]
+<p>where \(\mathrm{ Parents}(X_i)\) are the direct parent nodes of \(X_i\) in the graph. This factorization is the key insight—each variable only depends on its parents, not on all other variables.</p>
 <h2 id="constructing_a_bayesian_network"><a href="#constructing_a_bayesian_network" class="header-anchor">Constructing a Bayesian Network</a></h2>
 <p>Building a Bayesian network typically involves two main steps:</p>
 <h3 id="step_1_structure_learning"><a href="#step_1_structure_learning" class="header-anchor">Step 1: Structure Learning</a></h3>
@@ -74,10 +74,10 @@
 </li>
 </ul>
 <h3 id="step_2_parameter_learning"><a href="#step_2_parameter_learning" class="header-anchor">Step 2: Parameter Learning</a></h3>
-<p>Once you have the structure, you need to <strong>learn the conditional probability tables &#40;CPTs&#41;</strong> for each node. If node \(X\) has parents \(\text{Pa}(X)\), you need to estimate \(P(X \mid \text{Pa}(X))\).</p>
+<p>Once you have the structure, you need to <strong>learn the conditional probability tables &#40;CPTs&#41;</strong> for each node. If node \(X\) has parents \(\mathrm{ Pa}(X)\), you need to estimate \(P(X \mid \mathrm{ Pa}(X))\).</p>
 <p><strong>Maximum Likelihood Estimation &#40;MLE&#41;</strong></p>
 <p>With complete data, this is straightforward:</p>
-\[\hat{\theta}_{x \mid pa} = \frac{\text{Count}(X=x, \text{Pa}(X)=pa)}{\text{Count}(\text{Pa}(X)=pa)}\]
+\[\hat{\theta}_{x \mid pa} = \frac{\mathrm{ Count}(X=x, \mathrm{ Pa}(X)=pa)}{\mathrm{ Count}(\mathrm{ Pa}(X)=pa)}\]
 <p>Basically, just count how often each configuration appears in your data and normalize.</p>
 <p><strong>Bayesian Estimation</strong></p>
 <p>If you&#39;re worried about overfitting or have sparse data, use a Bayesian approach with priors:</p>
@@ -96,13 +96,13 @@
 <li><p><strong>Bayesian Information Criterion &#40;BIC&#41;:</strong></p>
 </li>
 </ul>
-\[\text{BIC}(G, D) = \log P(D \mid G, \hat{\theta}) - \frac{d}{2} \log N\]
+\[\mathrm{ BIC}(G, D) = \log P(D \mid G, \hat{\theta}) - \frac{d}{2} \log N\]
 <p>where \(d\) is the number of parameters and \(N\) is the sample size. The first term rewards fit, the second penalizes complexity.</p>
 <ul>
 <li><p><strong>Bayesian Score &#40;BD&#41;:</strong></p>
 </li>
 </ul>
-\[\text{Score}(G) = P(D \mid G) = \int P(D \mid G, \theta) P(\theta \mid G) d\theta\]
+\[\mathrm{ Score}(G) = P(D \mid G) = \int P(D \mid G, \theta) P(\theta \mid G) d\theta\]
 <p>This fully Bayesian approach marginalizes over parameters.</p>
 <p><strong>Search Algorithms:</strong></p>
 <p>Since finding the optimal structure is NP-hard, we use heuristic search:</p>
@@ -159,7 +159,7 @@
 <li><p><strong>Variational Inference</strong>: Approximate the true posterior with a simpler distribution \(Q\) by minimizing KL divergence:</p>
 </li>
 </ul>
-\[Q^* = \arg\min_{Q} \text{KL}(Q \| P)\]
+\[Q^* = \arg\min_{Q} \mathrm{ KL}(Q \| P)\]
 <h2 id="practical_tips"><a href="#practical_tips" class="header-anchor">Practical Tips</a></h2>
 <p>When building Bayesian networks in practice:</p>
 <ol>
@@ -196,10 +196,10 @@
 <h3 id="approach_1_gaussian_bayesian_networks_linear_gaussian_models"><a href="#approach_1_gaussian_bayesian_networks_linear_gaussian_models" class="header-anchor">Approach 1: Gaussian Bayesian Networks &#40;Linear Gaussian Models&#41;</a></h3>
 <p>The most popular approach is to assume <strong>linear Gaussian relationships</strong>. If all variables are continuous and normally distributed, life becomes much easier.</p>
 <p><strong>The Setup:</strong></p>
-<p>For each node \(X_i\) with parents \(\text{Pa}(X_i)\), we assume:</p>
-\(X_i = \beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j + \epsilon_i\)
+<p>For each node \(X_i\) with parents \(\mathrm{ Pa}(X_i)\), we assume:</p>
+\(X_i = \beta_{i0} + \sum_{X_j \in \mathrm{ Pa}(X_i)} \beta_{ij} X_j + \epsilon_i\)
 <p>where \(\epsilon_i \sim \mathcal{N}(0, \sigma_i^2)\) is Gaussian noise.</p>
-<p>This means: \(X_i \mid \text{Pa}(X_i) \sim \mathcal{N}\left(\beta_{i0} + \sum_{X_j \in \text{Pa}(X_i)} \beta_{ij} X_j, \sigma_i^2\right)\)</p>
+<p>This means: \(X_i \mid \mathrm{ Pa}(X_i) \sim \mathcal{N}\left(\beta_{i0} + \sum_{X_j \in \mathrm{ Pa}(X_i)} \beta_{ij} X_j, \sigma_i^2\right)\)</p>
 <p><strong>Why This Is Great:</strong></p>
 <ul>
 <li><p>The joint distribution remains Gaussian &#40;a multivariate normal&#41;</p>
@@ -213,7 +213,7 @@
 </ul>
 <p><strong>Parameter Learning:</strong></p>
 <p>For each node, just run <strong>linear regression</strong>:</p>
-\(\hat{\beta}_i = (\mathbf{X}_{\text{Pa}}^\top \mathbf{X}_{\text{Pa}})^{-1} \mathbf{X}_{\text{Pa}}^\top \mathbf{X}_i\)
+\(\hat{\beta}_i = (\mathbf{X}_{\mathrm{ Pa}}^\top \mathbf{X}_{\mathrm{ Pa}})^{-1} \mathbf{X}_{\mathrm{ Pa}}^\top \mathbf{X}_i\)
 \(\hat{\sigma}_i^2 = \frac{1}{N} \sum_{n=1}^N (x_i^{(n)} - \hat{x}_i^{(n)})^2\)
 <p><strong>Inference:</strong></p>
 <p>Computing \(P(X_i \mid E)\) &#40;where \(E\) is observed evidence&#41; involves:</p>
@@ -237,9 +237,9 @@
 </li>
 </ul>
 <p><strong>Example:</strong></p>
-\(X_{\text{temp}} \mid \text{Season}, \text{Humidity} = \begin{cases}
-\mathcal{N}(70 + 0.5 \cdot \text{Humidity}, 5^2) & \text{if Season = Summer} \\
-\mathcal{N}(40 + 0.3 \cdot \text{Humidity}, 3^2) & \text{if Season = Winter}
+\(X_{\mathrm{ temp}} \mid \mathrm{ Season}, \mathrm{ Humidity} = \begin{cases}
+\mathcal{N}(70 + 0.5 \cdot \mathrm{ Humidity}, 5^2) & \mathrm{ if Season = Summer} \\
+\mathcal{N}(40 + 0.3 \cdot \mathrm{ Humidity}, 3^2) & \mathrm{ if Season = Winter}
 \end{cases}\)
 <p>You&#39;re essentially learning a <strong>different linear Gaussian model for each configuration of discrete parents</strong>.</p>
 <h3 id="approach_3_discretization"><a href="#approach_3_discretization" class="header-anchor">Approach 3: Discretization</a></h3>
@@ -266,17 +266,17 @@
 <h3 id="approach_4_nonparametric_methods"><a href="#approach_4_nonparametric_methods" class="header-anchor">Approach 4: Nonparametric Methods</a></h3>
 <p>For more flexible relationships, go nonparametric&#33;</p>
 <p><strong>Kernel Density Estimation &#40;KDE&#41;:</strong></p>
-<p>Represent \(P(X_i \mid \text{Pa}(X_i))\) using:</p>
-\(\hat{p}(x \mid \text{pa}) = \frac{\sum_{n=1}^N K_h(x - x_i^{(n)}) \cdot K_h(\text{pa} - \text{pa}^{(n)})}{\sum_{n=1}^N K_h(\text{pa} - \text{pa}^{(n)})}\)
+<p>Represent \(P(X_i \mid \mathrm{ Pa}(X_i))\) using:</p>
+\(\hat{p}(x \mid \mathrm{ pa}) = \frac{\sum_{n=1}^N K_h(x - x_i^{(n)}) \cdot K_h(\mathrm{ pa} - \mathrm{ pa}^{(n)})}{\sum_{n=1}^N K_h(\mathrm{ pa} - \mathrm{ pa}^{(n)})}\)
 <p>where \(K_h\) is a kernel function &#40;like Gaussian&#41; with bandwidth \(h\).</p>
 <p><strong>Mixture Models:</strong></p>
 <p>Model each conditional as a <strong>mixture of Gaussians</strong>:</p>
-\(P(X_i \mid \text{Pa}(X_i)) = \sum_{k=1}^K w_k(\text{Pa}) \cdot \mathcal{N}(\mu_k(\text{Pa}), \sigma_k^2)\)
+\(P(X_i \mid \mathrm{ Pa}(X_i)) = \sum_{k=1}^K w_k(\mathrm{ Pa}) \cdot \mathcal{N}(\mu_k(\mathrm{ Pa}), \sigma_k^2)\)
 <p>The weights and parameters depend on the parents.</p>
 <h3 id="approach_5_copula_bayesian_networks"><a href="#approach_5_copula_bayesian_networks" class="header-anchor">Approach 5: Copula Bayesian Networks</a></h3>
 <p>For really complex dependencies, <strong>copulas</strong> separate the marginal distributions from the dependence structure.</p>
 <p><strong>The Copula Decomposition:</strong></p>
-\(P(X_i \mid \text{Pa}(X_i)) = c(F(X_i), F(\text{Pa}_1), \ldots, F(\text{Pa}_m)) \cdot f(X_i)\)
+\(P(X_i \mid \mathrm{ Pa}(X_i)) = c(F(X_i), F(\mathrm{ Pa}_1), \ldots, F(\mathrm{ Pa}_m)) \cdot f(X_i)\)
 <p>where:</p>
 <ul>
 <li><p>\(F\) are marginal CDFs &#40;can be any distribution&#41;</p>
@@ -291,7 +291,7 @@
 <p><strong>Structure Learning:</strong></p>
 <p>The same principles apply, but the scoring functions need adjustment:</p>
 <ul>
-<li><p><strong>BIC for Gaussian networks:</strong> \(\text{BIC} = -\frac{N}{2} \sum_i \log(2\pi\hat{\sigma}_i^2) - \frac{N}{2}n - \frac{d}{2}\log N\)</p>
+<li><p><strong>BIC for Gaussian networks:</strong> \(\mathrm{ BIC} = -\frac{N}{2} \sum_i \log(2\pi\hat{\sigma}_i^2) - \frac{N}{2}n - \frac{d}{2}\log N\)</p>
 <p>where \(n\) is the number of nodes and \(d\) is the number of parameters.</p>
 </li>
 <li><p><strong>Use mutual information</strong> as a measure of dependence: \(I(X; Y) = \int \int p(x,y) \log \frac{p(x,y)}{p(x)p(y)} dx dy\)</p>
@@ -341,11 +341,11 @@
 <pre><code class="language-julia">Structure: Pressure → Temperature ← Humidity</code></pre>
 <p><strong>Linear Gaussian Model:</strong></p>
 <ul>
-<li><p>\(\text{Pressure} \sim \mathcal{N}(1013, 10^2)\)</p>
+<li><p>\(\mathrm{ Pressure} \sim \mathcal{N}(1013, 10^2)\)</p>
 </li>
-<li><p>\(\text{Humidity} \sim \mathcal{N}(60, 15^2)\)</p>
+<li><p>\(\mathrm{ Humidity} \sim \mathcal{N}(60, 15^2)\)</p>
 </li>
-<li><p>\(\text{Temperature} = 20 - 0.05 \cdot \text{Pressure} + 0.1 \cdot \text{Humidity} + \epsilon\), where \(\epsilon \sim \mathcal{N}(0, 5^2)\)</p>
+<li><p>\(\mathrm{ Temperature} = 20 - 0.05 \cdot \mathrm{ Pressure} + 0.1 \cdot \mathrm{ Humidity} + \epsilon\), where \(\epsilon \sim \mathcal{N}(0, 5^2)\)</p>
 </li>
 </ul>
 <p>To answer &quot;What&#39;s the temperature given pressure &#61; 1000?&quot;:</p>
@@ -354,7 +354,7 @@
 </li>
 <li><p>Use the conditional Gaussian formula</p>
 </li>
-<li><p>Get \(\text{Temperature} \mid \text{Pressure}=1000 \sim \mathcal{N}(\mu', \sigma'^2)\) exactly&#33;</p>
+<li><p>Get \(\mathrm{ Temperature} \mid \mathrm{ Pressure}=1000 \sim \mathcal{N}(\mu', \sigma'^2)\) exactly&#33;</p>
 </li>
 </ol>
 <p>The continuous case adds complexity, but also opens up Bayesian networks to a huge range of real-world applications where measurements are naturally continuous&#33;</p>

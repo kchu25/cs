@@ -28,8 +28,8 @@
 <div class="franklin-content"><h1 id="interpretation_frameworks_using_additive_decomposition"><a href="#interpretation_frameworks_using_additive_decomposition" class="header-anchor">Interpretation Frameworks Using Additive Decomposition</a></h1>
 <h2 id="overview"><a href="#overview" class="header-anchor">Overview</a></h2>
 <p>Additive decomposition is a fundamental principle in many model interpretation frameworks. The general form expresses a model&#39;s prediction as:</p>
-\[f(x) = \phi_0 + \sum_{i=1}^{M} \phi_i\]
-<p>where \(\phi_0\) is the base value and \(\phi_i\) represents the contribution of feature \(i\).</p>
+\[f(x) = \varphi_0 + \sum_{i=1}^{M} \varphi_i\]
+<p>where \(\varphi_0\) is the base value and \(\varphi_i\) represents the contribution of feature \(i\).</p>
 <hr />
 <h2 id="frameworks_using_additive_decomposition"><a href="#frameworks_using_additive_decomposition" class="header-anchor">Frameworks Using Additive Decomposition</a></h2>
 <h3 id="shap_shapley_additive_explanations"><a href="#shap_shapley_additive_explanations" class="header-anchor"><ol>
@@ -39,10 +39,10 @@
 </a></h3>
 <p><strong>Type</strong>: Unified framework based on game theory</p>
 <p><strong>Additive Form</strong>:</p>
-\[f(x) = E[f(X)] + \sum_{i=1}^{M} \phi_i(x)\]
-<p>where \(\phi_i\) are Shapley values satisfying:</p>
+\[f(x) = E[f(X)] + \sum_{i=1}^{M} \varphi_i(x)\]
+<p>where \(\varphi_i\) are Shapley values satisfying:</p>
 <ul>
-<li><p><strong>Efficiency</strong>: \(\sum_{i=1}^{M} \phi_i = f(x) - E[f(X)]\)</p>
+<li><p><strong>Efficiency</strong>: \(\sum_{i=1}^{M} \varphi_i = f(x) - E[f(X)]\)</p>
 </li>
 <li><p><strong>Symmetry</strong>: Equal features get equal attributions</p>
 </li>
@@ -92,8 +92,8 @@
 </a></h3>
 <p><strong>Type</strong>: Gradient-based attribution for neural networks</p>
 <p><strong>Additive Form</strong>:</p>
-\[\Delta y = y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
-<p>where \(C_{\Delta x_i \Delta y}\) is the contribution of feature \(i\) to the output difference from reference \(x_{\text{ref}}\).</p>
+\[\Delta y = y - y_{\mathrm{ ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+<p>where \(C_{\Delta x_i \Delta y}\) is the contribution of feature \(i\) to the output difference from reference \(x_{\mathrm{ ref}}\).</p>
 <p><strong>Properties</strong>:</p>
 <ul>
 <li><p>Uses modified chain rule for backpropagation</p>
@@ -104,7 +104,7 @@
 </li>
 </ul>
 <p><strong>Connection</strong>: DeepSHAP aggregates DeepLIFT scores over multiple references:</p>
-\[\phi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
+\[\varphi_i \approx \frac{1}{K} \sum_{k=1}^{K} C_{\Delta x_i \Delta y}^{(k)}\]
 <hr />
 <h3 id="ol_start4_integrated_gradients"><a href="#ol_start4_integrated_gradients" class="header-anchor"><ol start="4">
 <li><p><strong>Integrated Gradients</strong></p>
@@ -113,11 +113,11 @@
 </a></h3>
 <p><strong>Type</strong>: Path-based gradient method</p>
 <p><strong>Additive Form</strong>:</p>
-\[\text{IG}_i(x) = (x_i - x'_i) \times \int_{\alpha=0}^{1} \frac{\partial f(x' + \alpha(x - x'))}{\partial x_i} d\alpha\]
+\[\mathrm{ IG}_i(x) = (x_i - x'_i) \times \int_{\alpha=0}^{1} \frac{\partial f(x' + \alpha(x - x'))}{\partial x_i} d\alpha\]
 <p>where \(x'\) is a baseline input.</p>
 <p><strong>Satisfies</strong>:</p>
 <ul>
-<li><p><strong>Completeness</strong> &#40;efficiency&#41;: \(\sum_{i=1}^{M} \text{IG}_i(x) = f(x) - f(x')\)</p>
+<li><p><strong>Completeness</strong> &#40;efficiency&#41;: \(\sum_{i=1}^{M} \mathrm{ IG}_i(x) = f(x) - f(x')\)</p>
 </li>
 <li><p><strong>Sensitivity</strong>: Non-zero gradient implies non-zero attribution</p>
 </li>
@@ -139,7 +139,7 @@
 \[\sum_{i} R_i^{(l)} = \sum_{j} R_j^{(l+1)} = f(x)\]
 <p><strong>Different Rules</strong>:</p>
 <ul>
-<li><p><strong>\(\epsilon\)-rule</strong>: \(R_{i \leftarrow j} = \frac{z_{ij}}{\sum_i z_{ij} + \epsilon \cdot \text{sign}(\sum_i z_{ij})} R_j\)</p>
+<li><p><strong>\(\epsilon\)-rule</strong>: \(R_{i \leftarrow j} = \frac{z_{ij}}{\sum_i z_{ij} + \epsilon \cdot \mathrm{ sign}(\sum_i z_{ij})} R_j\)</p>
 </li>
 <li><p><strong>\(\alpha\beta\)-rule</strong>: Separates positive/negative contributions</p>
 </li>
@@ -154,7 +154,7 @@
 </a></h3>
 <p><strong>Type</strong>: Built-in model component</p>
 <p><strong>Additive Form</strong> &#40;for additive attention&#41;:</p>
-\[\text{context} = \sum_{i=1}^{T} \alpha_i h_i\]
+\[\mathrm{ context} = \sum_{i=1}^{T} \alpha_i h_i\]
 <p>where \(\alpha_i\) are attention weights and \(h_i\) are hidden states.</p>
 <p><strong>Properties</strong>:</p>
 <ul>
@@ -190,12 +190,12 @@
 </ol>
 </a></h4>
 <p>The efficiency property ensures:</p>
-\[f(x) - f(x_{\text{baseline}}) = \sum_{i=1}^{M} \phi_i\]
+\[f(x) - f(x_{\mathrm{ baseline}}) = \sum_{i=1}^{M} \varphi_i\]
 <p>This is analogous to a financial budget where:</p>
 <ul>
-<li><p><strong>Total change</strong>: \(f(x) - f(x_{\text{baseline}})\) &#40;e.g., model predicts &#43;&#36;50 higher risk score&#41;</p>
+<li><p><strong>Total change</strong>: \(f(x) - f(x_{\mathrm{ baseline}})\) &#40;e.g., model predicts &#43;&#36;50 higher risk score&#41;</p>
 </li>
-<li><p><strong>Line items</strong>: Each \(\phi_i\) explains how much feature \(i\) contributed</p>
+<li><p><strong>Line items</strong>: Each \(\varphi_i\) explains how much feature \(i\) contributed</p>
 </li>
 </ul>
 <p><strong>Why this matters</strong>:</p>
@@ -204,7 +204,7 @@
 </li>
 <li><p><strong>Verify completeness</strong>: Sum your attributions to check they match the prediction difference</p>
 </li>
-<li><p><strong>Identify dominant factors</strong>: Sort \(|\phi_i|\) to see which features drive the decision</p>
+<li><p><strong>Identify dominant factors</strong>: Sort \(|\varphi_i|\) to see which features drive the decision</p>
 </li>
 </ul>
 <p><strong>Example</strong>: Credit scoring model predicts score of 720 &#40;baseline: 650, difference: &#43;70&#41;</p>
@@ -248,7 +248,7 @@ Total:                &#43;1.32 &#40;high risk prediction&#41;</code></pre>
 </a></h4>
 <p>Organizations need to ensure models don&#39;t discriminate based on protected attributes. Additive decomposition makes this <strong>legally and practically tractable</strong>:</p>
 <p><strong>Quantitative bias detection</strong>:</p>
-\[\text{Bias} = \mathbb{E}_{x \in \text{Group A}}[\phi_{\text{protected}}] - \mathbb{E}_{x \in \text{Group B}}[\phi_{\text{protected}}]\]
+\[\mathrm{ Bias} = \mathbb{E}_{x \in \mathrm{ Group A}}[\varphi_{\mathrm{ protected}}] - \mathbb{E}_{x \in \mathrm{ Group B}}[\varphi_{\mathrm{ protected}}]\]
 <p><strong>Example</strong>: Hiring model analysis</p>
 <pre><code class="language-julia">For candidates with similar qualifications:
 
@@ -279,9 +279,9 @@ Bias measure: 0.17 points penalty</code></pre>
 <p><strong>Question</strong>: &quot;What would my credit score be if my income increased by &#36;10k?&quot;</p>
 <p><strong>With additive decomposition</strong>:</p>
 <ul>
-<li><p>Current contribution of income: \(\phi_{\text{income}} = +35\) points</p>
+<li><p>Current contribution of income: \(\varphi_{\mathrm{ income}} = +35\) points</p>
 </li>
-<li><p>Estimated new contribution: \(\phi'_{\text{income}} \approx +42\) points &#40;via local linearity&#41;</p>
+<li><p>Estimated new contribution: \(\varphi'_{\mathrm{ income}} \approx +42\) points &#40;via local linearity&#41;</p>
 </li>
 <li><p>Expected change: \(\approx +7\) points</p>
 </li>
@@ -395,14 +395,14 @@ To improve your chances:
 <h3 id="mathematical_tractability"><a href="#mathematical_tractability" class="header-anchor">Mathematical Tractability</a></h3>
 <p>The additivity also provides <strong>mathematical tractability</strong>:</p>
 <p><strong>Linearity in explanation space</strong>: Even though \(f\) may be highly non-linear, the explanations are linear:</p>
-\[\phi = W \cdot \text{features} + b\]
+\[\varphi = W \cdot \mathrm{ features} + b\]
 <p>This means:</p>
 <ul>
 <li><p><strong>Optimization is convex</strong> when trying to achieve desired outcomes</p>
 </li>
 <li><p><strong>Statistical analysis is straightforward</strong> &#40;mean, variance, correlation of contributions&#41;</p>
 </li>
-<li><p><strong>Interventions compose</strong>: \(\Delta\phi_i + \Delta\phi_j = \Delta\phi_{i,j}\)</p>
+<li><p><strong>Interventions compose</strong>: \(\Delta\varphi_i + \Delta\varphi_j = \Delta\varphi_{i,j}\)</p>
 </li>
 </ul>
 <hr />

@@ -26,7 +26,7 @@
 <!-- Content appended here -->
 <div class="franklin-content"><h1 id="why_the_deepshap_double_expectation_formula_holds"><a href="#why_the_deepshap_double_expectation_formula_holds" class="header-anchor">Why the DeepSHAP Double Expectation Formula Holds</a></h1>
 <h2 id="the_equation_in_question"><a href="#the_equation_in_question" class="header-anchor">The Equation in Question</a></h2>
-\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
 <p>This follows <strong>mathematically</strong> from the definition of \(f_x(S)\), but you&#39;re right to question <strong>why we need a distribution of references</strong>.</p>
 <h2 id="the_mathematical_reason_why_it_holds"><a href="#the_mathematical_reason_why_it_holds" class="header-anchor">The Mathematical Reason &#40;Why It Holds&#41;</a></h2>
 <h3 id="definition_of_f_xs"><a href="#definition_of_f_xs" class="header-anchor">Definition of \(f_x(S)\)</a></h3>
@@ -34,12 +34,12 @@
 \[f_x(S) = \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\]
 <p>This says: &quot;When features in \(S\) are set to their values from \(x\), and features outside \(S\) are drawn from the reference distribution \(\mathcal{R}\), what&#39;s the expected output?&quot;</p>
 <h3 id="standard_shapley_formula"><a href="#standard_shapley_formula" class="header-anchor">Standard Shapley Formula</a></h3>
-\[\phi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}[f_x(S \cup \{i\}) - f_x(S)]\]
 <h3 id="substitution"><a href="#substitution" class="header-anchor">Substitution</a></h3>
 <p>Simply substitute the definition:</p>
-\[\phi_i = \mathbb{E}_{S \sim \pi}\left[\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})] - \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\right]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}\left[\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}})] - \mathbb{E}_{r \sim \mathcal{R}}[f(x_S, r_{\bar{S}})]\right]\]
 <p>By linearity of expectation:</p>
-\[\phi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
+\[\varphi_i = \mathbb{E}_{S \sim \pi}\mathbb{E}_{r \sim \mathcal{R}}[f(x_{S \cup \{i\}}, r_{\overline{S \cup \{i\}}}) - f(x_S, r_{\bar{S}})]\]
 <p><strong>That&#39;s it.</strong> The equation holds by pure substitution and linearity of expectation.</p>
 <h2 id="but_why_cant_reference_just_be_zero"><a href="#but_why_cant_reference_just_be_zero" class="header-anchor">But Why Can&#39;t Reference Just Be Zero?</a></h2>
 <p>Good question&#33; Let&#39;s think about what the reference distribution \(\mathcal{R}\) actually represents.</p>
@@ -84,7 +84,7 @@
 </ul>
 <h4 id="the_distribution_matters_for_fairness"><a href="#the_distribution_matters_for_fairness" class="header-anchor">The Distribution Matters for Fairness</a></h4>
 <p>Shapley values have a key property: they satisfy <strong>efficiency</strong> &#40;the sum of attributions equals the prediction difference&#41;.</p>
-\[\sum_i \phi_i = f(x) - \mathbb{E}_{r \sim \mathcal{R}}[f(r)]\]
+\[\sum_i \varphi_i = f(x) - \mathbb{E}_{r \sim \mathcal{R}}[f(r)]\]
 <p>The choice of \(\mathcal{R}\) determines what &quot;baseline&quot; we&#39;re measuring against. Using a distribution &#40;e.g., the training data distribution&#41; means:</p>
 <ul>
 <li><p>We&#39;re measuring each feature&#39;s contribution relative to &quot;typical&quot; values</p>

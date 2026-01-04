@@ -106,7 +106,7 @@
 </ul>
 <h2 id="the_varepsilon2_factor_explained"><a href="#the_varepsilon2_factor_explained" class="header-anchor">The \(\varepsilon^2\) Factor Explained</a></h2>
 <p>The \(\varepsilon^2\) appears because:</p>
-\[\text{Var}(\hat{\varepsilon}) = \text{Var}(X/n) = \frac{1}{n^2} \cdot \text{Var}(X) = \frac{1}{n^2} \cdot n\varepsilon(1-\varepsilon) = \frac{\varepsilon(1-\varepsilon)}{n}\]
+\[\mathrm{ Var}(\hat{\varepsilon}) = \mathrm{ Var}(X/n) = \frac{1}{n^2} \cdot \mathrm{ Var}(X) = \frac{1}{n^2} \cdot n\varepsilon(1-\varepsilon) = \frac{\varepsilon(1-\varepsilon)}{n}\]
 <p>The standard deviation is \(\sqrt{\varepsilon/n}\) &#40;roughly&#41;. To make the standard deviation smaller than your tolerance \(\varepsilon\) itself:</p>
 \[\sqrt{\frac{\varepsilon}{n}} \lesssim \varepsilon \implies n \gtrsim \frac{1}{\varepsilon}\]
 <p>But for <strong>exponential concentration</strong> &#40;high confidence via Hoeffding&#41;, you get:</p>

@@ -32,8 +32,8 @@
 <p>Traditional ML: Learn specific task \(T\) with dataset \(D\)</p>
 \[\theta^* = \arg\min_\theta \mathcal{L}(D; \theta)\]
 <p>Meta-Learning: Learn across multiple tasks \(\{T_1, T_2, ..., T_n\}\) to quickly adapt to new task \(T_{new}\)</p>
-\[\phi^* = \arg\min_\phi \sum_{i=1}^{n} \mathcal{L}(T_i; \phi)\]
-<p>where \(\phi\) represents meta-parameters that enable rapid adaptation.</p>
+\[\varphi^* = \arg\min_\varphi \sum_{i=1}^{n} \mathcal{L}(T_i; \varphi)\]
+<p>where \(\varphi\) represents meta-parameters that enable rapid adaptation.</p>
 <h2 id="relationship_to_zero-shot_and_few-shot_learning"><a href="#relationship_to_zero-shot_and_few-shot_learning" class="header-anchor">Relationship to Zero-Shot and Few-Shot Learning</a></h2>
 <p>Meta-learning and few-shot learning are <strong>deeply related</strong> concepts, though not identical.</p>
 <h3 id="few-shot_learning"><a href="#few-shot_learning" class="header-anchor">Few-Shot Learning</a></h3>
@@ -127,9 +127,9 @@
 </a></h3>
 <p>Learn an embedding space where classification is done by finding the nearest class prototype.</p>
 <p>For a support set \(S\), the prototype for class \(k\) is:</p>
-\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\phi(x_i)\]
+\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\varphi(x_i)\]
 <p>Classification uses distance to prototypes:</p>
-\[P(y=k|x) = \frac{\exp(-d(f_\phi(x), c_k))}{\sum_{k'} \exp(-d(f_\phi(x), c_{k'}))}\]
+\[P(y=k|x) = \frac{\exp(-d(f_\varphi(x), c_k))}{\sum_{k'} \exp(-d(f_\varphi(x), c_{k'}))}\]
 <h3 id="ol_start3_matching_networks"><a href="#ol_start3_matching_networks" class="header-anchor"><ol start="3">
 <li><p>Matching Networks</p>
 </li>
@@ -166,7 +166,7 @@
 </li>
 </ul>
 <p>The meta-objective:</p>
-\[\min_\theta \mathbb{E}_{T \sim p(T)} \left[ \mathcal{L}_T(f_{\theta'}; Q) \mid \theta' = \text{adapt}(\theta, S) \right]\]
+\[\min_\theta \mathbb{E}_{T \sim p(T)} \left[ \mathcal{L}_T(f_{\theta'}; Q) \mid \theta' = \mathrm{ adapt}(\theta, S) \right]\]
 <h2 id="practical_applications"><a href="#practical_applications" class="header-anchor">Practical Applications</a></h2>
 <ul>
 <li><p><strong>Computer Vision</strong>: Recognizing new object classes from few images</p>

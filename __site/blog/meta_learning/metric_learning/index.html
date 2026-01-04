@@ -42,8 +42,8 @@
 </ol>
 <h3 id="how_it_actually_works"><a href="#how_it_actually_works" class="header-anchor">How It Actually Works</a></h3>
 <p><strong>Step 1: Create a prototype for each class</strong></p>
-<p>For each class \(k\), take all your support examples and embed them into a learned space using a neural network \(f_\phi\) &#40;like a CNN or transformer&#41;. Then average them:</p>
-\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\phi(x_i)\]
+<p>For each class \(k\), take all your support examples and embed them into a learned space using a neural network \(f_\varphi\) &#40;like a CNN or transformer&#41;. Then average them:</p>
+\[c_k = \frac{1}{|S_k|} \sum_{(x_i, y_i) \in S_k} f_\varphi(x_i)\]
 <p>Think of \(c_k\) as the &quot;center of mass&quot; or &quot;typical representative&quot; of class \(k\) in embedding space.</p>
 <p><strong>Example:</strong> For 5-shot cat classification:</p>
 <ul>
@@ -57,8 +57,8 @@
 </li>
 </ul>
 <p><strong>Step 2: Classify by distance</strong></p>
-<p>For a new query example \(x\), embed it with the same network \(f_\phi(x)\), then see which prototype it&#39;s closest to:</p>
-\[P(y=k|x) = \frac{\exp(-d(f_\phi(x), c_k))}{\sum_{k'} \exp(-d(f_\phi(x), c_{k'}))}\]
+<p>For a new query example \(x\), embed it with the same network \(f_\varphi(x)\), then see which prototype it&#39;s closest to:</p>
+\[P(y=k|x) = \frac{\exp(-d(f_\varphi(x), c_k))}{\sum_{k'} \exp(-d(f_\varphi(x), c_{k'}))}\]
 <p>This is just a softmax over negative distances&#33; Closer &#61; higher probability. Common choices for \(d\) are Euclidean distance or cosine distance.</p>
 <p><strong>The beauty:</strong> At test time, you don&#39;t need any gradient updates or fine-tuning&#33; Just compute prototypes from your support set and classify.</p>
 <p><strong>Wait, what about totally new classes?</strong></p>
@@ -69,14 +69,14 @@
 </li>
 <li><p><strong>Test time</strong>: You get a support set with completely new classes &#123;tiger, elephant, giraffe&#125;</p>
 </li>
-<li><p><strong>It still works&#33;</strong> You compute prototypes for tiger/elephant/giraffe using the learned embedding function \(f_\phi\)</p>
+<li><p><strong>It still works&#33;</strong> You compute prototypes for tiger/elephant/giraffe using the learned embedding function \(f_\varphi\)</p>
 </li>
 </ul>
 <p><strong>How is this possible?</strong></p>
 <ul>
-<li><p>What you learned during training is the <em>embedding function</em> \(f_\phi\), not the classes themselves</p>
+<li><p>What you learned during training is the <em>embedding function</em> \(f_\varphi\), not the classes themselves</p>
 </li>
-<li><p>\(f_\phi\) learned to extract features that are generally useful for distinguishing animals &#40;edges, textures, shapes, parts&#41;</p>
+<li><p>\(f_\varphi\) learned to extract features that are generally useful for distinguishing animals &#40;edges, textures, shapes, parts&#41;</p>
 </li>
 <li><p>At test time, you apply this same embedding function to new classes</p>
 </li>
@@ -85,7 +85,7 @@
 </ul>
 <p><strong>Example:</strong></p>
 <ul>
-<li><p>During training, \(f_\phi\) learned: &quot;furry texture&quot;, &quot;ear shape&quot;, &quot;body proportions&quot;, etc. are useful features</p>
+<li><p>During training, \(f_\varphi\) learned: &quot;furry texture&quot;, &quot;ear shape&quot;, &quot;body proportions&quot;, etc. are useful features</p>
 </li>
 <li><p>At test time with &quot;tiger&quot; &#40;never seen before&#41;:</p>
 <ul>
@@ -103,7 +103,7 @@
 <p><strong>The key assumption:</strong> Your new test classes should come from a similar distribution as training classes. If you trained on animals and test on vehicles, the embedding space won&#39;t transfer well &#40;the features that distinguish cats from dogs aren&#39;t useful for cars vs trucks&#41;.</p>
 <p><strong>This is the entire point of few-shot learning:</strong> Learn an embedding function that generalizes to <em>new classes</em> from the same domain, requiring only a few examples per new class to define their prototypes.</p>
 <h3 id="what_gets_learned"><a href="#what_gets_learned" class="header-anchor">What Gets Learned?</a></h3>
-<p>The network \(f_\phi\) learns to create embeddings where:</p>
+<p>The network \(f_\varphi\) learns to create embeddings where:</p>
 <ul>
 <li><p>Examples from the same class cluster together</p>
 </li>
@@ -137,18 +137,18 @@
 <h2 id="relation_networks_learn_the_comparison_itself"><a href="#relation_networks_learn_the_comparison_itself" class="header-anchor">Relation Networks: &quot;Learn the Comparison Itself&quot;</a></h2>
 <h3 id="the_intuition__3"><a href="#the_intuition__3" class="header-anchor">The Intuition</a></h3>
 <p>Both Prototypical and Matching Networks use <strong>fixed</strong> distance metrics &#40;Euclidean, cosine&#41;. But what if the right way to compare things is more complex?</p>
-<p><strong>Relation Networks</strong> say: &quot;Let&#39;s learn a neural network \(r_\phi\) that takes two embeddings and outputs how related they are&#33;&quot;</p>
+<p><strong>Relation Networks</strong> say: &quot;Let&#39;s learn a neural network \(r_\varphi\) that takes two embeddings and outputs how related they are&#33;&quot;</p>
 <h3 id="how_it_works__2"><a href="#how_it_works__2" class="header-anchor">How It Works</a></h3>
 <ol>
-<li><p><strong>Embed</strong> both query and support examples: \(f_\phi(x_{query})\), \(f_\phi(x_{support})\)</p>
+<li><p><strong>Embed</strong> both query and support examples: \(f_\varphi(x_{query})\), \(f_\varphi(x_{support})\)</p>
 </li>
-<li><p><strong>Concatenate</strong> or combine them: \(C(f_\phi(x_q), f_\phi(x_s))\)</p>
+<li><p><strong>Concatenate</strong> or combine them: \(C(f_\varphi(x_q), f_\varphi(x_s))\)</p>
 </li>
-<li><p><strong>Feed through relation network</strong>: \(r_\phi(C(f_\phi(x_q), f_\phi(x_s))) \rightarrow\) relation score</p>
+<li><p><strong>Feed through relation network</strong>: \(r_\varphi(C(f_\varphi(x_q), f_\varphi(x_s))) \rightarrow\) relation score</p>
 </li>
 </ol>
-<p>The relation network \(r_\phi\) learns to output high scores for same-class pairs and low scores for different-class pairs.</p>
-\[P(y_{query} = k) \propto \frac{1}{|S_k|} \sum_{x_i \in S_k} r_\phi(C(f_\phi(x_{query}), f_\phi(x_i)))\]
+<p>The relation network \(r_\varphi\) learns to output high scores for same-class pairs and low scores for different-class pairs.</p>
+\[P(y_{query} = k) \propto \frac{1}{|S_k|} \sum_{x_i \in S_k} r_\varphi(C(f_\varphi(x_{query}), f_\varphi(x_i)))\]
 <p><strong>Example:</strong> Classifying tumors as malignant/benign:</p>
 <ul>
 <li><p>The relation network might learn: &quot;If both images show irregular borders AND dense tissue → high relation score&quot;</p>
@@ -279,7 +279,7 @@
 <p>Think about predicting continuous values - like predicting drug efficacy scores, temperature curves, or function approximation. How do you use &quot;distance to prototype&quot; when your output is a continuous number, not a class label?</p>
 <p><strong>The problem with metric approaches:</strong></p>
 <ul>
-<li><p>Prototypical Networks compute class prototypes: \(c_k = \text{average of embeddings for class } k\)</p>
+<li><p>Prototypical Networks compute class prototypes: \(c_k = \mathrm{ average of embeddings for class} k\)</p>
 </li>
 <li><p>This only makes sense for discrete classes&#33; For regression, there&#39;s no discrete set of &quot;classes&quot; to prototype</p>
 </li>
@@ -308,9 +308,9 @@
 </ul>
 <p><strong>Example - Sine Wave Regression &#40;classic MAML demo&#41;:</strong></p>
 <ul>
-<li><p><strong>Task distribution</strong>: Sine waves with different amplitudes and phases: \(y = A \sin(x + \phi)\)</p>
+<li><p><strong>Task distribution</strong>: Sine waves with different amplitudes and phases: \(y = A \sin(x + \varphi)\)</p>
 </li>
-<li><p><strong>Each task</strong>: A specific sine wave &#40;specific \(A\) and \(\phi\)&#41;</p>
+<li><p><strong>Each task</strong>: A specific sine wave &#40;specific \(A\) and \(\varphi\)&#41;</p>
 </li>
 <li><p><strong>MAML learns</strong>: Initialization that, given 5 points from <em>any</em> sine wave, can quickly fit that specific wave</p>
 </li>

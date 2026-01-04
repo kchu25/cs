@@ -188,7 +188,7 @@ end</code></pre>
 <p><strong>Expected value under dropout</strong>: For two filters with dropout probability \(p\):</p>
 \[\mathbb{E}[V] = p^2 V(\emptyset) + 2p(1-p)\left[\frac{V(\{f_1\}) + V(\{f_2\})}{2}\right] + (1-p)^2 V(\{f_1, f_2\})\]
 <p><strong>Shapley value perspective</strong>: The marginal contribution of filter \(f_1\) is:</p>
-\[\phi(f_1) = \frac{1}{2}[V(\{f_1, f_2\}) - V(\{f_2\})] + \frac{1}{2}[V(\{f_1\}) - V(\emptyset)]\]
+\[\varphi(f_1) = \frac{1}{2}[V(\{f_1, f_2\}) - V(\{f_2\})] + \frac{1}{2}[V(\{f_1\}) - V(\emptyset)]\]
 <hr />
 <p><strong>Redundant case</strong> &#40;\(f_1 \approx f_2\)&#41;: Filters detect the same features &#40;e.g., both detect all edges&#41;</p>
 <p><em>Cooperative game values</em>:</p>
@@ -206,7 +206,7 @@ end</code></pre>
 </li>
 <li><p>Adding \(f_1\) when nothing present: \(V(\{f_1\}) - V(\emptyset) = 5 - 0 = 5\)</p>
 </li>
-<li><p><strong>Shapley value</strong>: \(\phi(f_1) = \frac{1}{2}(5 + 5) = 5\)</p>
+<li><p><strong>Shapley value</strong>: \(\varphi(f_1) = \frac{1}{2}(5 + 5) = 5\)</p>
 </li>
 </ul>
 <p><em>Key insight</em>: Each filter contributes the same marginal value &#40;5&#41; regardless of whether the other filter is present. They are <strong>perfect substitutes</strong> - interchangeable and redundant.</p>
@@ -231,7 +231,7 @@ end</code></pre>
 </li>
 <li><p>Adding \(f_1\) when nothing present: \(V(\{f_1\}) - V(\emptyset) = 3 - 0 = 3\)</p>
 </li>
-<li><p><strong>Shapley value</strong>: \(\phi(f_1) = \frac{1}{2}(7 + 3) = 5\)</p>
+<li><p><strong>Shapley value</strong>: \(\varphi(f_1) = \frac{1}{2}(7 + 3) = 5\)</p>
 </li>
 </ul>
 <p><em>Key insight</em>: Each filter contributes MORE value when the other is present &#40;7 vs 3&#41;. They are <strong>complements</strong> - each filter is more valuable in the presence of the other because they provide non-overlapping information.</p>
@@ -239,7 +239,7 @@ end</code></pre>
 \[\mathbb{E}[V] = 0.25(0) + 0.5(3) + 0.25(10) = 4.0\]
 <hr />
 <p><strong>Wait, diverse filters have LOWER expected value?</strong></p>
-<p>Yes&#33; This is the key insight. With the same Shapley values &#40;\(\phi = 5\) for both cases&#41;, diverse filters actually have <strong>lower expected value under dropout</strong> because losing one filter hurts more &#40;drops to 3 instead of 5&#41;.</p>
+<p>Yes&#33; This is the key insight. With the same Shapley values &#40;\(\varphi = 5\) for both cases&#41;, diverse filters actually have <strong>lower expected value under dropout</strong> because losing one filter hurts more &#40;drops to 3 instead of 5&#41;.</p>
 <p><strong>So why does the network learn diverse filters?</strong></p>
 <p>The answer lies in the <strong>gradient structure</strong>, not expected value:</p>
 <ol>
@@ -255,9 +255,9 @@ end</code></pre>
 <p>Filter dropout implicitly encourages <strong>explaining away</strong>, a phenomenon from probabilistic reasoning where observing one cause makes another cause less probable.</p>
 <p><strong>Explaining away structure</strong>: Suppose two filters \(f_1\) and \(f_2\) both contribute to explaining some output feature \(y\). In a Bayesian network:</p>
 <ul>
-<li><p>\(P(f_1 \text{ active} | y \text{ observed})\) is high when \(f_2\) is absent</p>
+<li><p>\(P(f_1 \mathrm{ active} | y \mathrm{ observed})\) is high when \(f_2\) is absent</p>
 </li>
-<li><p>But \(P(f_1 \text{ active} | y \text{ observed}, f_2 \text{ active})\) drops because \(f_2\) already explains \(y\)</p>
+<li><p>But \(P(f_1 \mathrm{ active} | y \mathrm{ observed}, f_2 \mathrm{ active})\) drops because \(f_2\) already explains \(y\)</p>
 </li>
 </ul>
 <p><strong>How filter dropout induces this</strong>:</p>
@@ -316,7 +316,7 @@ end</code></pre>
 </li>
 <li><p>Use straight-through estimator for \(\alpha\):</p>
 <ul>
-<li><p><strong>Forward</strong>: \(\alpha_{ik} = \mathbb{1}[\text{argmax}_k(\text{logits}_{ik}) = k]\) &#40;one-hot&#41;</p>
+<li><p><strong>Forward</strong>: \(\alpha_{ik} = \mathbb{1}[\mathrm{ argmax}_k(\mathrm{ logits}_{ik}) = k]\) &#40;one-hot&#41;</p>
 </li>
 <li><p><strong>Backward</strong>: Use softmax gradients</p>
 </li>
@@ -331,8 +331,8 @@ end</code></pre>
 </a></h2>
 <p><strong>Key Idea</strong>: Sample filter updates that maximize diversity via DPP kernels.</p>
 <p>During training, instead of updating all filters, probabilistically select which filters to update based on DPP sampling where the kernel measures similarity:</p>
-\[P(\text{update filter set } S) \propto \det(K_S)\]
-<p>where \(K_{ij} = \text{similarity}(W_i, W_j)\)</p>
+\[P(\mathrm{ update filter set} S) \propto \det(K_S)\]
+<p>where \(K_{ij} = \mathrm{ similarity}(W_i, W_j)\)</p>
 <ul>
 <li><p><strong>Effect</strong>: Naturally discourages similar filters through the determinant structure</p>
 </li>
@@ -346,7 +346,7 @@ end</code></pre>
 </a></h2>
 <p><strong>Key Idea</strong>: Mixup operates on data space; apply it to filter space.</p>
 <p>During training, create virtual filters:</p>
-\[\tilde{W}_i = \lambda W_i + (1-\lambda) W_j, \quad \lambda \sim \text{Beta}(\alpha, \alpha)\]
+\[\tilde{W}_i = \lambda W_i + (1-\lambda) W_j, \quad \lambda \sim \mathrm{ Beta}(\alpha, \alpha)\]
 <p>Use \(\tilde{W}_i\) for forward pass but update \(W_i\) and \(W_j\) separately.</p>
 <ul>
 <li><p><strong>Effect</strong>: Encourages filters to occupy distinct regions since interpolations must also be useful</p>
@@ -374,7 +374,7 @@ end</code></pre>
 </ol>
 </a></h2>
 <p><strong>Key Idea</strong>: Discretize filters to a learned codebook.</p>
-\[W_i = \text{codebook}[\text{argmin}_k \|W_i^{\text{temp}} - c_k\|]\]
+\[W_i = \mathrm{ codebook}[\mathrm{ argmin}_k \|W_i^{\mathrm{ temp}} - c_k\|]\]
 <ul>
 <li><p>Replace each filter with its nearest codebook vector</p>
 </li>

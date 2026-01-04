@@ -33,7 +33,7 @@
 <h2 id="the_cast_of_characters"><a href="#the_cast_of_characters" class="header-anchor">The Cast of Characters</a></h2>
 <h3 id="big-o_ocdot_upper_bound_or_at_most_this_fast"><a href="#big-o_ocdot_upper_bound_or_at_most_this_fast" class="header-anchor">Big-O: \(O(\cdot)\) — &quot;Upper Bound&quot; or &quot;At Most This Fast&quot;</a></h3>
 <p><strong>Definition:</strong> \(f(n) = O(g(n))\) means there exist constants \(C > 0\) and \(n_0\) such that:</p>
-\[|f(n)| \leq C \cdot g(n) \text{ for all } n \geq n_0\]
+\[|f(n)| \leq C \cdot g(n) \mathrm{ for all} n \geq n_0\]
 <p><strong>Translation:</strong> &quot;\(f\) grows <strong>no faster than</strong> \(g\) &#40;up to a constant factor&#41;&quot;</p>
 <p><strong>In the article:</strong></p>
 <ul>
@@ -65,12 +65,12 @@
 </ul>
 <h3 id="big-ω_omegacdot_lower_bound_or_at_least_this_fast"><a href="#big-ω_omegacdot_lower_bound_or_at_least_this_fast" class="header-anchor">Big-Ω: \(\Omega(\cdot)\) — &quot;Lower Bound&quot; or &quot;At Least This Fast&quot;</a></h3>
 <p><strong>Definition:</strong> \(f(n) = \Omega(g(n))\) means there exist constants \(C > 0\) and \(n_0\) such that:</p>
-\[f(n) \geq C \cdot g(n) \text{ for all } n \geq n_0\]
+\[f(n) \geq C \cdot g(n) \mathrm{ for all} n \geq n_0\]
 <p><strong>Translation:</strong> &quot;\(f\) grows <strong>at least as fast as</strong> \(g\)&quot;</p>
 <p><strong>Why it matters:</strong> If you prove a lower bound of \(\Omega(1/\varepsilon^2)\), you&#39;re saying &quot;you <strong>cannot</strong> do better than this—any algorithm needs at least this many samples&quot;</p>
 <h3 id="big-θ_thetacdot_tight_bound_or_exactly_this_rate"><a href="#big-θ_thetacdot_tight_bound_or_exactly_this_rate" class="header-anchor">Big-Θ: \(\Theta(\cdot)\) — &quot;Tight Bound&quot; or &quot;Exactly This Rate&quot;</a></h3>
 <p><strong>Definition:</strong> \(f(n) = \Theta(g(n))\) means:</p>
-\[f(n) = O(g(n)) \text{ AND } f(n) = \Omega(g(n))\]
+\[f(n) = O(g(n)) \mathrm{ AND} f(n) = \Omega(g(n))\]
 <p><strong>Translation:</strong> &quot;\(f\) grows <strong>at exactly the same rate</strong> as \(g\)&quot;</p>
 <p><strong>In the article:</strong> When we say finding one needle is \(\Theta(1/\varepsilon)\), we mean:</p>
 <ul>
@@ -139,7 +139,7 @@
 <p>When you&#39;re reading proofs with Landau notation, here&#39;s the <strong>mental workflow</strong>:</p>
 <h3 id="step_1_identify_the_exact_bound"><a href="#step_1_identify_the_exact_bound" class="header-anchor">Step 1: Identify the exact bound</a></h3>
 <p>You&#39;ll see something like:</p>
-\[\mathbb{P}[\text{fail}] \leq 2e^{-2n\varepsilon^2}\]
+\[\mathbb{P}[\mathrm{ fail}] \leq 2e^{-2n\varepsilon^2}\]
 <h3 id="step_2_set_equal_to_your_failure_tolerance"><a href="#step_2_set_equal_to_your_failure_tolerance" class="header-anchor">Step 2: Set equal to your failure tolerance</a></h3>
 \[2e^{-2n\varepsilon^2} \leq \delta\]
 <h3 id="step_3_solve_for_n"><a href="#step_3_solve_for_n" class="header-anchor">Step 3: Solve for \(n\)</a></h3>
@@ -246,7 +246,7 @@
 <h2 id="practical_examples_from_the_article"><a href="#practical_examples_from_the_article" class="header-anchor">Practical Examples from the Article</a></h2>
 <h3 id="example_1_pattern_1_transition"><a href="#example_1_pattern_1_transition" class="header-anchor">Example 1: Pattern 1 transition</a></h3>
 <p><strong>Start with:</strong></p>
-\[\mathbb{P}[\text{miss all}] = (1-\varepsilon)^n\]
+\[\mathbb{P}[\mathrm{ miss all}] = (1-\varepsilon)^n\]
 <p><strong>Approximate:</strong></p>
 \[(1-\varepsilon)^n \approx e^{-n\varepsilon}\]
 <p><strong>Write the constraint:</strong></p>
@@ -288,7 +288,7 @@
 <p><strong>Extract:</strong></p>
 \[n = O\left(\frac{\log N}{\varepsilon^2}\right)\]
 <p><strong>Why \(\log N\)?</strong> We&#39;re doing a <strong>union bound</strong> over \(N\) items:</p>
-\[\mathbb{P}[\text{any false positive}] \leq N \cdot \mathbb{P}[\text{single false positive}]\]
+\[\mathbb{P}[\mathrm{ any false positive}] \leq N \cdot \mathbb{P}[\mathrm{ single false positive}]\]
 <p>That \(N\) multiplier gives us an extra \(\log N\) in the sample complexity&#33;</p>
 <p><strong>But notice:</strong> Even if \(N = 10^9\) &#40;a billion&#41;, \(\log N \approx 30\), so this is <strong>way better</strong> than the naive \(O(N)\) exhaustive search.</p>
 <h2 id="the_big_takeaway"><a href="#the_big_takeaway" class="header-anchor">The Big Takeaway</a></h2>

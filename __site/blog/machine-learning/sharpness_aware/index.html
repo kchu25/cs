@@ -144,12 +144,12 @@
 <p><strong>Intuition</strong>: Don&#39;t just find low loss points—find points where even the <em>worst nearby points</em> have low loss&#33;</p>
 <h3 id="sharpness_definition"><a href="#sharpness_definition" class="header-anchor">Sharpness Definition</a></h3>
 <p>The sharpness can be extracted from the formulation:</p>
-\(\text{Sharpness} = \max_{||\epsilon|| \leq \rho} [L_S(w+\epsilon) - L_S(w)]\)
+\(\mathrm{ Sharpness} = \max_{||\epsilon|| \leq \rho} [L_S(w+\epsilon) - L_S(w)]\)
 <p>This measures how quickly the loss can increase when you perturb the weights. Steep landscape &#61; high sharpness &#61; poor generalization.</p>
 <blockquote>
 <p><strong>🔧 Is Sharpness Actually Computable?</strong></p>
 <p><strong>Short answer:</strong> Exactly? No. Approximately? Yes&#33;</p>
-<p><strong>The exact computation</strong> requires: \(\text{Sharpness} = \max_{||\epsilon|| \leq \rho} L_S(w+\epsilon) - L_S(w)\)</p>
+<p><strong>The exact computation</strong> requires: \(\mathrm{ Sharpness} = \max_{||\epsilon|| \leq \rho} L_S(w+\epsilon) - L_S(w)\)</p>
 <p>This is a <strong>non-convex optimization problem</strong> in \(\epsilon\)-space. For a network with millions of parameters, finding the true maximum perturbation is intractable.</p>
 <p><strong>SAM&#39;s approximation</strong> &#40;what&#39;s actually used&#41;:</p>
 <ol>
@@ -157,7 +157,7 @@
 </li>
 <li><p>The max of this linear approximation has a closed form: \(\epsilon^* = \rho \frac{\nabla L_S(w)}{||\nabla L_S(w)||}\)</p>
 </li>
-<li><p>Compute approximate sharpness: \(\text{Sharpness} \approx \rho ||\nabla L_S(w)||\)</p>
+<li><p>Compute approximate sharpness: \(\mathrm{ Sharpness} \approx \rho ||\nabla L_S(w)||\)</p>
 </li>
 </ol>
 <p>So in practice, <strong>sharpness ≈ gradient norm</strong> &#40;scaled by \(\rho\)&#41;. This is efficiently computable&#33;</p>
@@ -210,11 +210,11 @@
 <h3>Mathematical Explanation</h3>
 <p>Think about what happens during deployment:</p>
 <ul>
-<li><p>Training distribution: \(\mathcal{D}_{\text{train}}\)</p>
+<li><p>Training distribution: \(\mathcal{D}_{\mathrm{ train}}\)</p>
 </li>
-<li><p>Validation distribution: \(\mathcal{D}_{\text{val}} \approx \mathcal{D}_{\text{train}}\) &#40;very similar&#33;&#41;</p>
+<li><p>Validation distribution: \(\mathcal{D}_{\mathrm{ val}} \approx \mathcal{D}_{\mathrm{ train}}\) &#40;very similar&#33;&#41;</p>
 </li>
-<li><p>Test/deployment distribution: \(\mathcal{D}_{\text{test}} = \mathcal{D}_{\text{train}} + \delta\) &#40;small shift&#41;</p>
+<li><p>Test/deployment distribution: \(\mathcal{D}_{\mathrm{ test}} = \mathcal{D}_{\mathrm{ train}} + \delta\) &#40;small shift&#41;</p>
 </li>
 </ul>
 <p><strong>For sharp minima:</strong></p>
@@ -274,8 +274,8 @@
 </li>
 </ul>
 <h3>The PAC-Bayes Connection</h3>
-<p>From statistical learning theory, the true risk satisfies: \(\mathbb{E}_{\mathcal{D}_{\text{test}}}[L(w)] \leq \mathbb{E}_{\mathcal{D}_{\text{train}}}[L(w)] + \mathcal{O}\left(\sqrt{\frac{\text{Sharpness}}{n}}\right)\)</p>
-<p>Even if \(\mathbb{E}_{\mathcal{D}_{\text{train}}}[L(w)]\) is low &#40;good validation loss&#41;, high sharpness means large generalization gap&#33;</p>
+<p>From statistical learning theory, the true risk satisfies: \(\mathbb{E}_{\mathcal{D}_{\mathrm{ test}}}[L(w)] \leq \mathbb{E}_{\mathcal{D}_{\mathrm{ train}}}[L(w)] + \mathcal{O}\left(\sqrt{\frac{\mathrm{ Sharpness}}{n}}\right)\)</p>
+<p>Even if \(\mathbb{E}_{\mathcal{D}_{\mathrm{ train}}}[L(w)]\) is low &#40;good validation loss&#41;, high sharpness means large generalization gap&#33;</p>
 <h3>Real-World Evidence</h3>
 <p><strong>Empirical observation from the paper:</strong></p>
 <ul>
@@ -402,7 +402,7 @@ for batch in training_data:
 <h2 id="theoretical_results_intuitive_explanation"><a href="#theoretical_results_intuitive_explanation" class="header-anchor">📊 Theoretical Results &#40;Intuitive Explanation&#41;</a></h2>
 <h3 id="generalization_bound_main_theorem"><a href="#generalization_bound_main_theorem" class="header-anchor">Generalization Bound &#40;Main Theorem&#41;</a></h3>
 <p>The paper proves that with high probability:</p>
-\(L_D(w) \leq L_S^{SAM}(w) + h(\text{sharpness}, \text{model complexity}, \text{sample size})\)
+\(L_D(w) \leq L_S^{SAM}(w) + h(\mathrm{ sharpness}, \mathrm{ model complexity}, \mathrm{ sample size})\)
 <p>Where:</p>
 <ul>
 <li><p>\(L_D(w)\) &#61; True population loss &#40;test performance&#41;</p>
@@ -415,8 +415,8 @@ for batch in training_data:
 <blockquote>
 <p><strong>🤔 Wait, Aren&#39;t You Just Minimizing an Upper Bound? Isn&#39;t That the Same as Minimizing Regular Loss?</strong></p>
 <p><strong>Great question&#33;</strong> This is subtle but crucial. The key insight is <strong>which terms you&#39;re minimizing</strong>:</p>
-<p><strong>Standard training</strong> minimizes \(L_S(w)\), and gets the bound: \(L_D(w) \leq L_S(w) + h_{\text{SGD}}(\text{sharpness}, ...)\)</p>
-<p>But here&#39;s the problem: <strong>you have no control over the sharpness term \(h_{\text{SGD}}\)&#33;</strong> </p>
+<p><strong>Standard training</strong> minimizes \(L_S(w)\), and gets the bound: \(L_D(w) \leq L_S(w) + h_{\mathrm{ SGD}}(\mathrm{ sharpness}, ...)\)</p>
+<p>But here&#39;s the problem: <strong>you have no control over the sharpness term \(h_{\mathrm{ SGD}}\)&#33;</strong> </p>
 <ul>
 <li><p>You minimize \(L_S(w)\) to near zero ✓</p>
 </li>
@@ -425,14 +425,14 @@ for batch in training_data:
 <li><p>So the bound is loose &#40;huge generalization gap&#41;</p>
 </li>
 </ul>
-<p><strong>SAM training</strong> minimizes \(L_S^{SAM}(w) = \max_{\epsilon} L_S(w+\epsilon)\), and gets: \(L_D(w) \leq L_S^{SAM}(w) + h_{\text{SAM}}(\text{sharpness}, ...)\)</p>
+<p><strong>SAM training</strong> minimizes \(L_S^{SAM}(w) = \max_{\epsilon} L_S(w+\epsilon)\), and gets: \(L_D(w) \leq L_S^{SAM}(w) + h_{\mathrm{ SAM}}(\mathrm{ sharpness}, ...)\)</p>
 <p>The magic: <strong>SAM implicitly minimizes BOTH terms simultaneously&#33;</strong></p>
 <ul>
 <li><p>Minimizing \(L_S^{SAM}(w)\) → directly reduces training loss ✓</p>
 </li>
 <li><p>The max operation → implicitly minimizes sharpness ✓</p>
 </li>
-<li><p>So \(h_{\text{SAM}}\) stays small &#40;tight bound, good generalization&#41;</p>
+<li><p>So \(h_{\mathrm{ SAM}}\) stays small &#40;tight bound, good generalization&#41;</p>
 </li>
 </ul>
 <p><strong>Concrete Example:</strong></p>

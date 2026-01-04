@@ -44,12 +44,12 @@
 <p><strong>Step 1:</strong> For any single sample, probability of NOT picking a good item &#61; \((1 - \varepsilon)\)</p>
 <p><strong>Step 2:</strong> Probability of missing ALL good items in \(n\) independent samples:</p>
 </blockquote>
-\[P(\text{miss all}) = (1 - \varepsilon)^n\]
+\[P(\mathrm{ miss all}) = (1 - \varepsilon)^n\]
 <blockquote>
 <p><strong>Step 3:</strong> Use the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\) &#40;valid for small \(\varepsilon\)&#41;</p>
 <p>This comes from \(\ln(1-\varepsilon) \approx -\varepsilon\) for small \(\varepsilon\).</p>
 <p><strong>Yes, this is related to convexity&#33;</strong> More precisely, it&#39;s the <strong>first-order Taylor approximation</strong> of \(\ln(1-\varepsilon)\) around \(\varepsilon = 0\): \(\ln(1-\varepsilon) = -\varepsilon - \frac{\varepsilon^2}{2} - \frac{\varepsilon^3}{3} - \cdots \approx -\varepsilon\)</p>
-<p>But there&#39;s also a <strong>convexity inequality</strong> at play here&#33; Since \(\ln(x)\) is <strong>concave</strong>, we have: \(\ln(1-\varepsilon) \leq -\varepsilon \quad \text{for all } \varepsilon \in [0,1)\)</p>
+<p>But there&#39;s also a <strong>convexity inequality</strong> at play here&#33; Since \(\ln(x)\) is <strong>concave</strong>, we have: \(\ln(1-\varepsilon) \leq -\varepsilon \quad \mathrm{ for all} \varepsilon \in [0,1)\)</p>
 <p>So the approximation \((1-\varepsilon)^n \approx e^{-n\varepsilon}\) is actually an <strong>upper bound</strong> &#40;we&#39;re approximating from above&#41;: \((1-\varepsilon)^n = e^{n\ln(1-\varepsilon)} \leq e^{-n\varepsilon}\)</p>
 <p>This is <strong>crucial</strong> for the concentration bound&#33; We&#39;re using:</p>
 <ul>
@@ -93,7 +93,7 @@
 <ul>
 <li><p>Let \(\hat{\varepsilon} =\) empirical fraction of good items in our sample</p>
 </li>
-<li><p>We want \(P(|\hat{\varepsilon} - \varepsilon| \leq \text{some tolerance}) \geq 1 - \delta\)</p>
+<li><p>We want \(P(|\hat{\varepsilon} - \varepsilon| \leq \mathrm{ some tolerance}) \geq 1 - \delta\)</p>
 </li>
 <li><p>This is asking: &quot;Is our sample frequency representative?&quot;</p>
 </li>
@@ -149,9 +149,9 @@
 </li>
 <li><p>The typical PAC proof goes:</p>
 <ol>
-<li><p>Use Hoeffding to bound error for a single hypothesis: \(P(\text{error} > \varepsilon) \leq 2e^{-2n\varepsilon^2}\)</p>
+<li><p>Use Hoeffding to bound error for a single hypothesis: \(P(\mathrm{ error} > \varepsilon) \leq 2e^{-2n\varepsilon^2}\)</p>
 </li>
-<li><p>Use Union Bound over all \(|H|\) hypotheses: \(P(\text{any bad hypothesis}) \leq 2|H|e^{-2n\varepsilon^2}\)</p>
+<li><p>Use Union Bound over all \(|H|\) hypotheses: \(P(\mathrm{ any bad hypothesis}) \leq 2|H|e^{-2n\varepsilon^2}\)</p>
 </li>
 <li><p>Set this \(\leq \delta\) and solve for \(n\)</p>
 </li>
@@ -219,7 +219,7 @@
 <ol>
 <li><p>For a single item, Hoeffding&#39;s inequality bounds the probability of large deviations: \(\mathbb{P}[|\hat{p} - p| > \varepsilon] \leq 2e^{-2n\varepsilon^2}\)</p>
 </li>
-<li><p>Union bound over all \(N\) items: \(\mathbb{P}[\text{any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
+<li><p>Union bound over all \(N\) items: \(\mathbb{P}[\mathrm{ any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
 </li>
 <li><p>Set this \(\leq \delta\) and solve for \(n\)</p>
 </li>
@@ -231,7 +231,7 @@
 \[n = \max\left\{\frac{2\ln(2/\delta)}{\varepsilon^2}, \frac{\ln(N/\delta)}{2\varepsilon^2}\right\}\]
 <p><strong>Why It Works:</strong> Take the maximum of the two requirements. Usually, for large \(N\) and small \(\varepsilon\), the false positive bound dominates.</p>
 <p><strong>Practical Note:</strong> These bounds are often quite conservative&#33; In practice, you can often get away with:</p>
-\[n_{\text{practical}} \approx \frac{k}{\varepsilon}\]
+\[n_{\mathrm{ practical}} \approx \frac{k}{\varepsilon}\]
 <p>where \(k = 3\) to \(5\) gives you ~95-99&#37; success rate.</p>
 <h2 id="pattern_5_the_crossover_point_pattern"><a href="#pattern_5_the_crossover_point_pattern" class="header-anchor">Pattern 5: The &quot;Crossover Point&quot; Pattern</a></h2>
 <p><strong>The Question:</strong> When does sampling beat exhaustive enumeration?</p>
@@ -254,7 +254,7 @@
 \[\delta_i = \frac{\delta}{M}\]
 <p>Then overall guarantee holds with probability \(\geq 1-\delta\).</p>
 <p><strong>Why It Works:</strong> Union bound again:</p>
-\[\mathbb{P}[\text{fail in at least one}] \leq \sum_{i=1}^M \mathbb{P}[\text{fail in } i] \leq M \cdot \frac{\delta}{M} = \delta\]
+\[\mathbb{P}[\mathrm{ fail in at least one}] \leq \sum_{i=1}^M \mathbb{P}[\mathrm{ fail in} i] \leq M \cdot \frac{\delta}{M} = \delta\]
 <h2 id="common_concentration_inequalities_used"><a href="#common_concentration_inequalities_used" class="header-anchor">Common Concentration Inequalities Used</a></h2>
 <h3 id="chernoff_bound_for_finding_rare_events"><a href="#chernoff_bound_for_finding_rare_events" class="header-anchor"><ol>
 <li><p><strong>Chernoff Bound</strong> &#40;for finding rare events&#41;</p>
@@ -329,7 +329,7 @@
 </li>
 <li><p>Independence &#61; knowing you sampled config A tells you nothing about whether you&#39;ll sample config B next</p>
 </li>
-<li><p>This is what lets us write: \(P(\text{miss all}) = (1-\varepsilon)^n\) &#40;product of independent events&#41;</p>
+<li><p>This is what lets us write: \(P(\mathrm{ miss all}) = (1-\varepsilon)^n\) &#40;product of independent events&#41;</p>
 </li>
 </ul>
 <p><strong>Without i.i.d., the house of cards falls apart:</strong></p>

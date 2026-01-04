@@ -53,15 +53,15 @@
 <p><strong>Why the square roots?</strong> You might wonder why we write \(\sqrt{\alpha_t}\mathbf{x}_{t-1}\) instead of just \(\alpha_t\mathbf{x}_{t-1}\). This is crucial for variance preservation. Here&#39;s the mathematical reasoning:</p>
 <p>Starting with the forward step: \(\mathbf{x}_t = \sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{\beta_t}\boldsymbol{\epsilon}\) where \(\boldsymbol{\epsilon} \sim \mathcal{N}(0, \mathbf{I})\)</p>
 <p>We compute the variance of \(\mathbf{x}_t\):</p>
-\(\text{Var}(\mathbf{x}_t) = \text{Var}(\sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{\beta_t}\boldsymbol{\epsilon})\)
-<p>Using the property that for independent random variables \(X\) and \(Y\): \(\text{Var}(aX + bY) = a^2\text{Var}(X) + b^2\text{Var}(Y)\)</p>
-\(\text{Var}(\mathbf{x}_t) = (\sqrt{\alpha_t})^2 \text{Var}(\mathbf{x}_{t-1}) + (\sqrt{\beta_t})^2 \text{Var}(\boldsymbol{\epsilon})\)
-\(= \alpha_t \cdot \text{Var}(\mathbf{x}_{t-1}) + \beta_t \cdot \text{Var}(\boldsymbol{\epsilon})\)
-<p>Now, if we normalize our data so that \(\text{Var}(\mathbf{x}_0) = 1\) initially, and note that \(\text{Var}(\boldsymbol{\epsilon}) = 1\) by definition:</p>
-\(\text{Var}(\mathbf{x}_t) = \alpha_t \cdot 1 + \beta_t \cdot 1 = \alpha_t + \beta_t\)
+\(\mathrm{ Var}(\mathbf{x}_t) = \mathrm{ Var}(\sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{\beta_t}\boldsymbol{\epsilon})\)
+<p>Using the property that for independent random variables \(X\) and \(Y\): \(\mathrm{ Var}(aX + bY) = a^2\mathrm{ Var}(X) + b^2\mathrm{ Var}(Y)\)</p>
+\(\mathrm{ Var}(\mathbf{x}_t) = (\sqrt{\alpha_t})^2 \mathrm{ Var}(\mathbf{x}_{t-1}) + (\sqrt{\beta_t})^2 \mathrm{ Var}(\boldsymbol{\epsilon})\)
+\(= \alpha_t \cdot \mathrm{ Var}(\mathbf{x}_{t-1}) + \beta_t \cdot \mathrm{ Var}(\boldsymbol{\epsilon})\)
+<p>Now, if we normalize our data so that \(\mathrm{ Var}(\mathbf{x}_0) = 1\) initially, and note that \(\mathrm{ Var}(\boldsymbol{\epsilon}) = 1\) by definition:</p>
+\(\mathrm{ Var}(\mathbf{x}_t) = \alpha_t \cdot 1 + \beta_t \cdot 1 = \alpha_t + \beta_t\)
 <p>Since we defined \(\alpha_t = 1 - \beta_t\):</p>
-\(\text{Var}(\mathbf{x}_t) = (1 - \beta_t) + \beta_t = 1\)
-<p><strong>Key insight:</strong> The square roots ensure that variance is preserved at every step&#33; Without them &#40;if we used \(\alpha_t\mathbf{x}_{t-1}\)&#41;, we&#39;d have \(\text{Var}(\mathbf{x}_t) = \alpha_t^2 + \beta_t \neq 1\), causing the signal to decay too quickly.</p>
+\(\mathrm{ Var}(\mathbf{x}_t) = (1 - \beta_t) + \beta_t = 1\)
+<p><strong>Key insight:</strong> The square roots ensure that variance is preserved at every step&#33; Without them &#40;if we used \(\alpha_t\mathbf{x}_{t-1}\)&#41;, we&#39;d have \(\mathrm{ Var}(\mathbf{x}_t) = \alpha_t^2 + \beta_t \neq 1\), causing the signal to decay too quickly.</p>
 <p><strong>Step 1:</strong> Starting from \(\mathbf{x}_0\), we add noise to get \(\mathbf{x}_1\)</p>
 <ul>
 <li><p>Using the reparameterization: \(\mathbf{x}_1 = \sqrt{\alpha_1}\mathbf{x}_0 + \sqrt{1-\alpha_1}\boldsymbol{\epsilon}_1\)</p>
@@ -126,7 +126,7 @@
 <h2 id="the_training_objective"><a href="#the_training_objective" class="header-anchor">The Training Objective</a></h2>
 <p>The variational lower bound &#40;ELBO&#41; leads to:</p>
 \[L = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}}\left[\|\boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)\|^2\right]\]
-<p>where \(t \sim \text{Uniform}(1, T)\) and \(\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}\).</p>
+<p>where \(t \sim \mathrm{ Uniform}(1, T)\) and \(\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}\).</p>
 <p>That&#39;s it&#33; We&#39;re just doing <strong>noise prediction</strong> at random timesteps. The loss is a simple mean squared error.</p>
 <h2 id="sampling"><a href="#sampling" class="header-anchor">Sampling</a></h2>
 <p>To generate:</p>

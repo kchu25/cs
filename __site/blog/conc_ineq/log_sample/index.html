@@ -43,7 +43,7 @@
 <ul>
 <li><p>Expected value: \(E[X] = n\varepsilon\)</p>
 </li>
-<li><p>Variance: \(\text{Var}(X) = n\varepsilon(1-\varepsilon)\)</p>
+<li><p>Variance: \(\mathrm{ Var}(X) = n\varepsilon(1-\varepsilon)\)</p>
 </li>
 </ul>
 <h3 id="the_two_types_of_questions"><a href="#the_two_types_of_questions" class="header-anchor">The Two Types of Questions</a></h3>
@@ -57,7 +57,7 @@
 <p><strong>Notice:</strong> Only \(\varepsilon\) appears, not \(\varepsilon^2\)&#33; This is because we&#39;re just asking &quot;yes or no&quot; — did we find anything at all?</p>
 <p><strong>Question 2: Is our sample frequency close to the true frequency?</strong></p>
 <p>Now we want the <strong>empirical frequency</strong> \(\hat{\varepsilon} = X/n\) to be close to the true frequency \(\varepsilon\). Specifically, we want:</p>
-\[P\left(|\hat{\varepsilon} - \varepsilon| > \text{tolerance}\right) \leq \delta\]
+\[P\left(|\hat{\varepsilon} - \varepsilon| > \mathrm{ tolerance}\right) \leq \delta\]
 <p>This is where Chernoff/Hoeffding bounds come in. Hoeffding&#39;s inequality says:</p>
 \[P\left(|\hat{\varepsilon} - \varepsilon| > t\right) \leq 2e^{-2nt^2}\]
 <p><strong>The key thing:</strong> That \(t^2\) in the exponent&#33; If we want \(|\hat{\varepsilon} - \varepsilon| \leq t\) with probability \(\geq 1-\delta\), we need:</p>
@@ -176,9 +176,9 @@
 <p>Here, <strong>both</strong> \(N\) and \(\varepsilon^2\) appear&#33; Why?</p>
 <p>The reason is <strong>union bound</strong>. We&#39;re not just asking &quot;did I find a good item?&quot; We&#39;re asking &quot;did <em>any</em> of the \(N\) items incorrectly appear good?&quot;</p>
 <ul>
-<li><p>For a single item, Hoeffding gives us: \(P[\text{false positive}] \leq 2e^{-2n\varepsilon^2}\)</p>
+<li><p>For a single item, Hoeffding gives us: \(P[\mathrm{ false positive}] \leq 2e^{-2n\varepsilon^2}\)</p>
 </li>
-<li><p>Union bound over all \(N\) items: \(P[\text{any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
+<li><p>Union bound over all \(N\) items: \(P[\mathrm{ any false positive}] \leq N \cdot 2e^{-2n\varepsilon^2}\)</p>
 </li>
 <li><p>Setting this \(\leq \delta\) and solving for \(n\):</p>
 </li>

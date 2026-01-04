@@ -29,7 +29,7 @@
 <h2 id="the_notation_c_delta_x_i_delta_y"><a href="#the_notation_c_delta_x_i_delta_y" class="header-anchor">The Notation: \(C_{\Delta x_i \Delta y}\)</a></h2>
 <h3 id="delta_x_i_-_difference_in_feature_i"><a href="#delta_x_i_-_difference_in_feature_i" class="header-anchor">\(\Delta x_i\) - &quot;Difference in feature \(i\)&quot;</a></h3>
 <ul>
-<li><p>\(\Delta x_i = x_i - x_{i,\text{ref}}\)</p>
+<li><p>\(\Delta x_i = x_i - x_{i,\mathrm{ ref}}\)</p>
 </li>
 <li><p>This represents the <strong>change in the input feature \(i\)</strong> from its reference value</p>
 </li>
@@ -38,7 +38,7 @@
 </ul>
 <h3 id="delta_y_-_difference_in_output"><a href="#delta_y_-_difference_in_output" class="header-anchor">\(\Delta y\) - &quot;Difference in output&quot;</a></h3>
 <ul>
-<li><p>\(\Delta y = y - y_{\text{ref}}\)</p>
+<li><p>\(\Delta y = y - y_{\mathrm{ ref}}\)</p>
 </li>
 <li><p>This represents the <strong>change in the model&#39;s output</strong> from its reference prediction</p>
 </li>
@@ -55,7 +55,7 @@
 <ul>
 <li><p>\(f\) represents the model/function itself</p>
 </li>
-<li><p>\(\Delta f = f(x) - f(x_{\text{ref}})\) is the change in the function&#39;s output</p>
+<li><p>\(\Delta f = f(x) - f(x_{\mathrm{ ref}})\) is the change in the function&#39;s output</p>
 </li>
 </ul>
 <p>Both notations mean the same thing:</p>
@@ -70,7 +70,7 @@
 <p>DeepLIFT ensures that these contributions sum to the total output difference:</p>
 \[\Delta y = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
 <p>Or equivalently:</p>
-\[y - y_{\text{ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
+\[y - y_{\mathrm{ ref}} = \sum_{i=1}^{M} C_{\Delta x_i \Delta y}\]
 <p>This means: the total change in prediction equals the sum of all individual feature contributions.</p>
 <h2 id="intuitive_understanding"><a href="#intuitive_understanding" class="header-anchor">Intuitive Understanding</a></h2>
 <p>Think of it as a budget allocation problem:</p>

@@ -81,7 +81,7 @@
 <h3 id="the_logic_reconstructed"><a href="#the_logic_reconstructed" class="header-anchor">The Logic &#40;Reconstructed&#41;</a></h3>
 <p>Here&#39;s how the &quot;double expectation&quot; view arises, though <strong>Lundberg never writes it this way explicitly</strong>:</p>
 <p><strong>Step 1:</strong> True SHAP values require computing:</p>
-\[\phi_i = \sum_{S \subseteq N \setminus \{i\}} \text{weight}(S) \cdot [v(S \cup \{i\}) - v(S)]\]
+\[\varphi_i = \sum_{S \subseteq N \setminus \{i\}} \mathrm{ weight}(S) \cdot [v(S \cup \{i\}) - v(S)]\]
 <p>where \(v(S) = \mathbb{E}[f(z) | z_S]\) is the conditional expectation.</p>
 <p><strong>Step 2:</strong> Under the independence assumption, replace conditional with marginal:</p>
 \[v(S) \approx \mathbb{E}_{z_{\bar{S}}}[f(z_S, z_{\bar{S}})]\]
@@ -90,7 +90,7 @@
 \[v(S) \approx \frac{1}{|R|} \sum_{r \in R} f(z_S, r_{\bar{S}})\]
 <p><strong>Step 4:</strong> DeepLIFT with reference \(r\) gives you contributions for that specific \(r\).</p>
 <p><strong>Step 5:</strong> Average over multiple references:</p>
-\[\phi_i \approx \frac{1}{|R|} \sum_{r \in R} C_{\Delta x_i \Delta y}(x, r)\]
+\[\varphi_i \approx \frac{1}{|R|} \sum_{r \in R} C_{\Delta x_i \Delta y}(x, r)\]
 <p>This is the second expectation &#40;over references&#41;.</p>
 <p><strong>Combined:</strong> You get \(\mathbb{E}_S \mathbb{E}_r[\ldots]\) where:</p>
 <ul>

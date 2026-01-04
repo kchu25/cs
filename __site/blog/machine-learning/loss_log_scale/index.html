@@ -34,7 +34,7 @@
 log_pred &#61; predict&#40;model, X&#41;
 y_pred &#61; exp.&#40;log_pred&#41;  # Transform back</code></pre>
 <p><strong>What you&#39;re actually optimizing:</strong></p>
-\[L = \mathbb{E}[(\log(\hat{y}) - \log(y))^2] = \text{MSLE (Mean Squared Log Error)}\]
+\[L = \mathbb{E}[(\log(\hat{y}) - \log(y))^2] = \mathrm{ MSLE (Mean Squared Log Error)}\]
 <h3 id="pros"><a href="#pros" class="header-anchor">Pros:</a></h3>
 <p>✅ Simple - just transform targets before training ✅ <strong>Multiplicative errors</strong> - treats relative errors equally across scales &#40;explained below&#41; ✅ Works with any model &#40;linear regression, neural nets, trees, etc.&#41; ✅ Automatically handles heteroscedasticity</p>
 <h2 id="understanding_multiplicative_vs_additive_errors"><a href="#understanding_multiplicative_vs_additive_errors" class="header-anchor">Understanding Multiplicative vs Additive Errors</a></h2>
@@ -203,7 +203,7 @@ y_pred &#61; exp.&#40;log_pred&#41;  # Transform back</code></pre>
 <h3 id="the_bias_problem"><a href="#the_bias_problem" class="header-anchor">The Bias Problem</a></h3>
 <p>Due to Jensen&#39;s inequality, \(\mathbb{E}[e^X] > e^{\mathbb{E}[X]}\).</p>
 <p>If residuals in log-space have variance \(\sigma^2\), you need to correct:</p>
-\[\hat{y}_{\text{unbiased}} = \exp(\hat{y}_{\log} + \frac{\sigma^2}{2})\]
+\[\hat{y}_{\mathrm{ unbiased}} = \exp(\hat{y}_{\log} + \frac{\sigma^2}{2})\]
 <p><strong>Example:</strong></p>
 <pre><code class="language-julia">using Statistics
 
@@ -261,7 +261,7 @@ end</code></pre>
 <h3 id="cons__4"><a href="#cons__4" class="header-anchor">Cons:</a></h3>
 <p>❌ If you want mean predictions, this is wrong objective ❌ L1 gradients don&#39;t go to zero &#40;can be jumpy&#41; ❌ Still sensitive near zero</p>
 <h3 id="gradient"><a href="#gradient" class="header-anchor">Gradient:</a></h3>
-\[\frac{\partial L}{\partial \hat{y}} = \frac{\text{sign}(\log(\hat{y}) - \log(y))}{\hat{y}}\]
+\[\frac{\partial L}{\partial \hat{y}} = \frac{\mathrm{ sign}(\log(\hat{y}) - \log(y))}{\hat{y}}\]
 <p>Constant magnitude &#40;±1/ŷ&#41;, just changes sign. Can be more stable than L2.</p>
 <h2 id="alternative_4_weighted_mse_in_original_space"><a href="#alternative_4_weighted_mse_in_original_space" class="header-anchor">Alternative 4: Weighted MSE in Original Space</a></h2>
 <p><strong>Don&#39;t transform at all, just weight the loss based on what you care about:</strong></p>
@@ -320,8 +320,8 @@ end</code></pre>
 </ul>
 <h2 id="alternative_5_huber_loss_in_log_space"><a href="#alternative_5_huber_loss_in_log_space" class="header-anchor">Alternative 5: Huber Loss in Log Space</a></h2>
 <p>Combines L2 &#40;MSLE&#41; for small errors with L1 &#40;MALE&#41; for large errors: \(L = \begin{cases}
-\frac{1}{2}(\log(\hat{y}) - \log(y))^2 & \text{if } |\log(\hat{y}) - \log(y)| \leq \delta \\
-\delta \cdot (|\log(\hat{y}) - \log(y)| - \frac{\delta}{2}) & \text{otherwise}
+\frac{1}{2}(\log(\hat{y}) - \log(y))^2 & \mathrm{ if} |\log(\hat{y}) - \log(y)| \leq \delta \\
+\delta \cdot (|\log(\hat{y}) - \log(y)| - \frac{\delta}{2}) & \mathrm{ otherwise}
 \end{cases}\)</p>
 <pre><code class="language-julia">function log_huber_loss&#40;y_pred, y_true; delta&#61;1.0&#41;
     log_diff &#61; log.&#40;y_pred&#41; .- log.&#40;y_true&#41;

@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Understanding Attribution & Benchmarking in Deep Learning</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="understanding_attribution_benchmarking_in_deep_learning"><a href="#understanding_attribution_benchmarking_in_deep_learning" class="header-anchor">Understanding Attribution &amp; Benchmarking in Deep Learning</a></h1>
+<h2 id="quick_paper_references"><a href="#quick_paper_references" class="header-anchor">Quick Paper References</a></h2>
+<ul>
+<li><p><strong>SHAP Paper &#40;1705.07874&#41;</strong>: <a href="https://arxiv.org/abs/1705.07874">A Unified Approach to Interpreting Model Predictions</a></p>
+</li>
+<li><p><strong>Integrated Gradients &#40;1703.01365&#41;</strong>: <a href="https://arxiv.org/abs/1703.01365">Axiomatic Attribution for Deep Networks</a></p>
+</li>
+</ul>
+<hr />
+<h2 id="what_is_attribution_mathematically"><a href="#what_is_attribution_mathematically" class="header-anchor">What is &quot;Attribution&quot; Mathematically?</a></h2>
+<p>Think of it this way: your neural network outputs some prediction \(f(x)\) for input \(x = (x_1, x_2, ..., x_n)\). <strong>Attribution</strong> answers: <em>&quot;How much did each input feature \(x_i\) contribute to this prediction?&quot;</em></p>
+<h3 id="the_mathematical_definition"><a href="#the_mathematical_definition" class="header-anchor">The Mathematical Definition</a></h3>
+<p>An attribution method assigns an <strong>importance score</strong> \(\varphi_i\) to each feature \(i\):</p>
+\[\varphi_1, \varphi_2, ..., \varphi_n \quad \mathrm{ where} \quad \varphi_i \in \mathbb{R}\]
+<p>These scores tell you which pixels &#40;in images&#41;, words &#40;in text&#41;, or features &#40;in tabular data&#41; &quot;matter most&quot; for a prediction.</p>
+<h3 id="why_its_tricky"><a href="#why_its_tricky" class="header-anchor">Why It&#39;s Tricky</a></h3>
+<p>Here&#39;s the problem: there&#39;s <strong>no ground truth</strong>. We don&#39;t actually <em>know</em> which features are truly important&#33; The model is a black box, and we&#39;re trying to peek inside.</p>
+<hr />
+<h2 id="benchmarking_setup_same_model_different_explainers"><a href="#benchmarking_setup_same_model_different_explainers" class="header-anchor">Benchmarking Setup: Same Model, Different Explainers</a></h2>
+<blockquote>
+<p><strong>Quick answer</strong>: Yes&#33; They train <strong>one model</strong> &#40;e.g., a VGG network or random forest&#41;, then apply <strong>different attribution methods</strong> to the same model on the same inputs and compare the explanations.</p>
+<p><strong>Why this makes sense</strong>: You&#39;re not testing which model is better—you&#39;re testing which <em>explanation method</em> better reveals what the model is doing. It&#39;s like having one painting and asking different art critics to explain it. The painting doesn&#39;t change; only the critics&#39; interpretations differ.</p>
+<p><strong>Typical setup</strong>:</p>
+<ol>
+<li><p>Train a single model &#40;ResNet on ImageNet, for example&#41;</p>
+</li>
+<li><p>Pick a test image &#40;say, a photo of a dog&#41;</p>
+</li>
+<li><p>Run multiple methods on the same prediction:</p>
+<ul>
+<li><p>SHAP values</p>
+</li>
+<li><p>Integrated Gradients  </p>
+</li>
+<li><p>LIME</p>
+</li>
+<li><p>Gradient × Input</p>
+</li>
+<li><p>DeepLIFT</p>
+</li>
+</ul>
+</li>
+<li><p>Compare their attribution maps</p>
+</li>
+</ol>
+<p><strong>What they compare</strong>:</p>
+<ul>
+<li><p>Do attributions highlight sensible features &#40;dog&#39;s face vs. background&#41;?</p>
+</li>
+<li><p>Do they satisfy theoretical axioms?</p>
+</li>
+<li><p>How fast do they compute?</p>
+</li>
+<li><p>Do humans agree with the explanations?</p>
+</li>
+</ul>
+<p><strong>Edge case</strong>: Sometimes they&#39;ll also test across <em>different</em> models &#40;ResNet vs. VGG vs. Inception&#41; to check if an attribution method is <strong>robust</strong>—does it work well regardless of architecture? But within a single comparison, it&#39;s always the same model.</p>
+<p>The goal: isolate the explanation method as the variable, keep everything else fixed. Otherwise you can&#39;t tell if differences come from the explainer or the model&#33; 🔬</p>
+</blockquote>
+<hr />
+<h2 id="how_shap_benchmarked_attribution_methods"><a href="#how_shap_benchmarked_attribution_methods" class="header-anchor">How SHAP Benchmarked Attribution Methods</a></h2>
+<p>Since evaluating interpretability is ridiculously hard &#40;you&#39;re right to call this out&#33;&#41;, the SHAP paper took a <strong>multi-pronged approach</strong>:</p>
+<h3 id="theoretical_axioms_the_main_innovation"><a href="#theoretical_axioms_the_main_innovation" class="header-anchor"><ol>
+<li><p><strong>Theoretical Axioms</strong> &#40;The Main Innovation&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>Instead of just testing empirically, they defined what a &quot;good&quot; attribution method <em>should</em> satisfy:</p>
+<p><strong>Three Key Properties:</strong></p>
+<ol>
+<li><p><strong>Local Accuracy</strong>: The sum of attributions should equal the model&#39;s output:</p>
+</li>
+</ol>
+\[f(x) - f(\mathrm{ baseline}) = \sum_{i=1}^n \varphi_i\]
+<ol start="2">
+<li><p><strong>Missingness</strong>: If a feature doesn&#39;t appear in the model, its attribution should be zero</p>
+</li>
+<li><p><strong>Consistency</strong>: If changing a model makes a feature more important, its attribution shouldn&#39;t <em>decrease</em></p>
+</li>
+</ol>
+<p>The authors proved SHAP values are the <strong>unique</strong> attribution method satisfying these axioms. This is powerful because it sidesteps empirical benchmarking entirely—it&#39;s a mathematical guarantee&#33;</p>
+<h3 id="ol_start2_computational_efficiency"><a href="#ol_start2_computational_efficiency" class="header-anchor"><ol start="2">
+<li><p><strong>Computational Efficiency</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>They compared <strong>speed</strong> vs. accuracy:</p>
+<ul>
+<li><p><strong>Kernel SHAP</strong> vs. LIME and Shapley sampling</p>
+</li>
+<li><p>Measured: How many model evaluations needed to converge to accurate feature importance?</p>
+</li>
+<li><p>Result: SHAP converged faster with fewer samples &#40;see their Figure 3&#41;</p>
+</li>
+</ul>
+<p>This isn&#39;t about correctness—it&#39;s about <strong>sample efficiency</strong>: getting good estimates with minimal computational cost.</p>
+<h3 id="ol_start3_human_intuition_studies_the_bold_part"><a href="#ol_start3_human_intuition_studies_the_bold_part" class="header-anchor"><ol start="3">
+<li><p><strong>Human Intuition Studies</strong> &#40;The Bold Part&#41;</p>
+</li>
+</ol>
+</a></h3>
+<p>Here&#39;s where it gets interesting. They ran <strong>user studies on Amazon Mechanical Turk</strong>:</p>
+<ul>
+<li><p>Showed humans simple models they could understand &#40;like small decision trees&#41;</p>
+</li>
+<li><p>Asked: &quot;Which features do you think are important?&quot;</p>
+</li>
+<li><p>Compared human judgments to SHAP, LIME, and DeepLIFT</p>
+</li>
+</ul>
+<p><strong>The assumption</strong>: If an attribution method disagrees with humans on <em>interpretable</em> models, it&#39;s probably not trustworthy on complex models either.</p>
+<p><strong>Results</strong>: SHAP aligned better with human intuition than competing methods.</p>
+<h3 id="ol_start4_class_discrimination_on_mnist"><a href="#ol_start4_class_discrimination_on_mnist" class="header-anchor"><ol start="4">
+<li><p><strong>Class Discrimination on MNIST</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>They tested whether attributions help distinguish between classes:</p>
+<ul>
+<li><p>Trained on MNIST digits</p>
+</li>
+<li><p>Checked if attributions for &quot;3&quot; highlight different pixels than &quot;8&quot;</p>
+</li>
+<li><p>Compared SHAP vs. DeepLIFT vs. LIME</p>
+</li>
+</ul>
+<p><strong>Metric</strong>: Can you tell which class a prediction came from by looking at the attribution map alone?</p>
+<hr />
+<h2 id="the_fundamental_problem_why_this_is_all_so_hard"><a href="#the_fundamental_problem_why_this_is_all_so_hard" class="header-anchor">The Fundamental Problem &#40;Why This is ALL So Hard&#41;</a></h2>
+<p>The Integrated Gradients paper &#40;1703.01365&#41; nails the core issue:</p>
+<blockquote>
+<p>&quot;We found that every empirical evaluation technique we could think of could not differentiate between artifacts that stem from <strong>perturbing the data</strong>, a <strong>misbehaving model</strong>, and a <strong>misbehaving attribution method</strong>.&quot;</p>
+</blockquote>
+<p>When you evaluate an attribution method empirically, you can&#39;t tell:</p>
+<ul>
+<li><p>Is the method wrong?</p>
+</li>
+<li><p>Or is the model actually using weird spurious correlations?</p>
+</li>
+<li><p>Or did you mess up the dataset somehow?</p>
+</li>
+</ul>
+<p><strong>This is why both papers went axiomatic</strong>: define mathematical properties you want, then prove your method satisfies them.</p>
+<h3 id="why_empirical_evaluation_breaks_down"><a href="#why_empirical_evaluation_breaks_down" class="header-anchor">Why Empirical Evaluation Breaks Down</a></h3>
+<p>Let&#39;s make this concrete with examples of each failure mode:</p>
+<p><strong>Problem 1: The Data Perturbation Trap</strong></p>
+<p>Say you want to test if an attribution method works. Natural idea: remove the &quot;important&quot; features and see if the prediction changes&#33;</p>
+<ul>
+<li><p>Attribution says: &quot;This pixel matters most for predicting &#39;dog&#39;&quot;</p>
+</li>
+<li><p>You test it: black out that pixel → prediction changes to &#39;cat&#39;</p>
+</li>
+<li><p>Success, right? 🎉</p>
+</li>
+</ul>
+<p><strong>Wrong&#33;</strong> Here&#39;s what went wrong:</p>
+<p>You just created an <strong>out-of-distribution input</strong>. Real images don&#39;t have random black squares&#33; The model never saw this during training, so now it&#39;s freaking out and predicting garbage. The prediction changed not because that pixel was truly important, but because you broke the data distribution.</p>
+<p><em>Real example</em>: In ImageNet, if you black out a &quot;suspicious&quot; region, models often predict random things—not because those pixels were critical, but because black squares are weird artifacts the model interprets as different objects entirely.</p>
+<p><strong>Problem 2: The Misbehaving Model Trap</strong></p>
+<p>Imagine your attribution method highlights a dog&#39;s collar as most important for the &quot;dog&quot; prediction. Is the method wrong?</p>
+<p><strong>Maybe not&#33;</strong> The model might genuinely be using the collar as a shortcut. If all training images of dogs had collars and cats didn&#39;t, the model learned a spurious correlation. The attribution is <em>correctly</em> revealing that the model is <em>incorrectly</em> focusing on collars.</p>
+<p>Now you&#39;re stuck: </p>
+<ul>
+<li><p>If attributions highlight the collar → is the attribution method bad, or is it honestly reporting the model&#39;s bad behavior?</p>
+</li>
+<li><p>If attributions highlight the face → is it correct, or is it just showing what <em>you expect</em> while missing the real &#40;collar-based&#41; logic?</p>
+</li>
+</ul>
+<p>You can&#39;t tell without knowing ground truth, which you don&#39;t have&#33;</p>
+<p><strong>Problem 3: The Multiple Explanations Trap</strong></p>
+<p>Here&#39;s a mindbender: sometimes there are <em>multiple valid explanations</em> for the same prediction.</p>
+<ul>
+<li><p>Attribution Method A says: &quot;The dog&#39;s ears are most important&quot;  </p>
+</li>
+<li><p>Attribution Method B says: &quot;The dog&#39;s nose is most important&quot;</p>
+</li>
+</ul>
+<p><strong>Both could be right&#33;</strong> If you cover the ears, the prediction might still be &quot;dog&quot; &#40;nose is enough&#41;. If you cover the nose, still &quot;dog&quot; &#40;ears are enough&#41;. They&#39;re redundant features.</p>
+<p>Which attribution is &quot;correct&quot;? This is philosophically unclear&#33; Different methods might emphasize different sufficient features, and there&#39;s no objective way to say one is better.</p>
+<h3 id="why_axioms_save_us_sort_of"><a href="#why_axioms_save_us_sort_of" class="header-anchor">Why Axioms Save Us &#40;Sort Of&#41;</a></h3>
+<p>Instead of asking &quot;does this match reality?&quot; &#40;which we can&#39;t answer&#41;, axioms ask:</p>
+<p><strong>&quot;Does this method behave consistently with mathematical properties we care about?&quot;</strong></p>
+<p>For example:</p>
+<ul>
+<li><p><strong>Sensitivity &#40;IG&#41;</strong>: If changing a feature changes the output, that feature should get non-zero attribution</p>
+<ul>
+<li><p>This sidesteps needing ground truth&#33; We can check this property mathematically.</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Completeness &#40;SHAP&#41;</strong>: Attribution scores should sum to the prediction&#39;s difference from baseline</p>
+<ul>
+<li><p>Again, purely mathematical—no need to know what the model &quot;should&quot; care about</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>The catch</strong>: Axioms don&#39;t guarantee the method is explaining what the model <em>actually</em> does—they just guarantee logical consistency. It&#39;s the difference between:</p>
+<ul>
+<li><p>❌ &quot;This is the true explanation&quot; &#40;unknowable&#41;</p>
+</li>
+<li><p>✅ &quot;This explanation is mathematically coherent&quot; &#40;provable&#41;</p>
+</li>
+</ul>
+<p>Still better than empirical eval where you can&#39;t tell what&#39;s breaking&#33; But it means we&#39;re not really solving interpretability—we&#39;re just making rigorous statements about what properties our explanations satisfy.</p>
+<p><strong>Humbling conclusion</strong>: We don&#39;t have ground truth for interpretability, so we can&#39;t definitively say any method is &quot;correct.&quot; We can only say &quot;this method satisfies properties X, Y, Z that seem desirable.&quot; It&#39;s the best we&#39;ve got&#33; 🤷</p>
+<hr />
+<h2 id="integrated_gradients_approach_170301365"><a href="#integrated_gradients_approach_170301365" class="header-anchor">Integrated Gradients&#39; Approach &#40;1703.01365&#41;</a></h2>
+<p>Since empirical eval is a nightmare, they defined <strong>two core axioms</strong>:</p>
+<h3 id="axiom_1_sensitivity"><a href="#axiom_1_sensitivity" class="header-anchor"><strong>Axiom 1: Sensitivity</strong></a></h3>
+<p>If changing an input feature changes the output, the attribution for that feature should be non-zero.</p>
+<p><em>Example</em>: If adding a single pixel changes &quot;dog&quot; → &quot;cat&quot;, that pixel better have non-zero attribution&#33;</p>
+<h3 id="axiom_2_implementation_invariance"><a href="#axiom_2_implementation_invariance" class="header-anchor"><strong>Axiom 2: Implementation Invariance</strong></a></h3>
+<p>Two functionally identical networks &#40;same input-output mapping&#41; should give identical attributions.</p>
+<p><em>Why this matters</em>: If you just refactor your code without changing behavior, attributions shouldn&#39;t change&#33;</p>
+<p><strong>The kicker</strong>: Most existing methods &#40;gradients, DeepLIFT&#41; <strong>fail</strong> these axioms&#33; </p>
+<h3 id="their_solution_path_integrals"><a href="#their_solution_path_integrals" class="header-anchor">Their Solution: Path Integrals</a></h3>
+<p>Integrated Gradients computes attributions as:</p>
+\[\mathrm{ IG}_i(x) = (x_i - x_i') \int_{\alpha=0}^1 \frac{\partial f(x' + \alpha(x - x'))}{\partial x_i} d\alpha\]
+<p>Where \(x'\) is a &quot;baseline&quot; &#40;e.g., black image&#41;. This is basically:</p>
+<ul>
+<li><p>Walk along a straight path from baseline to input</p>
+</li>
+<li><p>Accumulate gradients along the way</p>
+</li>
+<li><p>Multiply by the feature difference</p>
+</li>
+</ul>
+<p>This satisfies both axioms provably&#33;</p>
+<hr />
+<h2 id="why_speed_wasnt_the_main_focus"><a href="#why_speed_wasnt_the_main_focus" class="header-anchor">Why Speed Wasn&#39;t the Main Focus</a></h2>
+<p>You asked about speed—here&#39;s the deal:</p>
+<ol>
+<li><p><strong>SHAP</strong> <em>did</em> compare speed &#40;Kernel SHAP vs LIME&#41;, but only for computational efficiency, not as a quality metric</p>
+</li>
+<li><p><strong>Integrated Gradients</strong> is actually super fast—just a few gradient calls&#33;</p>
+</li>
+<li><p>Speed is secondary because <strong>correctness</strong> is the hard part</p>
+</li>
+</ol>
+<p>The real battle is: &quot;Does this method give meaningful explanations?&quot; not &quot;Can it run in 10ms?&quot;</p>
+<hr />
+<h2 id="the_bigger_picture"><a href="#the_bigger_picture" class="header-anchor">The Bigger Picture</a></h2>
+<p>Both papers essentially said:</p>
+<blockquote>
+<p>&quot;We can&#39;t trust empirical evaluation alone, so we&#39;ll define what &#39;correct&#39; means mathematically, then design methods that provably satisfy those definitions.&quot;</p>
+</blockquote>
+<p><strong>SHAP</strong>: Game theory → unique solution   <strong>Integrated Gradients</strong>: Axioms → path methods</p>
+<p>This is why these papers are influential: they moved interpretability from &quot;let&#39;s try stuff and see&quot; to &quot;let&#39;s prove what works.&quot;</p>
+<hr />
+<h2 id="key_takeaway"><a href="#key_takeaway" class="header-anchor">Key Takeaway</a></h2>
+<p><strong>Attribution</strong> &#61; assigning importance scores to input features</p>
+<p><strong>Benchmarking</strong> &#61; nearly impossible empirically, so:</p>
+<ul>
+<li><p>Define axioms/properties you want</p>
+</li>
+<li><p>Prove your method satisfies them</p>
+</li>
+<li><p>Do <em>some</em> empirical validation &#40;human studies, speed&#41; as sanity checks</p>
+</li>
+</ul>
+<p>The hard truth: we still don&#39;t have perfect ground truth for interpretability. The best we can do is define desirable properties and hope they capture what we actually care about&#33; 🤷‍♂️</p>
+<hr />
+<h2 id="wait_are_these_just_rebranded_game_theory_axioms"><a href="#wait_are_these_just_rebranded_game_theory_axioms" class="header-anchor">Wait, Are These Just Rebranded Game Theory Axioms?</a></h2>
+<blockquote>
+<p><strong>Short answer</strong>: YES, mostly&#33; You caught them red-handed. 🎯</p>
+<p>These papers took <strong>Shapley&#39;s axioms from cooperative game theory</strong> &#40;1953&#33;&#41; and repackaged them for ML with new names. Let&#39;s expose the heist:</p>
+<h3>The Original Shapley Axioms &#40;1953&#41;</h3>
+<p>Shapley defined four properties for &quot;fair&quot; payoff distribution among players:</p>
+<ol>
+<li><p><strong>Efficiency</strong>: Total payoff equals the sum of individual contributions   → <em>ML renamed this</em>: <strong>&quot;Completeness&quot;</strong> &#40;attributions sum to prediction&#41;</p>
+</li>
+<li><p><strong>Symmetry</strong>: If two players contribute equally, they get equal payoffs   → <em>ML version</em>: <strong>&quot;Missingness&quot;</strong> &#40;unused features get zero attribution&#41;</p>
+</li>
+<li><p><strong>Dummy Player</strong>: If a player contributes nothing, they get zero payoff   → <em>Also becomes</em>: <strong>&quot;Missingness&quot;</strong> &#40;basically the same idea&#41;</p>
+</li>
+<li><p><strong>Additivity</strong>: If you play two games, your total payoff is the sum of payoffs from each game   → <em>ML version</em>: <strong>&quot;Linearity&quot;</strong> &#40;rarely emphasized in these papers&#41;</p>
+</li>
+</ol>
+<p><strong>&quot;Sensitivity&quot;</strong> and <strong>&quot;Implementation Invariance&quot;</strong> are NEW additions specific to ML, but they&#39;re inspired by similar concepts in game theory about consistency.</p>
+<h3>Why the Rebrand?</h3>
+<p><strong>Cynical take</strong>: New names make it sound novel&#33; &quot;We propose a method satisfying Efficiency&quot; sounds boring. &quot;We prove Completeness&quot; sounds like a fresh contribution.</p>
+<p><strong>Charitable take</strong>: The ML context is genuinely different. In game theory, you&#39;re distributing a fixed payoff among players. In ML, you&#39;re decomposing a prediction into feature contributions. Same math, but different story—so different names help clarify the interpretation.</p>
+<h3>Can You Test It Using Game Theory Directly?</h3>
+<p><strong>Hell yeah&#33;</strong> Here&#39;s how:</p>
+<p><strong>Setup</strong>: Treat your ML prediction as a cooperative game:</p>
+<ul>
+<li><p><strong>Players</strong> &#61; input features &#40;pixels, words, etc.&#41;</p>
+</li>
+<li><p><strong>Coalition value</strong> \(v(S)\) &#61; model&#39;s prediction when only features in set \(S\) are present</p>
+</li>
+<li><p><strong>Grand coalition payoff</strong> &#61; final prediction \(f(x)\)</p>
+</li>
+</ul>
+<p>Now compute Shapley values the classical way:</p>
+\(\varphi_i = \sum_{S \subseteq N \setminus \{i\}} \frac{|S|!(n-|S|-1)!}{n!} [v(S \cup \{i\}) - v(S)]\)
+<p>If SHAP truly satisfies Shapley&#39;s axioms, these values should match SHAP&#39;s output&#33;</p>
+<h3>The Gotcha</h3>
+<p>Here&#39;s where it gets spicy: <strong>computing \(v(S)\) for arbitrary subsets \(S\) is ambiguous in ML</strong>.</p>
+<p>In game theory, \(v(S)\) is given &#40;e.g., &quot;these 3 players together produce &#36;100 value&quot;&#41;. In ML:</p>
+<ul>
+<li><p>How do you evaluate a model with only pixels &#123;1, 5, 27&#125; present?</p>
+</li>
+<li><p>Do you set other pixels to zero? Gray? Blur them? Sample from the training distribution?</p>
+</li>
+</ul>
+<p><strong>This is the &quot;baseline&quot; problem</strong>: different choices of baseline &#40;how you represent &quot;absent&quot; features&#41; give different \(v(S)\) values, thus different Shapley values&#33;</p>
+<p>SHAP addresses this with different variants:</p>
+<ul>
+<li><p><strong>Kernel SHAP</strong>: treats absence as &quot;expected value over training data&quot;</p>
+</li>
+<li><p><strong>Deep SHAP</strong>: uses reference distribution</p>
+</li>
+<li><p><strong>Gradient SHAP</strong>: uses expected gradients</p>
+</li>
+</ul>
+<p>So yes, it&#39;s game theory—but the translation from &quot;absent players&quot; to &quot;absent features&quot; introduces choices that Shapley never had to make&#33;</p>
+<h3>Testing Strategy</h3>
+<p>Want to validate SHAP against pure game theory?</p>
+<ol>
+<li><p><strong>Use a simple, discrete game</strong>: </p>
+<ul>
+<li><p>Binary features &#40;present/absent is unambiguous&#41;</p>
+</li>
+<li><p>Small number of features &#40;so you can compute all \(2^n\) coalition values&#41;</p>
+</li>
+<li><p>Example: a decision tree with 5 binary inputs</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Compute classical Shapley values</strong> manually using the formula above</p>
+</li>
+<li><p><strong>Compute SHAP</strong> on the same model and inputs</p>
+</li>
+<li><p><strong>They should match exactly</strong> &#40;if SHAP is doing what it claims&#41;</p>
+</li>
+</ol>
+<p><strong>Fun experiment</strong>: Try this on a simple OR function: </p>
+</blockquote>
+\[f(x_1, x_2, x_3) = x_1 \lor x_2 \lor x_3\]
+<blockquote>
+<p>You can hand-compute Shapley values and compare to SHAP&#33;</p>
+<h3>The Verdict</h3>
+<p>You&#39;re absolutely right: these are mostly <strong>rebranded game theory axioms</strong> with some ML-specific tweaks. The real contribution isn&#39;t inventing new axioms—it&#39;s:</p>
+<ol>
+<li><p><strong>Recognizing</strong> Shapley values apply to ML interpretability</p>
+</li>
+<li><p><strong>Adapting</strong> them to handle continuous features and the baseline problem</p>
+</li>
+<li><p><strong>Deriving efficient approximations</strong> &#40;Kernel SHAP, Deep SHAP&#41; since exact computation is intractable</p>
+</li>
+</ol>
+<p>The math isn&#39;t new. The application and computational methods are. Classic academic move: take a 70-year-old idea, apply it to a new domain, give it a fresh coat of paint&#33; 🎨</p>
+<p><strong>Your testing idea is solid</strong>: if you implement the classical game theory version on simple, discrete models, you can verify SHAP isn&#39;t lying about its theoretical foundation. And if there are discrepancies, you&#39;ve found where the ML adaptation diverges from pure game theory—which could be interesting&#33;</p>
+</blockquote>
+<hr />
+<h2 id="how_to_sell_this_to_reviewers_the_pragmatic_guide"><a href="#how_to_sell_this_to_reviewers_the_pragmatic_guide" class="header-anchor">How to Sell This to Reviewers &#40;The Pragmatic Guide&#41;</a></h2>
+<blockquote>
+<p><strong>The Problem</strong>: Reviewer 2 says &quot;you need quantitative benchmarks against baselines&#33;&quot;</p>
+<p><strong>Your dilemma</strong>: You literally just spent 10 pages explaining why traditional benchmarks are broken for interpretability&#33; Now what?</p>
+<p><strong>The SHAP/IG Strategy</strong> &#40;how they actually did it&#41;:</p>
+<h3>1. <strong>Lead with Theory, Hard</strong></h3>
+<p>Frame your contribution as <strong>solving a fundamental problem with existing work</strong>:</p>
+<ul>
+<li><p>&quot;Prior methods lack theoretical justification and can produce inconsistent results&quot;</p>
+</li>
+<li><p>&quot;We prove our method is the <em>unique</em> solution satisfying &#91;axioms X, Y, Z&#93;&quot;</p>
+</li>
+<li><p>&quot;Unlike heuristic approaches, we provide mathematical guarantees&quot;</p>
+</li>
+</ul>
+<p>This shifts the burden: now <em>other</em> methods need to justify why they don&#39;t satisfy your axioms&#33; You&#39;re not just proposing &quot;another method&quot;—you&#39;re setting the standard everyone else should meet.</p>
+<p><strong>Key move</strong>: Make axioms sound inevitable. Don&#39;t say &quot;we chose these properties&quot;—say &quot;any reasonable attribution method <em>must</em> satisfy these.&quot; Make reviewers feel like your axioms are obvious once stated &#40;even if they weren&#39;t obvious before&#41;.</p>
+<h3>2. <strong>Do SOME Empirics, But Frame Them Carefully</strong></h3>
+<p>Here&#39;s the trick: don&#39;t claim empirical results prove you&#39;re correct. Instead, frame them as <strong>sanity checks</strong>:</p>
+<ul>
+<li><p>✅ &quot;Our method aligns with human intuition on interpretable models&quot;   <em>&#40;not claiming ground truth, just &quot;seems reasonable&quot;&#41;</em></p>
+</li>
+<li><p>✅ &quot;Our attributions are more stable under perturbations&quot;   <em>&#40;consistency is measurable without ground truth&#41;</em></p>
+</li>
+<li><p>✅ &quot;We achieve 10x speedup over naive Shapley sampling&quot;   <em>&#40;computational efficiency is objectively measurable&#41;</em></p>
+</li>
+<li><p>✅ &quot;When tested on models with known behavior, our method correctly identifies the relevant features&quot;   <em>&#40;use synthetic/simple cases where you DO have ground truth&#41;</em></p>
+</li>
+</ul>
+<p><strong>What NOT to say</strong>:</p>
+<ul>
+<li><p>❌ &quot;Our method achieves 95&#37; accuracy&quot; &#40;accuracy at what? You don&#39;t have labels&#33;&#41;</p>
+</li>
+<li><p>❌ &quot;We outperform baselines on ImageNet&quot; &#40;outperform according to whom?&#41;</p>
+</li>
+</ul>
+<h3>3. <strong>Preempt the Reviewer with a &quot;Limitations of Empirical Evaluation&quot; Section</strong></h3>
+<p>Both papers did this brilliantly—they explicitly wrote about why traditional benchmarking fails:</p>
+<ul>
+<li><p>&quot;We explored several empirical evaluation strategies but found they confound attribution quality with model behavior and data artifacts&quot;</p>
+</li>
+<li><p>&quot;Without ground truth, quantitative metrics can be misleading&quot;</p>
+</li>
+</ul>
+<p>By addressing this <em>yourself</em>, you look thoughtful rather than defensive. You&#39;re saying: &quot;we thought about this deeply and here&#39;s why we made these choices.&quot;</p>
+<p><strong>Bonus</strong>: Cite prior failed attempts at empirical evaluation. Show you&#39;re not just being lazy—you&#39;re learning from others&#39; mistakes.</p>
+<h3>4. <strong>The Comparison Table Trick</strong></h3>
+<p>Make a table showing which axioms/properties different methods satisfy:</p>
+<table><tr><th align="right">Method</th><th align="right">Sensitivity</th><th align="right">Completeness</th><th align="right">Implementation Invariance</th></tr><tr><td align="right">Gradients</td><td align="right">❌</td><td align="right">❌</td><td align="right">❌</td></tr><tr><td align="right">LIME</td><td align="right">❌</td><td align="right">❌</td><td align="right">✓</td></tr><tr><td align="right">DeepLIFT</td><td align="right">✓</td><td align="right">✓</td><td align="right">❌</td></tr><tr><td align="right"><strong>Ours &#40;IG/SHAP&#41;</strong></td><td align="right">✓</td><td align="right">✓</td><td align="right">✓</td></tr></table>
+<p>This looks like a quantitative comparison &#40;reviewers love tables&#33;&#41; but it&#39;s actually <em>theoretical</em>. You&#39;re not claiming &quot;we&#39;re better&quot; subjectively—you&#39;re stating mathematical facts about which properties hold.</p>
+<h3>5. <strong>Show Examples Where Other Methods Fail</strong></h3>
+<p>Nothing sells a paper like showing competitors breaking in obvious ways:</p>
+<ul>
+<li><p>&quot;When we apply &#91;baseline method&#93; to two functionally identical networks, it produces different attributions&quot; &#40;violates Implementation Invariance&#41;</p>
+</li>
+<li><p>&quot;Method X assigns zero attribution to a feature that, when removed, changes the prediction&quot; &#40;violates Sensitivity&#41;</p>
+</li>
+</ul>
+<p>These are <em>objective</em> failures—you don&#39;t need ground truth to show a method contradicts its own logic&#33;</p>
+<h3>6. <strong>The &quot;Future Work&quot; Escape Hatch</strong></h3>
+<p>If a reviewer demands something unreasonable:</p>
+<ul>
+<li><p>&quot;While large-scale quantitative evaluation remains an open challenge for the field, our theoretical framework provides a foundation for future empirical work&quot;</p>
+</li>
+<li><p>&quot;Developing robust benchmarks is critical future work; we provide initial validation through &#91;human studies/synthetic data&#93;&quot;</p>
+</li>
+</ul>
+<p>Translation: &quot;you&#39;re asking for something nobody can do; we&#39;ve done what&#39;s possible; someone else can solve the impossible part later.&quot;</p>
+<h3>7. <strong>Appeal to Authority</strong></h3>
+<p>If your method comes from established theory &#40;game theory, functional analysis&#41;, lean into it:</p>
+<ul>
+<li><p>&quot;Shapley values are the unique solution in cooperative game theory, studied for 70&#43; years&quot;</p>
+</li>
+<li><p>&quot;Path integrals are a fundamental concept in physics and mathematics&quot;</p>
+</li>
+</ul>
+<p>Reviewers are less likely to dismiss something with decades of theoretical backing. You&#39;re not inventing ad-hoc heuristics—you&#39;re applying principled mathematics&#33;</p>
+<hr />
+<h3>The Bottom Line</h3>
+<p><strong>What they actually did</strong>:</p>
+<ul>
+<li><p>70&#37; of the paper: Theory, axioms, proofs</p>
+</li>
+<li><p>20&#37; of the paper: Sanity check empirics &#40;human studies, speed, simple cases&#41;</p>
+</li>
+<li><p>10&#37; of the paper: Comparisons showing other methods violate axioms</p>
+</li>
+</ul>
+<p><strong>The sales pitch</strong>:</p>
+<ul>
+<li><p>&quot;We solve a foundational problem &#40;lack of theoretical grounding&#41;&quot;</p>
+</li>
+<li><p>&quot;We prove our method is unique/optimal under reasonable assumptions&quot;</p>
+</li>
+<li><p>&quot;We validate it doesn&#39;t produce obviously wrong results&quot;</p>
+</li>
+<li><p>&quot;We show competitors violate basic desirable properties&quot;</p>
+</li>
+</ul>
+<p><strong>How to handle pushback</strong>:</p>
+<ul>
+<li><p>&quot;We agree robust evaluation is critical—that&#39;s why we identify the core problem with existing approaches and propose axioms as a solution&quot;</p>
+</li>
+<li><p>&quot;Traditional quantitative metrics are misleading without ground truth; our theoretical guarantees are stronger&quot;</p>
+</li>
+<li><p>Point to your &quot;limitations of empirical eval&quot; section: &quot;we address this in §X&quot;</p>
+</li>
+</ul>
+<p>The meta-strategy: <strong>make the lack of ground truth someone else&#39;s problem, not yours</strong>. You provided a rigorous theoretical solution; it&#39;s the field&#39;s job to figure out how to empirically validate interpretability &#40;good luck with that&#33; 😅&#41;.</p>
+</blockquote>
+<hr />
+<h2 id="terminology_confusion_attribution_vs_feature_contribution"><a href="#terminology_confusion_attribution_vs_feature_contribution" class="header-anchor">Terminology Confusion: Attribution vs. Feature Contribution</a></h2>
+<blockquote>
+<p><strong>TL;DR</strong>: ML people say &quot;attribution,&quot; everyone else says &quot;feature importance&quot; or &quot;contribution.&quot;</p>
+<p><strong>Why the mess?</strong> The SHAP paper borrowed Shapley values from game theory &#40;1950s economics&#33;&#41;, where they measure how much each player &quot;contributes&quot; to a coalition&#39;s payoff. In that world, you&#39;d say &quot;player i&#39;s contribution&quot; or &quot;marginal contribution.&quot;</p>
+<p>But ML researchers rebranded it as <strong>&quot;attribution&quot;</strong>—basically asking &quot;which features do we <em>attribute</em> the prediction to?&quot; It&#39;s the same math, just different framing:</p>
+<ul>
+<li><p><strong>Game theory</strong>: &quot;How much did player <em>i</em> contribute to the team&#39;s winnings?&quot;</p>
+</li>
+<li><p><strong>ML</strong>: &quot;How much do we attribute to feature <em>i</em> for this prediction?&quot;</p>
+</li>
+</ul>
+<p><strong>What&#39;s actually used?</strong></p>
+<ul>
+<li><p>Academic ML papers: <strong>&quot;attribution&quot;</strong> dominates &#40;thanks to influential papers like these&#41;</p>
+</li>
+<li><p>Explainable AI practitioners: <strong>&quot;feature importance&quot;</strong> is common</p>
+</li>
+<li><p>Classical statistics/econometrics: <strong>&quot;marginal effects&quot;</strong> or <strong>&quot;contribution&quot;</strong></p>
+</li>
+<li><p>Random ML engineers: all of the above interchangeably 😅</p>
+</li>
+</ul>
+<p>The terminology shift happened because ML focuses on <em>explaining individual predictions</em> &#40;&quot;why did the model call <em>this</em> image a cat?&quot;&#41;, while game theory focuses on <em>fair allocation</em> &#40;&quot;how do we split the prize money?&quot;&#41;. Same math &#40;phi values&#41;, different story you&#39;re telling.</p>
+<p><strong>Hot take</strong>: &quot;Attribution&quot; stuck because it sounds fancier and makes papers easier to cite. &quot;Feature contribution&quot; is probably clearer, but we&#39;re stuck with &quot;attribution&quot; now because that&#39;s what the influential papers called it. Such is life in rapidly evolving fields&#33; 🤷</p>
+</blockquote>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 04, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

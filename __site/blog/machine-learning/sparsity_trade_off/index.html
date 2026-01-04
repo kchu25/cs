@@ -53,7 +53,7 @@
 </li>
 </ul>
 <p>My \(V = \alpha \cdot Accuracy - \beta \cdot Complexity\) just flips the sign &#40;maximize value instead of minimize cost&#41; and makes the units explicit. The \(\lambda\) in LASSO? That&#39;s your \(\beta/\alpha\) ratio — how much you value simplicity relative to accuracy. </p>
-<p><strong>How CV estimates \(\beta/\alpha\):</strong> When you do cross-validation to pick \(\lambda\), you&#39;re testing different tradeoff points. Small \(\lambda\) &#61; &quot;accuracy matters more&quot; &#40;low \(\beta/\alpha\)&#41;, large \(\lambda\) &#61; &quot;simplicity matters more&quot; &#40;high \(\beta/\alpha\)&#41;. CV finds the \(\lambda\) where adding more complexity stops improving held-out performance — that&#39;s the point where \(\beta \cdot \Delta\text{complexity} = \alpha \cdot \Delta\text{accuracy}\) for your data&#39;s noise level. Essentially, CV uses your actual generalization curve to solve for the optimal \(\beta/\alpha\) without you having to specify it philosophically.</p>
+<p><strong>How CV estimates \(\beta/\alpha\):</strong> When you do cross-validation to pick \(\lambda\), you&#39;re testing different tradeoff points. Small \(\lambda\) &#61; &quot;accuracy matters more&quot; &#40;low \(\beta/\alpha\)&#41;, large \(\lambda\) &#61; &quot;simplicity matters more&quot; &#40;high \(\beta/\alpha\)&#41;. CV finds the \(\lambda\) where adding more complexity stops improving held-out performance — that&#39;s the point where \(\beta \cdot \Delta\mathrm{ complexity} = \alpha \cdot \Delta\mathrm{ accuracy}\) for your data&#39;s noise level. Essentially, CV uses your actual generalization curve to solve for the optimal \(\beta/\alpha\) without you having to specify it philosophically.</p>
 <p>In genomics research: high \(\beta\) &#40;interpreting 10,000 genes is impossible&#41; means you want large \(\lambda\) &#40;aggressive sparsity&#41;, often larger than what CV alone would pick.</p>
 </blockquote>
 <p><strong>Your scenario:</strong> Modest R² drop for substantial parameter reduction → \(\beta \Delta p >> \alpha \Delta R^2\)</p>
@@ -97,7 +97,7 @@
 </ol>
 </a></h3>
 <p>High-dimensional genomics &#40;\(p >> n\)&#41;:</p>
-\[\text{Effective DOF} = \frac{n}{\text{# parameters}}\]
+\[\mathrm{ Effective DOF} = \frac{n}{\mathrm{ # parameters}}\]
 <p>Sparse model → Higher effective DOF → <strong>Better generalization despite lower training R²</strong></p>
 <p>You said &quot;generalization still is acceptable&quot; - this is the <strong>key metric</strong>. Test R² maintained &#61; you haven&#39;t sacrificed real predictive power.</p>
 <hr />
@@ -148,7 +148,7 @@ Benefit of R² &#61; 0.50 vs 0.45:
 <li><p><strong>The real metric</strong>: </p>
 </li>
 </ol>
-\[\text{Value} = \frac{R^2 \cdot \text{Interpretability}}{\text{Cost}}\]
+\[\mathrm{ Value} = \frac{R^2 \cdot \mathrm{ Interpretability}}{\mathrm{ Cost}}\]
 <p>You&#39;ve likely improved this by <strong>10-100x</strong></p>
 <h3 id="final_answer"><a href="#final_answer" class="header-anchor">Final Answer</a></h3>
 <p>In genomics screening with maintained generalization &#40;R² &#61; 0.45&#41;, the sparsity tradeoff is <strong>overwhelmingly positive</strong>. The minor accuracy sacrifice is dwarfed by gains in interpretability, computational efficiency, and scientific actionability.</p>

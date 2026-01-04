@@ -29,7 +29,7 @@
 <h2 id="so_whats_the_deal"><a href="#so_whats_the_deal" class="header-anchor">So What&#39;s The Deal?</a></h2>
 <p>Okay, imagine you&#39;re training a neural network and you need it to make a choice. Like, pick one category out of several options. Maybe you&#39;re building a model that needs to decide &quot;cat, dog, or bird?&quot; for an image.</p>
 <p>The natural thing to do is sample from a categorical distribution, right? You have some probabilities \(\pi_1, \pi_2, \ldots, \pi_K\) and you pick one:</p>
-\[z = \text{Categorical}(\pi_1, \ldots, \pi_K)\]
+\[z = \mathrm{ Categorical}(\pi_1, \ldots, \pi_K)\]
 <p><strong>Plot twist</strong>: This sampling operation has no gradient. You can&#39;t backpropagate through it. Your optimizer is basically like &quot;¯<br/>&#95;&#40;ツ&#41;&#95;/¯ can&#39;t help you there.&quot;</p>
 <p>This is a problem.</p>
 <h2 id="enter_the_gumbel-max_trick"><a href="#enter_the_gumbel-max_trick" class="header-anchor">Enter: The Gumbel-Max Trick</a></h2>
@@ -38,15 +38,15 @@
 <ol>
 <li><p>Take your log probabilities: \(\alpha_i = \log \pi_i\)</p>
 </li>
-<li><p>Sample some random Gumbel noise: \(G_i \sim \text{Gumbel}(0, 1)\) for each option</p>
+<li><p>Sample some random Gumbel noise: \(G_i \sim \mathrm{ Gumbel}(0, 1)\) for each option</p>
 </li>
-<li><p>Add them together and pick the max: \(z = \text{one\_hot}\left(\arg\max_i (\alpha_i + G_i)\right)\)</p>
+<li><p>Add them together and pick the max: \(z = \mathrm{ one\_hot}\left(\arg\max_i (\alpha_i + G_i)\right)\)</p>
 </li>
 </ol>
 <p>And boom, you&#39;ve sampled from your categorical distribution&#33; It&#39;s mathematically equivalent, which is pretty neat.</p>
 <h3 id="quick_aside_whats_a_gumbel_distribution"><a href="#quick_aside_whats_a_gumbel_distribution" class="header-anchor">Quick aside: What&#39;s a Gumbel distribution?</a></h3>
 <p>Great question&#33; It&#39;s super easy to sample from:</p>
-\[G = -\log(-\log(U)), \quad \text{where } U \sim \text{Uniform}(0, 1)\]
+\[G = -\log(-\log(U)), \quad \mathrm{ where} U \sim \mathrm{ Uniform}(0, 1)\]
 <p>Just sample a uniform random number, take negative log twice, and you&#39;re done. Easy peasy.</p>
 <h2 id="the_problem_with_gumbel-max"><a href="#the_problem_with_gumbel-max" class="header-anchor">The Problem With Gumbel-Max</a></h2>
 <p>So Gumbel-Max is cool, but we still have that \(\arg\max\) operation, which is... you guessed it... not differentiable. We&#39;re back to square one.</p>
@@ -99,7 +99,7 @@
 <ul>
 <li><p>Initialize it to a reasonable value</p>
 </li>
-<li><p>Constrain it: \(\tau = \text{softplus}(\tau_{\text{raw}}) + \epsilon\) to keep it positive and bounded</p>
+<li><p>Constrain it: \(\tau = \mathrm{ softplus}(\tau_{\mathrm{ raw}}) + \epsilon\) to keep it positive and bounded</p>
 </li>
 <li><p>Add a penalty for high temperatures in the loss</p>
 </li>
@@ -262,7 +262,7 @@ Final:    γ ≈ 0,    ζ ≈ 1    &#40;basically no stretching&#33;&#41;</code>
 <p><strong>What about temperature τ?</strong></p>
 <p><strong>Same problem, same answer: Keep it fixed too&#33;</strong></p>
 <p>Temperature τ controls the softness in a different way - it&#39;s in the sampling step <em>before</em> stretching:</p>
-\(s = \sigma\left(\frac{\log(u) - \log(1-u) + \text{logit}}{\tau}\right)\)
+\(s = \sigma\left(\frac{\log(u) - \log(1-u) + \mathrm{ logit}}{\tau}\right)\)
 <p><strong>If you let the network learn τ:</strong></p>
 <ul>
 <li><p><strong>High τ</strong> &#40;like τ&#61;10&#41;: Softmax becomes very smooth → easy gradients → network prefers this&#33;</p>
@@ -399,9 +399,9 @@ end</code></pre>
 </ul>
 <p><strong>Comparison to straight-through:</strong></p>
 <ul>
-<li><p>Straight-through: \(\text{forward} = \text{one\_hot}(\arg\max)\), backward through soft values</p>
+<li><p>Straight-through: \(\mathrm{ forward} = \mathrm{ one\_hot}(\arg\max)\), backward through soft values</p>
 </li>
-<li><p>Hard Concrete: \(\text{forward} = \text{stretched & clamped}\), backward through soft values</p>
+<li><p>Hard Concrete: \(\mathrm{ forward} = \mathrm{ stretched & clamped}\), backward through soft values</p>
 </li>
 </ul>
 <p>Both achieve &quot;hard in forward, soft in backward&quot; but Hard Concrete is smoother and more principled&#33;</p>
@@ -410,7 +410,7 @@ end</code></pre>
 <h3 id="flavor_1_straight-through_estimator"><a href="#flavor_1_straight-through_estimator" class="header-anchor">Flavor 1: Straight-Through Estimator</a></h3>
 <p>This one&#39;s sneaky:</p>
 <ul>
-<li><p><strong>Forward pass</strong>: Sample discrete one-hot vectors \(z = \text{one\_hot}(\arg\max_i y_i)\)</p>
+<li><p><strong>Forward pass</strong>: Sample discrete one-hot vectors \(z = \mathrm{ one\_hot}(\arg\max_i y_i)\)</p>
 </li>
 <li><p><strong>Backward pass</strong>: Pretend you used the continuous \(y\) and pass those gradients</p>
 </li>
@@ -435,7 +435,7 @@ binary_soft &#61; y&#91;1&#93;  # this is approximately 0 or 1</code></pre>
 <p>There&#39;s actually a specific name for Bernoulli with Gumbel-Softmax: the <strong>Binary Concrete Distribution</strong> &#40;also called BinConcrete&#41;.</p>
 <p>For a Bernoulli with probability \(p\), you can directly sample:</p>
 \[y = \frac{1}{1 + \exp(-((\log p - \log(1-p) + G_1 - G_0) / \tau))}\]
-<p>where \(G_0, G_1 \sim \text{Gumbel}(0,1)\) are independent.</p>
+<p>where \(G_0, G_1 \sim \mathrm{ Gumbel}(0,1)\) are independent.</p>
 <p>This simplifies to:</p>
 \[y = \sigma\left(\frac{\log p - \log(1-p) + G_1 - G_0}{\tau}\right)\]
 <p>where \(\sigma\) is the sigmoid function. This gives you a number in \((0, 1)\) that&#39;s approximately 0 or 1 when \(\tau\) is small.</p>
