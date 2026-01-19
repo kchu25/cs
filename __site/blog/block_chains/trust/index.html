@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why Trust is Hard & How Blockchain Helps</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_trust_is_hard_how_blockchain_helps"><a href="#why_trust_is_hard_how_blockchain_helps" class="header-anchor">Why Trust is Hard &amp; How Blockchain Helps</a></h1>
+<h2 id="the_trust_problem"><a href="#the_trust_problem" class="header-anchor">The Trust Problem</a></h2>
+<p>Trust is expensive because someone needs to be the referee. Traditionally, we solve this with <strong>trusted third parties</strong> &#40;banks, governments, notaries&#41;. </p>
+<blockquote>
+<p><strong>Why &quot;third&quot; party?</strong> When you and I want to transact, we&#39;re the first two parties. But we don&#39;t trust each other directly—so we bring in a <em>third</em> party we both agree to trust. When you buy a house, you &#40;party 1&#41; and the seller &#40;party 2&#41; use a title company &#40;party 3&#41; to hold the money and ensure both sides fulfill their obligations. Why can&#39;t you trust the seller? Because they might take your money and not transfer the deed. Why can&#39;t they trust you? Because you might get the deed and not pay. You&#39;re strangers with conflicting incentives, so you need someone neutral to enforce the exchange happens correctly.</p>
+<p>This pattern is everywhere: Academic publishing uses journals as third parties between researchers &#40;who want credibility and distribution&#41; and readers &#40;who want verified, quality research&#41;. The journal&#39;s &quot;neutrality&quot; comes from peer review and editorial gatekeeping—they supposedly verify the research is legitimate so readers don&#39;t have to. But here&#39;s the kicker: researchers write the papers for free, other researchers peer-review for free, and universities pay massive subscription fees. The journal just coordinates trust and captures the value. Dating apps are third parties between people looking to meet. App stores are third parties between developers and users. YouTube is a third party between creators and viewers. Uber is a third party between drivers and riders. In each case, the third party doesn&#39;t create the value—they just facilitate trust—but they capture most of the economic surplus.</p>
+</blockquote>
+<p>But this creates issues:</p>
+<ul>
+<li><p><strong>Verification costs</strong>: You need to check the referee is honest</p>
+</li>
+<li><p><strong>Single point of failure</strong>: What if the referee gets corrupted or hacked?</p>
+</li>
+<li><p><strong>Gatekeeping</strong>: The referee can deny you access</p>
+</li>
+<li><p><strong>Rent-seeking</strong>: Middlemen charge fees just for existing</p>
+</li>
+</ul>
+<p>Think about sending money internationally. Banks charge 5-7&#37; and take days because multiple intermediaries each need to verify the transaction and take their cut.</p>
+<h2 id="blockchains_solution_automating_trust_through_decentralization"><a href="#blockchains_solution_automating_trust_through_decentralization" class="header-anchor">Blockchain&#39;s Solution: Automating Trust Through Decentralization</a></h2>
+<p>Here&#39;s the paradigm shift most people miss: <strong>trust isn&#39;t a binary thing that requires humans—it&#39;s a mathematical problem that can be automated through decentralization.</strong></p>
+<p>Instead of one referee, you have thousands of independent validators all checking the same ledger. They use cryptographic proofs that make cheating computationally infeasible.</p>
+<h3 id="the_math_of_trust"><a href="#the_math_of_trust" class="header-anchor">The Math of Trust</a></h3>
+<p>In a traditional system with one trusted party:</p>
+\[P(\mathrm{ system honest}) = P(\mathrm{ central party honest})\]
+<p>Where \(P\) means &quot;probability&quot;—so this reads as &quot;the probability the system is honest equals the probability the central party is honest.&quot; If the central party has a 1&#37; chance of being compromised, your system has a 1&#37; failure rate. Your security is only as strong as that single point of failure.</p>
+<p>In a decentralized system with \(n\) validators where you need a majority to collude to cheat:</p>
+\[P(\mathrm{ system fails}) = P\left(\frac{n}{2} + 1 \mathrm{ validators collude}\right)\]
+<p>If each validator has a 1&#37; chance of being malicious and they act independently, the probability that 51&#37; of 1,000 validators collude is astronomically small—around \(10^{-300}\) &#40;basically impossible&#41;.</p>
+<p><strong>The key</strong>: You&#39;ve replaced institutional trust with statistical impossibility.</p>
+<h2 id="the_decentralization_spectrum"><a href="#the_decentralization_spectrum" class="header-anchor">The Decentralization Spectrum</a></h2>
+<p>You&#39;re absolutely right—decentralization isn&#39;t binary, it&#39;s a spectrum. Let me illustrate:</p>
+<table><tr><th align="right">System</th><th align="right">Validators</th><th align="right">Trust Model</th><th align="right">Efficiency</th></tr><tr><td align="right">Visa</td><td align="right">1 company</td><td align="right">Full institutional trust</td><td align="right">Very high</td></tr><tr><td align="right">Federated DB</td><td align="right">5-10 companies</td><td align="right">Trust consortium</td><td align="right">High</td></tr><tr><td align="right">Proof-of-Stake</td><td align="right">100-1000s</td><td align="right">Economic incentives</td><td align="right">Medium</td></tr><tr><td align="right">Proof-of-Work</td><td align="right">10,000s</td><td align="right">Computational hardness</td><td align="right">Low</td></tr></table>
+<p><strong>The tradeoff function</strong>:</p>
+\[\mathrm{ Security} \propto n \quad \mathrm{ but} \quad \mathrm{ Efficiency} \propto \frac{1}{n}\]
+<p>Where \(n\) is the number of independent validators.</p>
+<p>You can choose your point on this spectrum based on your needs:</p>
+<ul>
+<li><p><strong>High trust environment</strong> &#40;within a company&#41;: \(n = 1\), maximum efficiency</p>
+</li>
+<li><p><strong>Medium trust</strong> &#40;between companies&#41;: \(n = 5-20\), federated approach</p>
+</li>
+<li><p><strong>Zero trust</strong> &#40;global money&#41;: \(n = 10,000+\), full decentralization</p>
+</li>
+</ul>
+<h2 id="quantifying_the_value"><a href="#quantifying_the_value" class="header-anchor">Quantifying the Value</a></h2>
+<p>Let&#39;s get concrete. The global payments industry moves ~&#36;200 trillion annually with average fees of 2-3&#37;. That&#39;s:</p>
+\[\mathrm{ Annual rent-seeking} = \$200T \times 0.025 = \$5T\]
+<p>If blockchain reduced this to 0.5&#37;, you&#39;d save:</p>
+\[\mathrm{ Savings} = \$200T \times (0.025 - 0.005) = \$4T \mathrm{ annually}\]
+<p>But there&#39;s a cost to decentralization. Let&#39;s model it:</p>
+\[\mathrm{ Total Cost} = \underbrace{\mathrm{ Trust Cost}}_{\mathrm{ decreases with} n} + \underbrace{\mathrm{ Computational Cost}}_{\mathrm{ increases with} n}\]
+\[TC(n) = \frac{C_t}{n^\alpha} + C_c \cdot n\]
+<p>Where:</p>
+<ul>
+<li><p>\(C_t\) &#61; base cost of trust failures/intermediaries</p>
+</li>
+<li><p>\(C_c\) &#61; computational cost per validator</p>
+</li>
+<li><p>\(\alpha\) &#61; how trust scales with decentralization &#40;usually 1-2&#41;</p>
+</li>
+</ul>
+<p>The optimal decentralization level \(n^*\) minimizes total cost:</p>
+\[\frac{dTC}{dn} = 0 \implies n^* = \left(\frac{\alpha C_t}{C_c}\right)^{\frac{1}{\alpha + 1}}\]
+<p><strong>Key insight</strong>: When trust costs are high &#40;\(C_t\) large&#41; or computation is cheap &#40;\(C_c\) small&#41;, you want more decentralization. When the opposite is true, centralization wins.</p>
+<h2 id="the_real_value"><a href="#the_real_value" class="header-anchor">The Real Value</a></h2>
+<p>Beyond cost savings, decentralization enables <strong>new possibilities</strong>:</p>
+<ul>
+<li><p><strong>Financial inclusion</strong>: 1.4 billion unbanked people can now participate</p>
+</li>
+<li><p><strong>Programmable trust</strong>: Smart contracts automate agreements without lawyers</p>
+</li>
+<li><p><strong>Permissionless innovation</strong>: Anyone can build on open protocols</p>
+</li>
+<li><p><strong>Censorship resistance</strong>: No single entity can shut you down</p>
+</li>
+</ul>
+<h2 id="when_it_makes_sense"><a href="#when_it_makes_sense" class="header-anchor">When It Makes Sense</a></h2>
+<p>Blockchain&#39;s efficiency gain is specifically in <strong>trust and coordination</strong>, not computation. So it only makes sense where:</p>
+\[\mathrm{ Cost of traditional trust} > \mathrm{ Cost of decentralized consensus}\]
+<h3 id="the_efficiency_paradox"><a href="#the_efficiency_paradox" class="header-anchor">The Efficiency Paradox</a></h3>
+<p>Wait—didn&#39;t we just say decentralization requires more computers doing redundant work? Yes&#33; So how can it be <em>more</em> efficient?</p>
+<p><strong>The key</strong>: Efficiency isn&#39;t just computational—it&#39;s about total economic cost. Let me break down where decentralization actually wins:</p>
+<p><strong>1. Eliminating rent-seeking intermediaries</strong></p>
+<p>Current system: You want to send &#36;1000 internationally.</p>
+<ul>
+<li><p>Bank 1 charges 1&#37; &#40;&#36;10&#41; to send</p>
+</li>
+<li><p>Correspondent bank charges 0.5&#37; &#40;&#36;5&#41; to route</p>
+</li>
+<li><p>Bank 2 charges 1&#37; &#40;&#36;10&#41; to receive</p>
+</li>
+<li><p>Each bank maintains massive compliance departments</p>
+</li>
+<li><p>Process takes 3-5 days because each intermediary batches transactions</p>
+</li>
+</ul>
+<blockquote>
+<p><strong>Are humans actually involved?</strong> Yes&#33; While the money moves electronically, there are massive teams of people behind the scenes. Each bank has compliance officers checking for money laundering, fraud analysts reviewing suspicious transactions, customer service handling issues, IT teams maintaining databases, and managers coordinating between departments. The 3-5 day delay isn&#39;t because computers are slow—it&#39;s because banks batch transactions and have humans review flagged items. Even &quot;automated&quot; transfers require legal teams, auditors, and regulators to maintain the trust infrastructure. You&#39;re not just paying for the electronic transfer—you&#39;re paying for entire buildings full of people whose job is to make sure the system stays trustworthy.</p>
+</blockquote>
+<p>Total cost: &#36;25 &#43; opportunity cost &#43; all the overhead of maintaining these intermediaries</p>
+<p>Decentralized system:</p>
+<ul>
+<li><p>Network validators collectively charge 0.1-0.5&#37; &#40;&#36;1-5&#41;</p>
+</li>
+<li><p>Settlement in minutes</p>
+</li>
+<li><p>No massive compliance bureaucracy &#40;code enforces rules&#41;</p>
+</li>
+</ul>
+<p>Even though you&#39;re using more computational power, you&#39;ve eliminated layers of human intermediaries who were extracting value without creating it.</p>
+<p><strong>2. Removing coordination overhead</strong></p>
+<p>Think about a supply chain with 10 companies &#40;manufacturer, logistics, customs, distributors, etc.&#41;. Currently:</p>
+<ul>
+<li><p>Each maintains their own database</p>
+</li>
+<li><p>Reconciliation between databases &#40;phone calls, emails, disputes&#41;</p>
+</li>
+<li><p>Trust verification at each handoff</p>
+</li>
+<li><p>Lawyers and contracts for every relationship</p>
+</li>
+</ul>
+<p><strong>The math</strong>: With \(n\) parties, each pair needs a bilateral relationship. The number of relationships is:</p>
+\(\binom{n}{2} = \frac{n(n-1)}{2} \approx \frac{n^2}{2}\)
+<blockquote>
+<p><strong>What do bilateral relationships look like in practice?</strong> Think about shipping a container of electronics from Shenzhen to Los Angeles. The manufacturer needs a contract with the shipping company. The shipping company needs a separate contract with the port authority. The port authority needs one with customs. Customs needs one with the trucking company. The trucking company needs one with the warehouse. That&#39;s already 10&#43; bilateral contracts for a single shipment route. Now add the bank financing the shipment, the insurance company, and the retailer receiving the goods. Each pair has their own legal agreement, their own invoicing system, their own way of tracking the shipment. When the container arrives 2 days late, everyone&#39;s calling everyone else to figure out who owes what. That reconciliation nightmare—phone calls, emails, spreadsheet comparisons—is what happens when you have separate databases that need to agree on the same facts.</p>
+</blockquote>
+<p>For \(n=10\) companies: \(\frac{10 \times 9}{2} = 45\) bilateral relationships.</p>
+<p>For \(n=20\) companies: \(\frac{20 \times 19}{2} = 190\) bilateral relationships.</p>
+<p>Doubling the companies roughly quadruples the coordination complexity&#33; Each relationship needs contracts, reconciliation, and dispute resolution. If each costs \(C\) annually:</p>
+\[\mathrm{ Total cost (traditional)} = \frac{n^2}{2} \cdot C = O(n^2)\]
+<p>With a shared decentralized ledger:</p>
+<ul>
+<li><p>Single source of truth</p>
+</li>
+<li><p>Automated verification via smart contracts</p>
+</li>
+<li><p>No reconciliation needed</p>
+</li>
+</ul>
+\[\mathrm{ Coordination cost (decentralized)} = n \cdot C' = O(n)\]
+<p>Where \(C'\) is the cost for each party to validate their own transactions—much simpler&#33;</p>
+<blockquote>
+<p><strong>Is this already happening?</strong> Yes&#33; Banks are actually leading the charge here. JPMorgan created &quot;Onyx&quot; &#40;now rebranded to Kinexys&#41;, a blockchain platform where multiple banks share a single ledger for tracking repos and overnight loans—exactly this use case. Instead of 20 banks maintaining 190 bilateral relationships and reconciling databases every night, they all write to one shared ledger. Deutsche Bank, Citi, and others are doing similar things with tokenized deposits and settlement systems. The big play now is <strong>RWAs &#40;Real World Assets&#41;</strong>—putting things like Treasury bonds, real estate, or trade finance on shared ledgers. When you tokenize a &#36;100M commercial real estate building, all the investors, the property manager, the bank, and the auditors can see the same ownership records in real-time instead of maintaining separate spreadsheets and reconciling monthly. It&#39;s not fully decentralized &#40;these are permissioned networks, not public blockchains&#41;, but it&#39;s still using the core idea: shared ledger beats bilateral databases.</p>
+</blockquote>
+<p><strong>3. Enabling markets that couldn&#39;t exist</strong></p>
+<p>Some transactions are too small or too risky for traditional intermediaries to bother with:</p>
+<ul>
+<li><p>Microtransactions &#40;sending &#36;0.001 to read an article&#41;</p>
+</li>
+<li><p>Cross-border payments to countries without banking relationships</p>
+</li>
+<li><p>Peer-to-peer loans between strangers in different countries</p>
+</li>
+</ul>
+<p>Traditional system: &#36;5 minimum fee makes these impossible Decentralized system: Flat &#36;0.10 fee makes tiny transactions viable</p>
+<p>This creates entirely new economic activity that wasn&#39;t possible before.</p>
+<p><strong>The formula for when decentralization is more efficient:</strong></p>
+\[\underbrace{\mathrm{ Intermediary fees} + \mathrm{ Coordination overhead} + \mathrm{ Exclusion costs}}_{\mathrm{ Traditional system}} > \underbrace{\mathrm{ Computational cost} + \mathrm{ Network fees}}_{\mathrm{ Decentralized system}}\]
+<p><strong>Great for</strong>:</p>
+<ul>
+<li><p>Money &#40;high trust cost, simple computation&#41;</p>
+</li>
+<li><p>Property records &#40;high trust cost, simple data&#41;</p>
+</li>
+<li><p>Supply chain verification &#40;many parties, no natural leader&#41;</p>
+</li>
+</ul>
+<p><strong>Terrible for</strong>:</p>
+<ul>
+<li><p>Databases &#40;low trust cost, high computational need&#41;</p>
+</li>
+<li><p>Most corporate IT &#40;already trusted within organization&#41;</p>
+</li>
+</ul>
+<p><strong>Bottom line</strong>: We&#39;ve been so conditioned to accept institutional intermediaries that we forget trust is just a coordination problem—and coordination problems can be solved with math and incentives across a spectrum of decentralization levels.</p>
+<h2 id="the_interface_problem_decentralizations_achilles_heel"><a href="#the_interface_problem_decentralizations_achilles_heel" class="header-anchor">The Interface Problem: Decentralization&#39;s Achilles Heel</a></h2>
+<p>Here&#39;s the uncomfortable truth: even if you perfectly decentralize the trust layer, <strong>you still need an interface to access it</strong>—and interfaces tend toward centralization.</p>
+<blockquote>
+<p><strong>The interface bottleneck</strong>: You can have the most decentralized blockchain in the world, but if everyone accesses it through Coinbase or MetaMask, you&#39;ve just recreated centralization at a different layer. The interface controls what you see, what transactions you can make, and can even censor you. In 2022, Tornado Cash &#40;a privacy tool&#41; was sanctioned, and suddenly Infura and Alchemy—the main infrastructure providers—blocked access to it. The protocol itself was still running fine on Ethereum, but most users couldn&#39;t access it because their wallet apps relied on these centralized services. The decentralized ledger was powerless against centralized gatekeepers at the interface layer.</p>
+</blockquote>
+<p><strong>The key question</strong>: Does the remaining centralization outweigh the benefits, or have we just moved the chokepoint?</p>
+<h3 id="real-world_examples_fighting_this"><a href="#real-world_examples_fighting_this" class="header-anchor">Real-World Examples Fighting This</a></h3>
+<p><strong>1. Uniswap &#43; IPFS &#40;Partial solution&#41;</strong></p>
+<p>Uniswap is a decentralized exchange. The smart contracts live on Ethereum &#40;decentralized&#41;, but the website uniswap.org is controlled by Uniswap Labs &#40;centralized&#41;. Their solution:</p>
+<ul>
+<li><p>They also host the interface on IPFS &#40;decentralized file storage&#41;</p>
+</li>
+<li><p>Anyone can access it at ipfs.io/ipns/app.uniswap.org</p>
+</li>
+<li><p>If Uniswap Labs disappears, the interface still exists</p>
+</li>
+<li><p>Community can fork and host their own versions</p>
+</li>
+</ul>
+<p><strong>Status</strong>: Partial win. IPFS gateways are still somewhat centralized, but much harder to censor than a single company.</p>
+<p><strong>2. Light clients &#40;In progress&#41;</strong></p>
+<p>The problem: Most users don&#39;t run full blockchain nodes—they trust Infura/Alchemy to tell them what&#39;s on the chain &#40;centralization&#41;.</p>
+<p>The solution: &quot;Light clients&quot; that can verify blockchain state on your phone without downloading the entire chain.</p>
+<ul>
+<li><p>Ethereum is building this into browsers</p>
+</li>
+<li><p>Helios lets you run a trustless Ethereum client in your browser</p>
+</li>
+<li><p>Bitcoin has had SPV &#40;Simplified Payment Verification&#41; since 2009</p>
+</li>
+</ul>
+<p><strong>Status</strong>: Technically works, but adoption is low. Most people still use centralized providers because it&#39;s easier.</p>
+<p><strong>3. DeFi composability &#40;Interesting case&#41;</strong></p>
+<p>Once you&#39;re <em>inside</em> the decentralized system, you can avoid interfaces entirely:</p>
+<ul>
+<li><p>Smart contract A can call smart contract B directly</p>
+</li>
+<li><p>No human interface needed for protocol-to-protocol interaction</p>
+</li>
+<li><p>Example: A lending protocol can automatically borrow from a DEX without any centralized interface</p>
+</li>
+</ul>
+<p><strong>Status</strong>: Works great for protocol composability, but humans still need interfaces to enter the system.</p>
+<p><strong>4. Governance minimization &#40;Philosophical approach&#41;</strong></p>
+<p>Some protocols intentionally have no interface monopoly:</p>
+<ul>
+<li><p>Bitcoin: Dozens of wallet options &#40;Ledger, Trezor, BlueWallet, etc.&#41;</p>
+</li>
+<li><p>Ethereum: Multiple clients &#40;Geth, Nethermind, Besu&#41;</p>
+</li>
+<li><p>If one gets shut down or corrupted, users switch</p>
+</li>
+</ul>
+<p><strong>Status</strong>: Best current solution. The interface layer is competitive, not monopolistic.</p>
+<h3 id="the_honest_assessment"><a href="#the_honest_assessment" class="header-anchor">The Honest Assessment</a></h3>
+<p><strong>Does centralized interface negate decentralization benefits?</strong></p>
+<p>Not entirely, but it depends:</p>
+<table><tr><th align="right">Benefit</th><th align="right">Preserved with centralized interface?</th></tr><tr><td align="right">Censorship resistance</td><td align="right">Partially &#40;protocol still works, but access is hindered&#41;</td></tr><tr><td align="right">No intermediary fees</td><td align="right">Yes &#40;smart contracts execute permissionlessly&#41;</td></tr><tr><td align="right">Transparent ledger</td><td align="right">Yes &#40;anyone can verify, even through centralized interface&#41;</td></tr><tr><td align="right">Permissionless innovation</td><td align="right">Yes &#40;developers can build without permission&#41;</td></tr><tr><td align="right">Seizure resistance</td><td align="right">Yes &#40;if you control your keys, funds are safe&#41;</td></tr></table>
+<p><strong>The calculation</strong>: </p>
+\[\mathrm{ Net benefit} = \underbrace{\mathrm{ Decentralized protocol gains}}_{\mathrm{ large}} - \underbrace{\mathrm{ Centralized interface losses}}_{\mathrm{ moderate}}\]
+<p>If the interface is <strong>competitive</strong> &#40;many options&#41;, the losses are small. If it&#39;s <strong>monopolistic</strong> &#40;one dominant player&#41;, losses grow.</p>
+<p><strong>Current state</strong>: Most crypto users access decentralized protocols through semi-centralized interfaces, but:</p>
+<ul>
+<li><p>They can switch interfaces if needed &#40;unlike switching from Visa&#41;</p>
+</li>
+<li><p>The protocol continues running regardless &#40;unlike if a bank shuts down&#41;</p>
+</li>
+<li><p>Power users can run their own infrastructure</p>
+</li>
+</ul>
+<p>So yes, interface centralization reduces the benefits—but it doesn&#39;t eliminate them. The question is whether the remaining 60-80&#37; of benefits justifies the complexity. For high-trust-cost applications &#40;international payments, permissionless money&#41;, it absolutely does. For low-trust-cost applications &#40;your company&#39;s internal database&#41;, it probably doesn&#39;t.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 19, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

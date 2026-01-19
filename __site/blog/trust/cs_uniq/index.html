@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+  
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why CS is Uniquely Suited to Solve Trust</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_cs_is_uniquely_suited_to_solve_trust"><a href="#why_cs_is_uniquely_suited_to_solve_trust" class="header-anchor">Why CS is Uniquely Suited to Solve Trust</a></h1>
+<p>You&#39;re right—CS gave us a way to <strong>quantify computational hardness</strong> &#40;P vs NP, Big-O notation, complexity classes&#41;. But here&#39;s the deeper insight: <strong>trust is just another hardness problem</strong>, and CS has the perfect toolkit for it.</p>
+<h2 id="the_key_insight"><a href="#the_key_insight" class="header-anchor">The Key Insight</a></h2>
+<p>Traditional trust relies on social/institutional mechanisms:</p>
+<ul>
+<li><p>&quot;I trust this bank because the government regulates it&quot;</p>
+</li>
+<li><p>&quot;I trust this notary because they have a license&quot;</p>
+</li>
+<li><p>&quot;I trust this referee because they&#39;re neutral&quot;</p>
+</li>
+</ul>
+<p>But CS lets us reframe trust as: <strong>&quot;How hard is it to cheat?&quot;</strong></p>
+<p>And suddenly, trust becomes quantifiable:</p>
+\[\mathrm{ Trust} = f(\mathrm{ Computational Hardness of Attack})\]
+<h2 id="why_cs_is_perfect_for_this"><a href="#why_cs_is_perfect_for_this" class="header-anchor">Why CS is Perfect for This</a></h2>
+<p><strong>1. We can make cheating provably hard</strong></p>
+<p>In cryptography, we don&#39;t need to trust that someone <em>won&#39;t</em> cheat—we make it so they <em>can&#39;t</em> cheat &#40;or it would take 10,000 years to try&#41;.</p>
+<p>Example: To forge a Bitcoin transaction, you&#39;d need to:</p>
+<ul>
+<li><p>Find a hash collision &#40;computationally infeasible&#41;</p>
+</li>
+<li><p>Control 51&#37; of global mining power &#40;economically infeasible&#41;</p>
+</li>
+</ul>
+<p>CS gives us the math to quantify exactly how infeasible this is.</p>
+<p><strong>2. We can distribute verification</strong></p>
+<p>The &quot;trust problem&quot; is really: <strong>Who watches the watchman?</strong></p>
+<p>CS answer: <em>Everyone watches everyone.</em></p>
+<p>Instead of one trusted party, you have \(n\) validators. The probability all of them collude drops exponentially:</p>
+\[P(\mathrm{ system compromised}) \approx p^{n/2}\]
+<p>where \(p\) is the probability any individual validator is malicious.</p>
+<p>For \(p = 0.01\) &#40;1&#37; chance&#41; and \(n = 1000\) validators:</p>
+\[P(\mathrm{ compromise}) \approx (0.01)^{500} \approx 10^{-1000}\]
+<p>That&#39;s not &quot;we trust them&quot;—that&#39;s mathematical impossibility.</p>
+<p><strong>3. We can automate enforcement</strong></p>
+<p>Smart contracts are just: &quot;If condition X, then action Y&quot;—executed by code, not humans.</p>
+<p>The trust question shifts from:</p>
+<ul>
+<li><p>❌ &quot;Will the middleman do what they promised?&quot; </p>
+</li>
+<li><p>✅ &quot;Is the code correct?&quot; &#40;which is verifiable&#41;</p>
+</li>
+</ul>
+<h2 id="the_cs_toolkit"><a href="#the_cs_toolkit" class="header-anchor">The CS Toolkit</a></h2>
+<table><tr><th align="right">Traditional Trust Tool</th><th align="right">CS Equivalent</th><th align="right">Why It&#39;s Better</th></tr><tr><td align="right">Contracts &#43; lawyers</td><td align="right">Smart contracts</td><td align="right">Self-executing, no interpretation</td></tr><tr><td align="right">Auditors</td><td align="right">Cryptographic proofs</td><td align="right">Instant verification</td></tr><tr><td align="right">Trusted third party</td><td align="right">Consensus algorithm</td><td align="right">No single point of failure</td></tr><tr><td align="right">&quot;Take my word for it&quot;</td><td align="right">Zero-knowledge proof</td><td align="right">Prove truth without revealing data</td></tr></table>
+<h2 id="the_paradigm_shift"><a href="#the_paradigm_shift" class="header-anchor">The Paradigm Shift</a></h2>
+<p>Before CS: Trust requires <strong>institutional authority</strong>   After CS: Trust requires <strong>mathematical proof</strong></p>
+<p>You&#39;ve replaced:</p>
+<ul>
+<li><p>Social consensus → Cryptographic consensus</p>
+</li>
+<li><p>Reputation systems → Hash functions</p>
+</li>
+<li><p>Legal enforcement → Protocol enforcement</p>
+</li>
+</ul>
+<h2 id="why_other_fields_couldnt_do_this"><a href="#why_other_fields_couldnt_do_this" class="header-anchor">Why Other Fields Couldn&#39;t Do This</a></h2>
+<ul>
+<li><p><strong>Economics</strong>: Can model incentives, but can&#39;t enforce them automatically</p>
+</li>
+<li><p><strong>Law</strong>: Can write contracts, but needs humans to interpret/enforce</p>
+</li>
+<li><p><strong>Political science</strong>: Can design governance, but vulnerable to corruption</p>
+</li>
+</ul>
+<p>CS uniquely provides:</p>
+<ol>
+<li><p><strong>Quantifiable hardness</strong> &#40;complexity theory&#41;</p>
+</li>
+<li><p><strong>Automated execution</strong> &#40;smart contracts&#41;</p>
+</li>
+<li><p><strong>Distributed consensus</strong> &#40;Byzantine fault tolerance&#41;</p>
+</li>
+<li><p><strong>Verifiable proofs</strong> &#40;cryptography&#41;</p>
+</li>
+</ol>
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>CS didn&#39;t just make trust cheaper—it made trust <strong>programmable, quantifiable, and enforceable without humans</strong>. That&#39;s a fundamentally different kind of solution than any other field could provide.</p>
+<p>The question isn&#39;t &quot;do you trust this person/institution?&quot;—it&#39;s &quot;what&#39;s the computational complexity of breaking this system?&quot; And we have centuries of math proving certain problems are <em>really, really hard</em>.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 19, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+  </body>
+</html>

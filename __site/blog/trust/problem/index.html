@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Why Trust is Fundamentally a Computational Problem</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="why_trust_is_fundamentally_a_computational_problem"><a href="#why_trust_is_fundamentally_a_computational_problem" class="header-anchor">Why Trust is Fundamentally a Computational Problem</a></h1>
+<h2 id="the_deep_insight"><a href="#the_deep_insight" class="header-anchor">The Deep Insight</a></h2>
+<p><strong>Claim</strong>: Trust is not primarily a social or institutional problem—it&#39;s a <strong>computational problem</strong> that we&#39;ve been solving with humans because we didn&#39;t have better tools.</p>
+<p><strong>Your refined take</strong>: &quot;Institutional trust is expensive relative to cryptographic trust.&quot;</p>
+<p><strong>Yes&#33; That&#39;s exactly right.</strong> Let me show you why this perspective is the key to understanding everything.</p>
+<h2 id="the_cost_evolution_of_trust"><a href="#the_cost_evolution_of_trust" class="header-anchor">The Cost Evolution of Trust</a></h2>
+<p>The question isn&#39;t &quot;is trust expensive?&quot;—it&#39;s &quot;expensive <em>compared to what?</em>&quot;</p>
+<p>Let&#39;s compare the three eras:</p>
+<h2 id="what_is_trust_really"><a href="#what_is_trust_really" class="header-anchor">What is Trust, Really?</a></h2>
+<p>When you say &quot;I trust X,&quot; what you&#39;re actually saying is:</p>
+<p><strong>&quot;I believe X will behave correctly even when they could benefit from cheating.&quot;</strong></p>
+<p>Break this down into cost components:</p>
+<ol>
+<li><p><strong>Verification cost</strong>: How much does it cost to check if X is honest?</p>
+</li>
+<li><p><strong>Enforcement cost</strong>: How much does it cost to punish X if they cheat?</p>
+</li>
+<li><p><strong>Coordination cost</strong>: How much does it cost to get multiple parties to agree?</p>
+</li>
+</ol>
+<p>The key insight: <strong>These costs change dramatically depending on your technology.</strong></p>
+<h2 id="the_cost_history_of_trust"><a href="#the_cost_history_of_trust" class="header-anchor">The Cost History of Trust</a></h2>
+<h3 id="era_1_direct_peer-to-peer_pre-institutions"><a href="#era_1_direct_peer-to-peer_pre-institutions" class="header-anchor">Era 1: Direct peer-to-peer &#40;pre-institutions&#41;</a></h3>
+<p><strong>Scenario</strong>: You want to trade with a stranger.</p>
+<p>Costs:</p>
+<ul>
+<li><p>Verification: You must personally monitor them &#40;high, scales with \(O(n)\) relationships&#41;</p>
+</li>
+<li><p>Enforcement: You must personally retaliate &#40;risky, expensive&#41;</p>
+</li>
+<li><p>Coordination: You must track who did what &#40;impossible beyond small groups&#41;</p>
+</li>
+</ul>
+<p><strong>Total cost</strong>: Prohibitively expensive beyond small, repeated interactions &#40;Dunbar&#39;s number ≈ 150 people&#41;</p>
+<p>This is why early trade only happened in tight-knit villages.</p>
+<h3 id="era_2_institutions_past_500_years"><a href="#era_2_institutions_past_500_years" class="header-anchor">Era 2: Institutions &#40;past 500 years&#41;</a></h3>
+<p><strong>Innovation</strong>: Centralize the verification/enforcement in specialized entities.</p>
+<p>Costs with institutions:</p>
+<ul>
+<li><p>Verification: Institution monitors everyone → economies of scale</p>
+</li>
+<li><p>Enforcement: Institution has monopoly on force → centralized punishment</p>
+</li>
+<li><p>Coordination: Institution keeps records → single source of truth</p>
+</li>
+</ul>
+<p><strong>Cost comparison</strong>:</p>
+<p>Direct P2P: Each person verifies \(n-1\) others &#61; \(O(n^2)\) total verifications</p>
+<p>Institutional: Institution verifies \(n\) people &#61; \(O(n)\) total verifications</p>
+<p><strong>This is MUCH cheaper&#33;</strong> That&#39;s why institutions won—they reduced quadratic complexity to linear.</p>
+<p><strong>BUT</strong> institutions have their own costs:</p>
+<ul>
+<li><p>Infrastructure: Buildings, employees, legal systems</p>
+</li>
+<li><p>Rent-seeking: They charge fees for being the middleman</p>
+</li>
+<li><p>Risk: Single point of failure &#40;what if the institution is corrupt?&#41;</p>
+</li>
+</ul>
+<p><strong>Total institutional cost</strong> &#61; \(\underbrace{n \cdot C_v}_{\mathrm{ verification}} + \underbrace{n \cdot C_r}_{\mathrm{ rent-seeking}} + \underbrace{P_f \cdot L}_{\mathrm{ failure risk}}\)</p>
+<p>Where \(C_v\) &#61; per-person verification cost, \(C_r\) &#61; rent extracted, \(P_f\) &#61; probability of institutional failure, \(L\) &#61; loss if institution fails</p>
+<h3 id="era_3_cryptographic_trust_now_emerging"><a href="#era_3_cryptographic_trust_now_emerging" class="header-anchor">Era 3: Cryptographic trust &#40;now emerging&#41;</a></h3>
+<p><strong>Innovation</strong>: Use math to make verification cheap and enforcement automatic.</p>
+<p>Costs with cryptography:</p>
+<ul>
+<li><p>Verification: Hash checks cost ~&#36;0.0001 in electricity</p>
+</li>
+<li><p>Enforcement: Code executes automatically &#40;no legal system needed&#41;</p>
+</li>
+<li><p>Coordination: Shared ledger with cryptographic proofs</p>
+</li>
+</ul>
+<p><strong>Cost comparison</strong>:</p>
+<p>Institutional: \(n \cdot C_v + n \cdot C_r + P_f \cdot L\)</p>
+<p>Cryptographic: \(n \cdot c_h + \mathrm{ infrastructure}_{\mathrm{ fixed}}\)</p>
+<p>Where \(c_h\) &#61; hash verification cost &#40;≈ &#36;0.0001&#41;, which is <strong>orders of magnitude</strong> smaller than \(C_v\) &#40;human verification&#41;.</p>
+<p>The rent-seeking term \(C_r\) completely disappears&#33; No middleman to pay.</p>
+<h2 id="the_key_realization"><a href="#the_key_realization" class="header-anchor">The Key Realization</a></h2>
+<p><strong>Your framing</strong>: &quot;Trust is expensive, so we use institutions&quot;</p>
+<p><strong>Correct framing</strong>: &quot;Direct trust WAS expensive, so we used institutions. Now cryptography makes direct trust cheap again.&quot;</p>
+<p>The cost curve looks like:</p>
+<pre><code class="language-julia">Cost
+  │
+  │ Direct P2P &#40;pre-institutions&#41;
+  │     ╱
+  │    ╱
+  │   ╱
+  │  ╱        Institutions &#40;current&#41;
+  │ ╱            ──────────
+  │╱                         Cryptographic &#40;emerging&#41;
+  │                              ─ ─ ─ ─ ─ ─ ─
+  └──────────────────────────────────────────&gt; Time</code></pre>
+<p>We&#39;re at an inflection point where <strong>cryptographic trust becomes cheaper than institutional trust</strong> for certain applications.</p>
+<h2 id="when_does_cryptography_win"><a href="#when_does_cryptography_win" class="header-anchor">When Does Cryptography Win?</a></h2>
+<p>The crossover happens when:</p>
+\(\underbrace{n \cdot C_v + n \cdot C_r + P_f \cdot L}_{\mathrm{ Institutional cost}} > \underbrace{n \cdot c_h + I_{\mathrm{ fixed}}}_{\mathrm{ Crypto cost}}\)
+<p>Simplifying:</p>
+\(C_v + C_r + \frac{P_f \cdot L}{n} > c_h + \frac{I_{\mathrm{ fixed}}}{n}\)
+<p>Since \(c_h \approx \$0.0001\) and \(C_v + C_r\) can be <strong>dollars</strong> per transaction:</p>
+<p><strong>Cryptography wins when</strong>:</p>
+<ol>
+<li><p><strong>High transaction volume</strong> &#40;\(n\) large&#41;: Fixed infrastructure cost gets amortized</p>
+</li>
+<li><p><strong>High rent-seeking</strong> &#40;\(C_r\) large&#41;: Removing middlemen saves more</p>
+</li>
+<li><p><strong>High institutional risk</strong> &#40;\(P_f \cdot L\) large&#41;: Decentralization reduces single points of failure</p>
+</li>
+<li><p><strong>Low trust relationships</strong> &#40;strangers&#41;: Can&#39;t use reputation/relationships</p>
+</li>
+</ol>
+<p><strong>Examples where crypto wins</strong>:</p>
+<ul>
+<li><p>International remittances: \(C_r = 5-7\%\) &#40;huge rent&#33;&#41;, strangers</p>
+</li>
+<li><p>Peer-to-peer payments: No natural institution to trust</p>
+</li>
+<li><p>Permissionless systems: \(P_f\) high if any institution can censor you</p>
+</li>
+</ul>
+<p><strong>Examples where institutions still win</strong>:</p>
+<ul>
+<li><p>Internal company database: Already trust the org, no rent-seeking</p>
+</li>
+<li><p>Small transaction volume: Fixed infrastructure costs dominate</p>
+</li>
+<li><p>Need legal recourse: Smart contracts can&#39;t jail someone</p>
+</li>
+</ul>
+<h2 id="why_we_used_humans_and_why_that_was_always_wrong"><a href="#why_we_used_humans_and_why_that_was_always_wrong" class="header-anchor">Why We Used Humans &#40;And Why That Was Always Wrong&#41;</a></h2>
+<p>Here&#39;s the key: <strong>We only used humans for trust because computation was expensive/impossible.</strong></p>
+<p>Think about it historically:</p>
+<p><strong>Medieval times</strong>: Need to verify land ownership   → Use a notary &#40;human computer who remembers who owns what&#41;</p>
+<p><strong>Industrial era</strong>: Need to verify account balances   → Use bank ledger &#43; accountants &#40;human computers who track debits/credits&#41;</p>
+<p><strong>Modern era</strong>: Need to verify identity   → Use government ID &#43; clerks &#40;human computers who check credentials&#41;</p>
+<p>In every case, humans were acting as <strong>computational verification machines</strong>. We didn&#39;t have another option.</p>
+<h2 id="the_computational_perspective_makes_everything_clear"><a href="#the_computational_perspective_makes_everything_clear" class="header-anchor">The Computational Perspective Makes Everything Clear</a></h2>
+<p>Let&#39;s formalize what trust actually requires:</p>
+<p><strong>Trust Problem</strong>: Two parties want to transact without being able to cheat each other.</p>
+<p><strong>Computational Reframing</strong>:</p>
+<ul>
+<li><p><strong>Byzantine Agreement Problem</strong>: How do distributed parties agree on truth when some may be malicious?</p>
+</li>
+<li><p><strong>Verifiable Computation</strong>: How do we prove computation was done correctly without redoing it?</p>
+</li>
+<li><p><strong>Commitment Schemes</strong>: How do we commit to a value without revealing it?</p>
+</li>
+</ul>
+<p>These aren&#39;t metaphors—they&#39;re <strong>literally</strong> what happens in trust situations:</p>
+<table><tr><th align="right">Social Trust Situation</th><th align="right">Computational Problem</th></tr><tr><td align="right">&quot;I sent you &#36;100&quot; → &quot;No you didn&#39;t&quot;</td><td align="right">Byzantine agreement &#40;who&#39;s telling truth?&#41;</td></tr><tr><td align="right">Bank says your balance is &#36;500</td><td align="right">Verifiable computation &#40;is ledger correct?&#41;</td></tr><tr><td align="right">Sealed bid auction</td><td align="right">Commitment scheme &#40;prevent bid manipulation&#41;</td></tr></table>
+<h2 id="the_proof_that_trust_is_computational"><a href="#the_proof_that_trust_is_computational" class="header-anchor">The Proof That Trust is Computational</a></h2>
+<p><strong>Theorem</strong>: Any trust mechanism can be reduced to verification complexity.</p>
+<p><strong>Proof by cases</strong>:</p>
+<p><strong>Case 1: Trusted Third Party &#40;Traditional&#41;</strong></p>
+<p>Cost of trust &#61; Cost of verifying third party is honest</p>
+<p>This is a computational problem:</p>
+<ul>
+<li><p>Monitor their behavior: \(O(n)\) checks over time</p>
+</li>
+<li><p>Audit their records: \(O(m)\) samples of transactions</p>
+</li>
+<li><p>Legal recourse: \(O(\mathrm{ court time})\) if they cheat</p>
+</li>
+</ul>
+<p><strong>Case 2: Cryptographic Trust &#40;Modern&#41;</strong></p>
+<p>Cost of trust &#61; Cost of breaking cryptographic assumption</p>
+<p>This is explicitly computational:</p>
+<ul>
+<li><p>Hash collision: \(O(2^{n/2})\) operations &#40;birthday paradox&#41;</p>
+</li>
+<li><p>Private key extraction: \(O(2^n)\) operations &#40;brute force&#41;</p>
+</li>
+<li><p>Double-spend: \(O(\mathrm{ hashrate} \times \mathrm{ time})\)</p>
+</li>
+</ul>
+<p><strong>Key insight</strong>: Traditional trust just has <strong>higher</strong> verification complexity than cryptographic trust&#33;</p>
+<p>\(\mathrm{ Traditional verification} = O(n \times \mathrm{ human time})\) \(\mathrm{ Cryptographic verification} = O(\log n \times \mathrm{ computer time})\)</p>
+<p>And human time &gt;&gt; computer time, so computation wins.</p>
+<h2 id="the_fundamental_equation"><a href="#the_fundamental_equation" class="header-anchor">The Fundamental Equation</a></h2>
+<p>Here&#39;s the deep truth:</p>
+\(\mathrm{ Trust} = \frac{\mathrm{ Cost to Attack}}{\mathrm{ Value of Attack}}\)
+<p>If it costs \(1M to steal \)100, you don&#39;t need trust—the math prevents it.</p>
+<p>Traditional systems try to raise the numerator through:</p>
+<ul>
+<li><p>Legal penalties &#40;make attack expensive&#41;</p>
+</li>
+<li><p>Reputation &#40;make trust loss expensive&#41;</p>
+</li>
+<li><p>Monitoring &#40;make getting caught likely&#41;</p>
+</li>
+</ul>
+<p>But these are all <strong>social</strong> solutions to a <strong>computational</strong> problem.</p>
+<p>CS realizes: we can make the numerator astronomically large through <strong>computational hardness</strong>:</p>
+<p>To steal Bitcoin:</p>
+<ul>
+<li><p>Cost to attack: \(2^{256}\) hash operations ≈ \(10^{77}\) dollars of electricity</p>
+</li>
+<li><p>Value of attack: Entire Bitcoin market cap ≈ \(10^{12}\) dollars</p>
+</li>
+</ul>
+<p>Ratio: \(\frac{10^{77}}{10^{12}} = 10^{65}\) — you&#39;d need to spend the entire energy output of the universe.</p>
+<p><strong>This is not trust. This is mathematics.</strong></p>
+<h2 id="why_other_fields_couldnt_see_this"><a href="#why_other_fields_couldnt_see_this" class="header-anchor">Why Other Fields Couldn&#39;t See This</a></h2>
+<p><strong>Economics</strong>: Saw trust as game theory &#40;incentive alignment&#41;   → But couldn&#39;t <strong>enforce</strong> the incentives without institutions</p>
+<p><strong>Law</strong>: Saw trust as contracts &#40;formal agreements&#41;   → But needed humans to interpret and enforce</p>
+<p><strong>Sociology</strong>: Saw trust as social capital &#40;reputation&#41;   → But couldn&#39;t quantify or automate it</p>
+<p><strong>Computer Science</strong>: Saw trust as <strong>verification complexity</strong>   → And has algorithms to minimize it</p>
+<h2 id="the_paradigm_shift"><a href="#the_paradigm_shift" class="header-anchor">The Paradigm Shift</a></h2>
+<p><strong>Old model</strong>: Trust is about finding honest people/institutions</p>
+<p><strong>New model</strong>: Trust is about making dishonesty computationally infeasible</p>
+<p>The shift is from:</p>
+<ul>
+<li><p>&quot;Who should we trust?&quot; → &quot;What attack complexity can we tolerate?&quot;</p>
+</li>
+<li><p>&quot;Is this person honest?&quot; → &quot;What&#39;s the hash collision probability?&quot;</p>
+</li>
+<li><p>&quot;Will they keep their promise?&quot; → &quot;Does the code execute correctly?&quot;</p>
+</li>
+</ul>
+<h2 id="why_this_matters"><a href="#why_this_matters" class="header-anchor">Why This Matters</a></h2>
+<p>Once you see trust as computational, you realize:</p>
+<ol>
+<li><p><strong>It&#39;s quantifiable</strong>: We can measure exactly how much trust a system provides</p>
+</li>
+<li><p><strong>It&#39;s optimizable</strong>: We can trade off verification cost vs. security</p>
+</li>
+<li><p><strong>It&#39;s automatable</strong>: We can remove humans from the loop entirely</p>
+</li>
+</ol>
+<p>The deep insight isn&#39;t just that CS can solve trust—it&#39;s that <strong>trust was always a computational problem</strong>, we just couldn&#39;t see it until we had the tools to measure and minimize verification complexity.</p>
+<h2 id="the_bottom_line"><a href="#the_bottom_line" class="header-anchor">The Bottom Line</a></h2>
+<p>Trust isn&#39;t about belief or reputation—it&#39;s about <strong>verification complexity</strong>. And once you frame it that way, CS has been studying this problem for 50&#43; years:</p>
+<ul>
+<li><p>Complexity theory: How hard is verification?</p>
+</li>
+<li><p>Cryptography: How do we make attacks infeasible?</p>
+</li>
+<li><p>Distributed systems: How do we verify without a central party?</p>
+</li>
+<li><p>Game theory &#43; CS: How do we align incentives computationally?</p>
+</li>
+</ul>
+<p>We replaced &quot;Do you trust this institution?&quot; with &quot;What&#39;s the computational complexity of breaking this system?&quot;</p>
+<p>And that&#39;s a question CS knows how to answer.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: January 19, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

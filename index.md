@@ -16,4 +16,5 @@
 - [data-processing](tag/data-processing)
 - [loss-function](tag/loss-function)
 - [block-chains](tag/block-chains)
+- [trust](tag/trust)
 - [concentration-inequalities](tag/concentration-inequalities)
