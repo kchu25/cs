@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Continual Learning: Teaching Models to Learn Without Forgetting</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="continual_learning_teaching_models_to_learn_without_forgetting"><a href="#continual_learning_teaching_models_to_learn_without_forgetting" class="header-anchor">Continual Learning: Teaching Models to Learn Without Forgetting</a></h1>
+<h2 id="what_is_it"><a href="#what_is_it" class="header-anchor">What Is It?</a></h2>
+<p>Yes, continual learning &#40;also called lifelong learning or incremental learning&#41; is absolutely a real thing&#33; It&#39;s about training ML models on a sequence of tasks or data streams over time—without catastrophically forgetting what they learned before.</p>
+<p>Think of it like this: humans can learn Spanish, then French, and still remember Spanish. But neural networks? They&#39;re more like that friend who learns a new hobby and completely forgets the last one. Continual learning tries to fix that.</p>
+<h2 id="the_core_problem"><a href="#the_core_problem" class="header-anchor">The Core Problem</a></h2>
+<p>The challenge is <strong>catastrophic forgetting</strong>: when you train a neural network on Task B after Task A, it often completely overwrites what it learned for Task A. The weights get adjusted to minimize loss on B, destroying the representations needed for A.</p>
+<p><strong>Formal Setup:</strong></p>
+<ul>
+<li><p>You get a sequence of tasks: \(T_1, T_2, ..., T_n\)</p>
+</li>
+<li><p>Each task has data: \(D_i = \{(x_i, y_i)\}\)</p>
+</li>
+<li><p>Goal: Learn all tasks while maintaining performance on previous ones</p>
+</li>
+<li><p>Constraint: You typically can&#39;t store all old data &#40;privacy, memory limits&#41;</p>
+</li>
+</ul>
+<h2 id="main_approaches"><a href="#main_approaches" class="header-anchor">Main Approaches</a></h2>
+<h3 id="regularization-based_methods"><a href="#regularization-based_methods" class="header-anchor"><ol>
+<li><p><strong>Regularization-Based Methods</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><em>Idea: Make it expensive to change important weights</em></p>
+<ul>
+<li><p><strong>Elastic Weight Consolidation &#40;EWC&#41;</strong>: Identifies which weights were crucial for previous tasks using the Fisher information matrix. Adds a penalty term:</p>
+</li>
+</ul>
+\[\mathcal{L}(\theta) = \mathcal{L}_{\mathrm{ new}}(\theta) + \frac{\lambda}{2} \sum_i F_i (\theta_i - \theta^*_i)^2\]
+<p>where \(F_i\) measures how important parameter \(i\) was for old tasks.</p>
+<ul>
+<li><p><strong>Synaptic Intelligence &#40;SI&#41;</strong>: Similar idea but tracks importance online during training</p>
+</li>
+<li><p><strong>Learning without Forgetting &#40;LwF&#41;</strong>: Uses knowledge distillation—keeps the old model&#39;s outputs as soft targets when learning new tasks</p>
+</li>
+</ul>
+<h3 id="ol_start2_replay-based_methods"><a href="#ol_start2_replay-based_methods" class="header-anchor"><ol start="2">
+<li><p><strong>Replay-Based Methods</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><em>Idea: Rehearse old examples alongside new ones</em></p>
+<ul>
+<li><p><strong>Experience Replay</strong>: Store a small subset of old data in a memory buffer and mix it with new data during training</p>
+</li>
+<li><p><strong>Generative Replay</strong>: Train a generative model &#40;GAN/VAE&#41; to synthesize pseudo-samples from old tasks—no need to store real data</p>
+</li>
+<li><p><strong>Gradient Episodic Memory &#40;GEM&#41;</strong>: Store examples and constrain gradients so they don&#39;t increase loss on old tasks</p>
+</li>
+</ul>
+<h4 id="deep_dive_memory_buffers"><a href="#deep_dive_memory_buffers" class="header-anchor">Deep Dive: Memory Buffers</a></h4>
+<p><strong>What Are They?</strong></p>
+<p>A memory buffer is literally just a fixed-size storage that holds representative examples from previous tasks. Think of it as a &quot;greatest hits&quot; collection of old data.</p>
+<p><strong>How It Works:</strong></p>
+<pre><code class="language-julia">Buffer size: 5,000 examples
+Task 1 &#40;cats/dogs&#41;: Store 5,000 random examples
+Task 2 &#40;birds&#41; arrives: 
+  - Store 2,500 bird examples
+  - Keep 2,500 from Task 1
+Task 3 arrives:
+  - Store ~1,667 examples from each task
+  - Or use smarter selection strategies</code></pre>
+<p>During training on Task 3, each mini-batch contains:</p>
+<ul>
+<li><p>~70&#37; new Task 3 data</p>
+</li>
+<li><p>~30&#37; replayed examples from buffer</p>
+</li>
+<li><p>Mix and train together</p>
+</li>
+</ul>
+<p><strong>Selection Strategies:</strong></p>
+<ol>
+<li><p><strong>Random Reservoir Sampling</strong>: Uniform random selection &#40;simplest, surprisingly effective&#41;</p>
+</li>
+<li><p><strong>Herding</strong>: Select examples closest to class means in feature space &#40;more representative&#41;</p>
+</li>
+<li><p><strong>Ring Buffer</strong>: First-in-first-out &#40;most recent examples&#41;</p>
+</li>
+<li><p><strong>Coreset Selection</strong>: Mathematical optimization to find most informative examples</p>
+</li>
+<li><p><strong>Gradient-based</strong>: Store examples that produce high gradients &#40;most &quot;useful&quot; for learning&#41;</p>
+</li>
+</ol>
+<p><strong>How Effective Are They?</strong></p>
+<p>Honestly? <strong>Shockingly effective</strong> compared to their simplicity.</p>
+<ul>
+<li><p>With just <strong>5-10&#37; of original data</strong>, you can often retain <strong>70-90&#37;</strong> of original task performance</p>
+</li>
+<li><p>They outperform most fancy regularization methods</p>
+</li>
+<li><p>The bigger the buffer, the better &#40;obviously&#41;, but returns diminish</p>
+</li>
+</ul>
+<p><strong>The Catch:</strong></p>
+<ul>
+<li><p>You need to <em>store</em> old data &#40;privacy issues, memory constraints&#41;</p>
+</li>
+<li><p>Doesn&#39;t work if you legally can&#39;t keep old data &#40;GDPR, medical records&#41;</p>
+</li>
+<li><p>In federated learning, you can&#39;t share data across clients</p>
+</li>
+</ul>
+<p><strong>How Are They Quantified? &#40;Concrete Examples&#41;</strong></p>
+<p>Let&#39;s use a real scenario: <strong>CIFAR-100 split into 20 tasks</strong> &#40;5 classes per task&#41;</p>
+<p><strong>Original training data</strong>: 50,000 images &#40;500 per class&#41;</p>
+<p><strong>Buffer Size Options:</strong></p>
+<table><tr><th align="right">Buffer Description</th><th align="right">Total Images</th><th align="right">Per Class</th><th align="right">&#37; of Original</th><th align="right">Memory &#40;32×32 RGB&#41;</th></tr><tr><td align="right">Tiny</td><td align="right">500</td><td align="right">5</td><td align="right">1&#37;</td><td align="right">~1.5 MB</td></tr><tr><td align="right">Small</td><td align="right">2,000</td><td align="right">20</td><td align="right">4&#37;</td><td align="right">~6 MB</td></tr><tr><td align="right">Medium</td><td align="right">5,000</td><td align="right">50</td><td align="right">10&#37;</td><td align="right">~15 MB</td></tr><tr><td align="right">Large</td><td align="right">10,000</td><td align="right">100</td><td align="right">20&#37;</td><td align="right">~30 MB</td></tr></table>
+<p><strong>What This Means in Practice:</strong></p>
+<ul>
+<li><p><strong>Tiny buffer &#40;5 images/class&#41;</strong>: You&#39;re trying to remember what &quot;dog&quot; looks like from just 5 photos</p>
+</li>
+<li><p><strong>Small buffer &#40;20 images/class&#41;</strong>: A bit more variety—different poses, lighting</p>
+</li>
+<li><p><strong>Medium buffer &#40;50 images/class&#41;</strong>: Decent coverage of intra-class variation</p>
+</li>
+<li><p><strong>Large buffer &#40;100 images/class&#41;</strong>: Approaching full distribution coverage</p>
+</li>
+</ul>
+<p><strong>Concrete Performance Numbers:</strong></p>
+<p>Here&#39;s what actually happens &#40;from typical papers&#41;:</p>
+<table><tr><th align="right">Buffer Size</th><th align="right">After Task 5</th><th align="right">After Task 10</th><th align="right">After Task 20 &#40;Final&#41;</th><th align="right">Forgetting</th></tr><tr><td align="right"><strong>No buffer</strong></td><td align="right">80&#37; on new task&lt;br&gt;20&#37; on Task 1</td><td align="right">75&#37; on new task&lt;br&gt;5&#37; on Task 1</td><td align="right">70&#37; on new task&lt;br&gt;<strong>2&#37; on Task 1</strong></td><td align="right"><strong>Catastrophic: -78&#37;</strong></td></tr><tr><td align="right"><strong>Tiny &#40;500&#41;</strong></td><td align="right">75&#37; on new task&lt;br&gt;65&#37; on Task 1</td><td align="right">72&#37; on new task&lt;br&gt;55&#37; on Task 1</td><td align="right">68&#37; on new task&lt;br&gt;<strong>50&#37; on Task 1</strong></td><td align="right">Moderate: -30&#37;</td></tr><tr><td align="right"><strong>Small &#40;2,000&#41;</strong></td><td align="right">78&#37; on new task&lt;br&gt;72&#37; on Task 1</td><td align="right">75&#37; on new task&lt;br&gt;68&#37; on Task 1</td><td align="right">72&#37; on new task&lt;br&gt;<strong>65&#37; on Task 1</strong></td><td align="right">Low: -15&#37;</td></tr><tr><td align="right"><strong>Medium &#40;5,000&#41;</strong></td><td align="right">80&#37; on new task&lt;br&gt;77&#37; on Task 1</td><td align="right">78&#37; on new task&lt;br&gt;73&#37; on Task 1</td><td align="right">75&#37; on new task&lt;br&gt;<strong>70&#37; on Task 1</strong></td><td align="right">Minimal: -10&#37;</td></tr><tr><td align="right"><strong>Joint training &#40;all data&#41;</strong></td><td align="right">-</td><td align="right">-</td><td align="right">75&#37; on all tasks</td><td align="right">None: 0&#37;</td></tr></table>
+<p><strong>How to Read This:</strong></p>
+<ul>
+<li><p>Without buffer: Task 1 accuracy drops from 80&#37; → 2&#37; &#40;total amnesia&#41;</p>
+</li>
+<li><p>With tiny buffer &#40;1&#37; of data&#41;: Task 1 stays at 50&#37; &#40;still remembers&#33;&#41;</p>
+</li>
+<li><p>With small buffer &#40;4&#37; of data&#41;: Task 1 stays at 65&#37; &#40;pretty good&#41;</p>
+</li>
+<li><p>Diminishing returns: 10&#37; buffer vs 4&#37; buffer only gains you 5&#37; more accuracy</p>
+</li>
+</ul>
+<p><strong>Real-World Translation:</strong></p>
+<p>Suppose you&#39;re building a customer support chatbot:</p>
+<ul>
+<li><p>Original training: 100,000 customer conversations</p>
+</li>
+<li><p>Task 1: Electronics questions</p>
+</li>
+<li><p>Task 2: Billing questions  </p>
+</li>
+<li><p>Task 3: Returns policy</p>
+</li>
+<li><p>...</p>
+</li>
+</ul>
+<p><strong>With no buffer:</strong> After learning Returns &#40;Task 3&#41;, the bot completely forgets how to handle Electronics questions. Accuracy on Electronics drops from 85&#37; to maybe 10&#37;.</p>
+<p><strong>With 2,000 example buffer &#40;2&#37;&#41;:</strong> Bot maintains 70&#37; accuracy on Electronics even after learning 10 new tasks. You&#39;ve stored just 2,000 conversations but preserved most of the knowledge.</p>
+<p><strong>Cost-Benefit:</strong></p>
+<ul>
+<li><p>Storing 2&#37; of data → Retain 70-80&#37; of performance</p>
+</li>
+<li><p>Storing 10&#37; of data → Retain 85-90&#37; of performance  </p>
+</li>
+<li><p>Storing 50&#37; of data → Might as well do joint training</p>
+</li>
+</ul>
+<p><strong>Key Insight:</strong> The first few percent of buffer gives you the most bang for your buck. Going from 0&#37; → 2&#37; is huge. Going from 10&#37; → 20&#37; barely helps.</p>
+<p><strong>Practical Rule of Thumb:</strong></p>
+<ul>
+<li><p>Buffer of 1-5&#37; of total data: Gets you 60-80&#37; of the way there</p>
+</li>
+<li><p>10&#37; buffer: Diminishing returns start kicking in</p>
+</li>
+<li><p>Beyond 20&#37;: You&#39;re basically doing joint training</p>
+</li>
+</ul>
+<p><strong>Why They Work So Well:</strong></p>
+<p>The theory is still debated, but likely:</p>
+<ol>
+<li><p><strong>Distribution coverage</strong>: Even a small sample preserves the rough shape of old task distributions</p>
+</li>
+<li><p><strong>Gradient interference reduction</strong>: Old examples anchor the loss landscape</p>
+</li>
+<li><p><strong>Feature reuse</strong>: Replayed examples keep old feature detectors active</p>
+</li>
+</ol>
+<p><strong>Real-World Complications:</strong></p>
+<ul>
+<li><p><strong>Class imbalance</strong>: Later tasks might dominate the buffer if you&#39;re not careful</p>
+</li>
+<li><p><strong>Label noise</strong>: Storing wrong examples amplifies errors</p>
+</li>
+<li><p><strong>Computational cost</strong>: Replay adds ~30&#37; to training time</p>
+</li>
+<li><p><strong>Fairness</strong>: Which users&#39; data gets remembered vs. forgotten?</p>
+</li>
+</ul>
+<p>The dirty secret: memory buffers are so effective that many &quot;fancy&quot; continual learning methods secretly use them too, then claim their regularization/architecture trick is the key innovation. Always check the ablations&#33;</p>
+<h3 id="ol_start3_architecture-based_methods"><a href="#ol_start3_architecture-based_methods" class="header-anchor"><ol start="3">
+<li><p><strong>Architecture-Based Methods</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><em>Idea: Give each task its own neural real estate</em></p>
+<ul>
+<li><p><strong>Progressive Neural Networks</strong>: Add new network columns for each task, with lateral connections to old columns &#40;old columns are frozen&#41;</p>
+</li>
+<li><p><strong>PackNet</strong>: Prune and freeze a subset of weights for each task—like partitioning your hard drive</p>
+</li>
+<li><p><strong>Dynamic Architectures</strong>: Grow the network dynamically &#40;add neurons/layers&#41; as new tasks arrive</p>
+</li>
+</ul>
+<h3 id="ol_start4_meta-learning_approaches"><a href="#ol_start4_meta-learning_approaches" class="header-anchor"><ol start="4">
+<li><p><strong>Meta-Learning Approaches</strong></p>
+</li>
+</ol>
+</a></h3>
+<p><em>Idea: Learn how to learn continually</em></p>
+<ul>
+<li><p><strong>Meta-Experience Replay &#40;MER&#41;</strong>: Meta-learns to minimize interference between tasks</p>
+</li>
+<li><p><strong>Online-aware Meta-learning &#40;OML&#41;</strong>: Optimizes for both within-task and across-task performance</p>
+</li>
+</ul>
+<h2 id="common_problem_formulations"><a href="#common_problem_formulations" class="header-anchor">Common Problem Formulations</a></h2>
+<p><strong>Task-Incremental Learning</strong>: Tasks arrive sequentially, and at test time you know which task you&#39;re solving &#40;e.g., MNIST → Fashion-MNIST → CIFAR-10&#41;</p>
+<p><strong>Domain-Incremental Learning</strong>: Same task but the input distribution shifts &#40;e.g., recognizing cats in photos → paintings → sketches&#41;</p>
+<p><strong>Class-Incremental Learning</strong>: The hardest one&#33; New classes keep arriving, and at test time you must classify across all seen classes without knowing task boundaries</p>
+<h2 id="typical_applications"><a href="#typical_applications" class="header-anchor">Typical Applications</a></h2>
+<ul>
+<li><p><strong>Robotics</strong>: Robots learn new skills without forgetting old ones &#40;pick up cup → open door → navigate stairs&#41;</p>
+</li>
+<li><p><strong>Recommendation Systems</strong>: User preferences evolve; the system adapts to new trends without losing past knowledge</p>
+</li>
+<li><p><strong>Edge AI</strong>: Mobile devices learning from user data locally without storing everything &#40;privacy &#43; storage constraints&#41;</p>
+</li>
+<li><p><strong>Autonomous Vehicles</strong>: Adapting to new driving conditions, terrains, and scenarios over time</p>
+</li>
+<li><p><strong>Personalized Assistants</strong>: Learning user-specific patterns while maintaining general capabilities</p>
+</li>
+<li><p><strong>Medical Diagnosis</strong>: Incorporating new diseases/protocols without retraining from scratch on all historical data</p>
+</li>
+</ul>
+<h2 id="key_metrics"><a href="#key_metrics" class="header-anchor">Key Metrics</a></h2>
+<ul>
+<li><p><strong>Average Accuracy</strong>: Performance across all tasks after learning everything</p>
+</li>
+<li><p><strong>Forgetting</strong>: How much performance degraded on old tasks</p>
+</li>
+<li><p><strong>Forward Transfer</strong>: Does learning task \(i\) help with task \(i+1\)?</p>
+</li>
+<li><p><strong>Backward Transfer</strong>: Does learning task \(i+1\) improve task \(i\)?</p>
+</li>
+</ul>
+<h2 id="landmark_papers"><a href="#landmark_papers" class="header-anchor">Landmark Papers</a></h2>
+<p>If you want to dive deeper, here are the foundational works:</p>
+<p><strong>Classic Foundations:</strong></p>
+<ul>
+<li><p><strong>McCloskey &amp; Cohen &#40;1989&#41;</strong> - &quot;Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem&quot;</p>
+<ul>
+<li><p>The paper that first identified and named catastrophic forgetting</p>
+</li>
+<li><p>Showed that neural networks forget drastically when learning sequentially</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Modern Era Breakthroughs:</strong></p>
+<ul>
+<li><p><strong>Kirkpatrick et al. &#40;2017&#41;</strong> - &quot;Overcoming catastrophic forgetting in neural networks&quot; &#40;EWC&#41;</p>
+<ul>
+<li><p>Introduced Elastic Weight Consolidation</p>
+</li>
+<li><p>Used ideas from neuroscience &#40;synaptic consolidation&#41; to protect important weights</p>
+</li>
+<li><p>Published in PNAS, brought continual learning to mainstream ML</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Lopez-Paz &amp; Ranzato &#40;2017&#41;</strong> - &quot;Gradient Episodic Memory for Continual Learning&quot; &#40;GEM&#41;</p>
+<ul>
+<li><p>Formulated continual learning as a constrained optimization problem</p>
+</li>
+<li><p>Ensures gradients don&#39;t increase loss on previous tasks</p>
+</li>
+<li><p>NIPS 2017</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Rusu et al. &#40;2016&#41;</strong> - &quot;Progressive Neural Networks&quot;</p>
+<ul>
+<li><p>Architectural approach: add new columns for new tasks</p>
+</li>
+<li><p>Zero forgetting by design &#40;old columns are frozen&#41;</p>
+</li>
+<li><p>Influential for thinking about model expansion</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Li &amp; Hoiem &#40;2017&#41;</strong> - &quot;Learning without Forgetting&quot; &#40;LwF&#41;</p>
+<ul>
+<li><p>Knowledge distillation approach</p>
+</li>
+<li><p>No need to store old data—just preserve old outputs</p>
+</li>
+<li><p>ECCV 2016, TPAMI 2017</p>
+</li>
+</ul>
+</li>
+<li><p><strong>Shin et al. &#40;2017&#41;</strong> - &quot;Continual Learning with Deep Generative Replay&quot;</p>
+<ul>
+<li><p>Used GANs to generate synthetic old data</p>
+</li>
+<li><p>Addresses privacy concerns with replay</p>
+</li>
+<li><p>NIPS 2017</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Survey Papers:</strong></p>
+<ul>
+<li><p><strong>Parisi et al. &#40;2019&#41;</strong> - &quot;Continual lifelong learning with neural networks: A review&quot;</p>
+<ul>
+<li><p>Comprehensive survey of the field</p>
+</li>
+<li><p>Great taxonomy of approaches</p>
+</li>
+<li><p>Neural Networks journal</p>
+</li>
+</ul>
+</li>
+<li><p><strong>De Lange et al. &#40;2021&#41;</strong> - &quot;A continual learning survey: Defying forgetting in classification tasks&quot;</p>
+<ul>
+<li><p>More recent survey covering 2015-2020 developments</p>
+</li>
+<li><p>Excellent for understanding the current state</p>
+</li>
+<li><p>TPAMI</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Benchmarks:</strong></p>
+<ul>
+<li><p><strong>Lomonaco &amp; Maltoni &#40;2017&#41;</strong> - &quot;CORe50: a New Dataset and Benchmark for Continuous Object Recognition&quot;</p>
+<ul>
+<li><p>Standard benchmark for continual learning</p>
+</li>
+<li><p>Real-world video data</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>The 2016-2017 period was particularly explosive—EWC, GEM, LwF, and Progressive Networks all dropped within about a year of each other, really kickstarting modern continual learning research.</p>
+<h2 id="the_reality_check"><a href="#the_reality_check" class="header-anchor">The Reality Check</a></h2>
+<p>Perfect continual learning is still an open problem. Most methods involve trade-offs:</p>
+<ul>
+<li><p>Regularization methods are computationally cheap but can be too rigid</p>
+</li>
+<li><p>Replay methods work well but need memory and might have privacy issues</p>
+</li>
+<li><p>Architecture methods avoid forgetting but grow unbounded</p>
+</li>
+<li><p>Real biological brains are still way better at this than any algorithm we have</p>
+</li>
+</ul>
+<p>The field is active but honestly not one of the hottest topics in ML right now—and there are some good reasons for that.</p>
+<h2 id="why_isnt_this_hotter"><a href="#why_isnt_this_hotter" class="header-anchor">Why Isn&#39;t This Hotter?</a></h2>
+<p><strong>The Brutal Truth:</strong></p>
+<ol>
+<li><p><strong>The scaling paradigm won</strong>: In the LLM era, most companies just retrain from scratch on massive datasets. When you have the compute budget, why deal with the complexity of continual learning? Just throw more data and GPUs at it.</p>
+</li>
+<li><p><strong>Fine-tuning is &quot;good enough&quot;</strong>: For most practical applications, fine-tuning a pre-trained model on your specific task works well. You&#39;re not really doing continual learning across multiple tasks—you&#39;re just adapting once.</p>
+</li>
+<li><p><strong>The benchmarks are artificial</strong>: Most continual learning papers evaluate on sequences like &quot;MNIST → CIFAR-10 → ImageNet&quot; which... isn&#39;t really how real-world learning happens. The problem formulations don&#39;t match what practitioners actually need.</p>
+</li>
+<li><p><strong>Catastrophic forgetting might not matter as much as we thought</strong>: </p>
+<ul>
+<li><p>In-context learning &#40;like GPT models&#41; lets you adapt without changing weights at all</p>
+</li>
+<li><p>Prompt engineering and RAG &#40;retrieval-augmented generation&#41; sidestep the forgetting problem</p>
+</li>
+<li><p>RLHF and instruction tuning seem to work fine despite theoretical forgetting concerns</p>
+</li>
+</ul>
+</li>
+<li><p><strong>The solutions are messy</strong>: Every continual learning method has annoying constraints—memory buffers, complicated loss terms, architectural constraints. It&#39;s hard to productionize.</p>
+</li>
+<li><p><strong>Limited killer applications</strong>: The use cases where you <em>really need</em> continual learning &#40;can&#39;t retrain, can&#39;t store data, must learn sequentially&#41; are niche. Robotics is the clearest one, but that&#39;s a smaller community.</p>
+</li>
+</ol>
+<p><strong>Where It Still Matters:</strong></p>
+<ul>
+<li><p><strong>Edge devices/privacy</strong>: When you can&#39;t send data to the cloud and can&#39;t retrain centrally &#40;federated learning scenarios&#41;</p>
+</li>
+<li><p><strong>Robotics</strong>: Physical agents that need to accumulate skills over time</p>
+</li>
+<li><p><strong>Personalization</strong>: Adapting to individual users without storing their data</p>
+</li>
+<li><p><strong>Rare events</strong>: Medical diagnosis where you encounter new diseases but can&#39;t afford to forget old ones</p>
+</li>
+<li><p><strong>Theoretical neuroscience</strong>: Understanding how biological brains avoid catastrophic forgetting</p>
+</li>
+</ul>
+<p><strong>Recent Shifts:</strong></p>
+<p>The conversation has started to shift toward:</p>
+<ul>
+<li><p><strong>Continual pre-training</strong> of LLMs &#40;how do you update GPT-4 with 2024 knowledge?&#41;</p>
+</li>
+<li><p><strong>Model editing</strong>: Surgical updates to specific facts/behaviors</p>
+</li>
+<li><p><strong>Mixture of experts</strong>: Task-specific modules that route differently</p>
+</li>
+</ul>
+<p>So it&#39;s not dead, but it&#39;s also not competing with transformers, diffusion models, or RL for attention. It&#39;s more of a &quot;we know this is important, we&#39;ll probably need it eventually, but right now we have easier workarounds&quot; situation.</p>
+<h2 id="wait_how_do_llms_avoid_this_problem"><a href="#wait_how_do_llms_avoid_this_problem" class="header-anchor">Wait, How Do LLMs Avoid This Problem?</a></h2>
+<p>Great question&#33; LLMs don&#39;t actually &quot;overcome&quot; catastrophic forgetting in the traditional sense—they work around it through a combination of factors:</p>
+<h3 id="massive_initial_training"><a href="#massive_initial_training" class="header-anchor"><ol>
+<li><p><strong>Massive Initial Training</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>LLMs are pre-trained on such enormous, diverse datasets that they develop broad capabilities up front. They&#39;ve already &quot;seen&quot; &#40;in some form&#41; a huge portion of what you might want them to do. This is less continual learning and more &quot;learn everything once, really well.&quot;</p>
+<h3 id="ol_start2_in-context_learning_the_big_one"><a href="#ol_start2_in-context_learning_the_big_one" class="header-anchor"><ol start="2">
+<li><p><strong>In-Context Learning &#40;The Big One&#41;</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>This is the real game-changer. Instead of updating weights, you just put examples/instructions directly in the prompt:</p>
+<pre><code class="language-julia">Here are some examples of translating English to French:
+- &quot;Hello&quot; → &quot;Bonjour&quot;
+- &quot;Goodbye&quot; → &quot;Au revoir&quot;
+
+Now translate: &quot;Thank you&quot;</code></pre>
+<p>The model adapts its behavior <em>without changing any weights</em>. No forgetting because nothing is being overwritten&#33; This is fundamentally different from traditional continual learning.</p>
+<h3 id="ol_start3_emergent_task_generalization"><a href="#ol_start3_emergent_task_generalization" class="header-anchor"><ol start="3">
+<li><p><strong>Emergent Task Generalization</strong></p>
+</li>
+</ol>
+</a></h3>
+<p>Large models generalize so well that &quot;new&quot; tasks often aren&#39;t really new—they&#39;re recombinations of capabilities the model already has. Asking GPT-4 to write haikus about software bugs isn&#39;t a new task that requires learning; it&#39;s just combining existing knowledge.</p>
+<h3 id="but_waitwhat_about_fine-tuning"><a href="#but_waitwhat_about_fine-tuning" class="header-anchor">But Wait—What About Fine-Tuning?</a></h3>
+<p>Here&#39;s where it gets interesting. <strong>Fine-tuning LLMs absolutely does suffer from catastrophic forgetting&#33;</strong></p>
+<p><strong>The Fine-Tuning Dilemma:</strong></p>
+<p>When you fine-tune an LLM on a specific task:</p>
+<ul>
+<li><p>✅ Performance on that task improves dramatically</p>
+</li>
+<li><p>❌ General capabilities degrade &#40;the model becomes &quot;narrower&quot;&#41;</p>
+</li>
+<li><p>❌ Performance on unrelated tasks drops</p>
+</li>
+</ul>
+<p><strong>Real Examples:</strong></p>
+<ul>
+<li><p>Fine-tune GPT on medical Q&amp;A → it gets worse at creative writing</p>
+</li>
+<li><p>Fine-tune on Python code → it forgets how to write good poetry</p>
+</li>
+<li><p>Fine-tune on formal business emails → it loses its casual conversational ability</p>
+</li>
+</ul>
+<p><strong>Why People Still Fine-Tune:</strong></p>
+<ol>
+<li><p><strong>You only care about one task</strong>: If you&#39;re building a customer service chatbot, who cares if it forgets how to write sonnets?</p>
+</li>
+<li><p><strong>The trade-off is worth it</strong>: Sometimes the performance gain on your target task is so large that losing general capabilities is acceptable</p>
+</li>
+<li><p><strong>You&#39;re not doing sequential tasks</strong>: Fine-tuning once for deployment is different from continual learning across many tasks over time</p>
+</li>
+<li><p><strong>You can afford to retrain</strong>: If your use case changes, just start over from the base model</p>
+</li>
+</ol>
+<p><strong>Why This Isn&#39;t Real Continual Learning:</strong></p>
+<p>Traditional continual learning assumes you want to:</p>
+<ul>
+<li><p>Learn Task A, then Task B, then Task C, ...</p>
+</li>
+<li><p>Maintain performance on A, B, and C simultaneously</p>
+</li>
+<li><p>Not have access to all the original data</p>
+</li>
+<li><p>Not have unlimited compute to retrain from scratch</p>
+</li>
+</ul>
+<p>Fine-tuning typically:</p>
+<ul>
+<li><p>Learns one specific task and calls it done</p>
+</li>
+<li><p>Accepts degradation on other tasks</p>
+</li>
+<li><p>Can restart from the base model if needed</p>
+</li>
+<li><p>Has enough compute to retrain when necessary</p>
+</li>
+</ul>
+<p><strong>What About Instruction Tuning / RLHF?</strong></p>
+<p>Models like ChatGPT go through:</p>
+<ol>
+<li><p>Pre-training &#40;learn everything&#41;</p>
+</li>
+<li><p>Instruction tuning &#40;learn to follow instructions&#41;</p>
+</li>
+<li><p>RLHF &#40;learn to be helpful/harmless&#41;</p>
+</li>
+</ol>
+<p>These are sequential training stages, so don&#39;t they suffer from forgetting?</p>
+<p><strong>The tricks they use:</strong></p>
+<ul>
+<li><p><strong>Careful dataset curation</strong>: Mix old and new data in later stages &#40;essentially replay&#41;</p>
+</li>
+<li><p><strong>Conservative learning rates</strong>: Update weights slowly to avoid disruption</p>
+</li>
+<li><p><strong>Regularization</strong>: Implicitly stay close to the pre-trained model</p>
+</li>
+<li><p><strong>Massive scale</strong>: The models are so overparameterized they can &quot;afford&quot; to allocate different parameters to different capabilities</p>
+</li>
+</ul>
+<p>But even then, alignment/fine-tuning does seem to reduce some raw capabilities. It&#39;s just an acceptable trade-off.</p>
+<p><strong>The Bottom Line:</strong></p>
+<p>LLMs don&#39;t solve continual learning—they mostly avoid needing it by:</p>
+<ol>
+<li><p>Learning a huge amount up front</p>
+</li>
+<li><p>Using in-context learning instead of weight updates</p>
+</li>
+<li><p>Being okay with the forgetting that happens during fine-tuning &#40;because it&#39;s a one-time thing, not continual&#41;</p>
+</li>
+</ol>
+<p>If you really needed an LLM to continually learn new tasks over months/years while preserving old capabilities <em>and</em> updating its weights, you&#39;d run into the same catastrophic forgetting problems. It&#39;s just that most applications don&#39;t actually require this.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: February 06, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>
