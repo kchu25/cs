@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>Less is More: Recursive Reasoning with Tiny Networks</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="less_is_more_recursive_reasoning_with_tiny_networks"><a href="#less_is_more_recursive_reasoning_with_tiny_networks" class="header-anchor">Less is More: Recursive Reasoning with Tiny Networks</a></h1>
+<p><strong>Paper</strong>: <a href="https://arxiv.org/abs/2510.04871">arXiv:2510.04871</a> &#40;Jolicoeur-Martineau, Samsung SAIL Montréal, October 2025&#41;</p>
+<p><strong>Code</strong>: <a href="https://github.com/SamsungSAILMontreal/TinyRecursiveModels">SamsungSAILMontreal/TinyRecursiveModels</a></p>
+<hr />
+<h2 id="the_punchline"><a href="#the_punchline" class="header-anchor">The Punchline</a></h2>
+<p>A <strong>7 million parameter</strong> network with only <strong>2 layers</strong> beats DeepSeek-R1 &#40;671B parameters&#41;, o3-mini, and Gemini 2.5 Pro on hard puzzle benchmarks like ARC-AGI. That&#39;s less than 0.01&#37; of the parameters. The trick? Instead of making the network bigger, you run it <strong>recursively</strong> –- feeding its output back as input, over and over, letting it iteratively refine its answer.</p>
+<p>The core message: <strong>memory &#40;storing and reusing intermediate state&#41; can substitute for compute &#40;more parameters and deeper networks&#41;.</strong></p>
+<hr />
+<h2 id="prerequisites_what_you_need_to_know"><a href="#prerequisites_what_you_need_to_know" class="header-anchor">Prerequisites: What You Need to Know</a></h2>
+<h3 id="what_is_a_transformer"><a href="#what_is_a_transformer" class="header-anchor">What is a Transformer?</a></h3>
+<p>If you know the basics of LLMs, you know transformers. A transformer layer takes a sequence of vectors &#40;shape \([L, D]\) where \(L\) is sequence length and \(D\) is embedding dimension&#41;, applies self-attention and a feed-forward network, and outputs vectors of the same shape. Stacking many layers gives you depth.</p>
+<p>Key components used in this paper:</p>
+<ul>
+<li><p><strong>Self-attention</strong>: lets each position attend to every other position. Good for long sequences but expensive</p>
+</li>
+<li><p><strong>MLP &#40;feed-forward&#41;</strong>: a position-wise neural network applied independently to each position. Cheap when \(L\) is small</p>
+</li>
+<li><p><strong>RMSNorm</strong>: a normalization layer &#40;simpler variant of LayerNorm&#41;</p>
+</li>
+<li><p><strong>SwiGLU</strong>: a gated activation function &#40;a better variant of ReLU for transformers&#41;</p>
+</li>
+<li><p><strong>Rotary embeddings &#40;RoPE&#41;</strong>: encodes position information into the attention mechanism</p>
+</li>
+</ul>
+<h3 id="what_is_reasoning_in_current_ai"><a href="#what_is_reasoning_in_current_ai" class="header-anchor">What is &quot;Reasoning&quot; in Current AI?</a></h3>
+<p>In LLMs, &quot;reasoning&quot; usually means <strong>chain-of-thought &#40;CoT&#41;</strong>: the model generates step-by-step text before its final answer. This is done <strong>auto-regressively</strong> –- one token at a time, left to right.</p>
+<p>The problem: a single wrong token can derail the entire reasoning chain. And generating thousands of reasoning tokens is expensive.</p>
+<p>This paper proposes a fundamentally different kind of reasoning: <strong>recursive refinement of a latent state</strong> rather than sequential text generation.</p>
+<hr />
+<h2 id="the_setup_supervised_learning_on_puzzles"><a href="#the_setup_supervised_learning_on_puzzles" class="header-anchor">The Setup: Supervised Learning on Puzzles</a></h2>
+<p>This is <strong>not</strong> an LLM. It&#39;s a supervised learning model:</p>
+<ul>
+<li><p><strong>Input</strong>: a puzzle &#40;e.g., a Sudoku grid with blanks, a maze, an ARC-AGI task&#41;</p>
+</li>
+<li><p><strong>Output</strong>: the solution &#40;e.g., the filled grid, the path, the answer grid&#41;</p>
+</li>
+<li><p>Both input and output are tokenized into sequences of shape \([B, L]\), where \(B\) is the batch size and \(L\) is the context length</p>
+</li>
+</ul>
+<p>The model is trained on <strong>tiny datasets</strong> &#40;~1000 examples&#41; with heavy data augmentation &#40;shuffling, rotations, flips, color permutations&#41;. This is a regime where large models would massively overfit.</p>
+<hr />
+<h2 id="the_architecture_what_does_a_reasoning_model_look_like_here"><a href="#the_architecture_what_does_a_reasoning_model_look_like_here" class="header-anchor">The Architecture: What Does a &quot;Reasoning Model&quot; Look Like Here?</a></h2>
+<h3 id="the_predecessor_hierarchical_reasoning_model_hrm"><a href="#the_predecessor_hierarchical_reasoning_model_hrm" class="header-anchor">The Predecessor: Hierarchical Reasoning Model &#40;HRM&#41;</a></h3>
+<p>To understand TRM, you first need HRM &#40;Wang et al., 2025&#41;. HRM uses <strong>two</strong> small transformer networks:</p>
+<ul>
+<li><p>\(f_L\) &#40;&quot;low-level&quot;&#41;: runs at high frequency, updates a latent feature \(z_L\)</p>
+</li>
+<li><p>\(f_H\) &#40;&quot;high-level&quot;&#41;: runs at low frequency, updates a latent feature \(z_H\)</p>
+</li>
+</ul>
+<p>These two networks recurse: \(f_L\) runs multiple times, then \(f_H\) runs once, then repeat. The biological motivation is that the brain processes information at different temporal frequencies.</p>
+<p>HRM has 27M parameters &#40;two 4-layer transformers&#41; and achieves 40&#37; on ARC-AGI-1.</p>
+<h3 id="trm_strip_it_down_to_the_essentials"><a href="#trm_strip_it_down_to_the_essentials" class="header-anchor">TRM: Strip It Down to the Essentials</a></h3>
+<p>The key insight of TRM is that HRM is <strong>overcomplicated</strong>. The author identifies that:</p>
+<ol>
+<li><p>\(z_H\) is just the <strong>current predicted answer</strong> \(y\) &#40;you can decode it back to tokens and it looks like a solution&#41;</p>
+</li>
+<li><p>\(z_L\) is a <strong>latent reasoning state</strong> \(z\) &#40;decoding it gives nonsense –- it&#39;s internal working memory&#41;</p>
+</li>
+<li><p>You don&#39;t need two networks. One network can do both jobs, since the tasks are distinguished by <strong>which inputs are provided</strong></p>
+</li>
+</ol>
+<p>So TRM uses:</p>
+<ul>
+<li><p><strong>One network</strong> \(f\) with only <strong>2 layers</strong> &#40;not two networks with 4 layers each&#41;</p>
+</li>
+<li><p><strong>Two state variables</strong>: the current answer \(y\) and the latent reasoning state \(z\)</p>
+</li>
+<li><p><strong>Recursive application</strong> of the same network</p>
+</li>
+</ul>
+<h3 id="the_core_loop_pseudocode"><a href="#the_core_loop_pseudocode" class="header-anchor">The Core Loop &#40;Pseudocode&#41;</a></h3>
+<p>Here&#39;s the entire TRM algorithm:</p>
+<pre><code class="language-python">def latent_recursion&#40;x, y, z, n&#61;6&#41;:
+    &quot;&quot;&quot;One round of recursive reasoning&quot;&quot;&quot;
+    for i in range&#40;n&#41;:
+        # Update latent reasoning given question, current answer, current reasoning
+        z &#61; net&#40;x, y, z&#41;
+    # Update answer given current answer and reasoning
+    y &#61; net&#40;y, z&#41;
+    return y, z
+
+def deep_recursion&#40;x, y, z, n&#61;6, T&#61;3&#41;:
+    &quot;&quot;&quot;Multiple rounds, backprop only through the last one&quot;&quot;&quot;
+    # T-1 rounds without gradients &#40;cheap refinement&#41;
+    with torch.no_grad&#40;&#41;:
+        for j in range&#40;T - 1&#41;:
+            y, z &#61; latent_recursion&#40;x, y, z, n&#41;
+    # 1 round with gradients &#40;learning signal&#41;
+    y, z &#61; latent_recursion&#40;x, y, z, n&#41;
+    return y.detach&#40;&#41;, z.detach&#40;&#41;, output_head&#40;y&#41;</code></pre>
+<p>That&#39;s it. The entire &quot;reasoning&quot; is:</p>
+<ol>
+<li><p><strong>Latent recursion</strong> &#40;\(n\) times&#41;: update the reasoning state \(z\) by repeatedly applying the network with inputs \((x, y, z)\)</p>
+</li>
+<li><p><strong>Answer update</strong> &#40;once&#41;: update the answer \(y\) by applying the network with inputs \((y, z)\)</p>
+</li>
+<li><p><strong>Repeat</strong> &#40;\(T\) times&#41;: do steps 1–2 multiple times, but only backpropagate through the last repetition</p>
+</li>
+</ol>
+<h3 id="why_the_input_distinction_matters"><a href="#why_the_input_distinction_matters" class="header-anchor">Why the Input Distinction Matters</a></h3>
+<p>Notice that when updating \(z\), the network receives \((x, y, z)\) –- the question is included. When updating \(y\), the network receives \((y, z)\) –- the question is <strong>not</strong> included. This input difference tells the single network which task to perform. It&#39;s an elegant trick that replaces the need for two separate networks.</p>
+<hr />
+<h2 id="the_secret_sauce_deep_supervision"><a href="#the_secret_sauce_deep_supervision" class="header-anchor">The Secret Sauce: Deep Supervision</a></h2>
+<p>The recursive loop above runs within <strong>one supervision step</strong>. But the real power comes from <strong>deep supervision</strong>: running multiple supervision steps in sequence, carrying over the latent state.</p>
+<pre><code class="language-python"># Deep supervision &#40;the outer training loop&#41;
+for x_input, y_true in dataloader:
+    y, z &#61; y_init, z_init  # start from scratch
+    
+    for step in range&#40;N_sup&#41;:  # up to 16 steps
+        x &#61; input_embedding&#40;x_input&#41;
+        &#40;y, z&#41;, y_hat, q &#61; deep_recursion&#40;x, y, z&#41;
+        
+        loss &#61; cross_entropy&#40;y_hat, y_true&#41;
+        loss &#43;&#61; halting_loss&#40;q, y_hat &#61;&#61; y_true&#41;
+        
+        z &#61; z.detach&#40;&#41;  # cut gradients between supervision steps
+        loss.backward&#40;&#41;
+        optimizer.step&#40;&#41;</code></pre>
+<p>Each supervision step:</p>
+<ol>
+<li><p>Takes the previous \((y, z)\) as initialization</p>
+</li>
+<li><p>Runs the full deep recursion &#40;recursive reasoning &#43; answer update&#41;</p>
+</li>
+<li><p>Computes a loss against the true answer</p>
+</li>
+<li><p><strong>Detaches</strong> the latent state &#40;cuts the gradient graph&#41;</p>
+</li>
+<li><p>Backpropagates and updates weights</p>
+</li>
+</ol>
+<p>The detachment in step 4 is crucial: it means we never backpropagate through the entire chain of 16 supervision steps. Each step is trained independently, but each step <em>receives</em> the output of the previous step. This is what allows the model to simulate enormous depth without the memory cost of backpropagating through all of it.</p>
+<h3 id="effective_depth"><a href="#effective_depth" class="header-anchor">Effective Depth</a></h3>
+<p>With 2 layers, \(n = 6\) recursions, \(T = 3\) repetitions, and \(N_{\mathrm{ sup}} = 16\) supervision steps, the effective depth per supervision step is:</p>
+\[T \times (n + 1) \times n_{\mathrm{ layers}} = 3 \times 7 \times 2 = 42 \mathrm{ layers}\]
+<p>Over all 16 supervision steps, that&#39;s \(42 \times 16 = 672\) effective layers of processing. From a 2-layer network with 7M parameters.</p>
+<hr />
+<h2 id="why_tiny_networks_the_less_is_more_result"><a href="#why_tiny_networks_the_less_is_more_result" class="header-anchor">Why Tiny Networks? The &quot;Less is More&quot; Result</a></h2>
+<p>Here&#39;s the surprising finding: <strong>reducing</strong> the network from 4 layers to 2 layers and <strong>increasing</strong> the number of recursions \(n\) proportionally &#40;to keep the total compute similar&#41; <strong>improves</strong> generalization.</p>
+<p>From the ablation on Sudoku-Extreme:</p>
+<table><tr><th align="left">Configuration</th><th align="center">Test Accuracy</th><th align="center">Parameters</th></tr><tr><td align="left">TRM &#40;2 layers, single net, full backprop&#41;</td><td align="center"><strong>87.4&#37;</strong></td><td align="center"><strong>5M</strong></td></tr><tr><td align="left">&#43; separate \(f_L\) and \(f_H\) networks</td><td align="center">82.4&#37;</td><td align="center">10M</td></tr><tr><td align="left">&#43; 4 layers &#40;like HRM&#41;</td><td align="center">79.5&#37;</td><td align="center">10M</td></tr><tr><td align="left">&#43; self-attention instead of MLP</td><td align="center">74.7&#37;</td><td align="center">7M</td></tr><tr><td align="left">&#43; 1-step gradient &#40;like HRM&#41;</td><td align="center">56.5&#37;</td><td align="center">5M</td></tr><tr><td align="left">HRM &#40;original&#41;</td><td align="center">55.0&#37;</td><td align="center">27M</td></tr></table>
+<p>Every step that makes the model <strong>smaller</strong> and <strong>simpler</strong> improves generalization. This is counterintuitive, but makes sense in the small-data regime: with only ~1000 training examples, a larger model overfits. Recursion provides depth without adding parameters, so it doesn&#39;t increase overfitting.</p>
+<hr />
+<h2 id="the_memory-compute_trade-off"><a href="#the_memory-compute_trade-off" class="header-anchor">The Memory-Compute Trade-off</a></h2>
+<p>This is the core conceptual contribution. Let&#39;s make it precise.</p>
+<h3 id="standard_deep_networks"><a href="#standard_deep_networks" class="header-anchor">Standard Deep Networks</a></h3>
+<p>A standard \(K\)-layer transformer:</p>
+<ul>
+<li><p><strong>Parameters</strong>: \(O(K \times D^2)\) &#40;each layer has its own weights&#41;</p>
+</li>
+<li><p><strong>Memory for backprop</strong>: \(O(K)\) &#40;store activations for all layers&#41;</p>
+</li>
+<li><p><strong>Depth</strong>: \(K\)</p>
+</li>
+</ul>
+<p>To get more depth, you need more layers, which means more parameters and more memory.</p>
+<h3 id="trms_approach"><a href="#trms_approach" class="header-anchor">TRM&#39;s Approach</a></h3>
+<p>TRM with a 2-layer network recursed \(n\) times, repeated \(T\) times:</p>
+<ul>
+<li><p><strong>Parameters</strong>: \(O(D^2)\) &#40;same 2 layers reused everywhere&#41;</p>
+</li>
+<li><p><strong>Memory for backprop</strong>: \(O(n)\) &#40;only backprop through one repetition&#41;</p>
+</li>
+<li><p><strong>Effective depth</strong>: \(T \times (n + 1) \times 2\)</p>
+</li>
+</ul>
+<p>The trade-off:</p>
+<ul>
+<li><p><strong>More recursions</strong> &#61; more effective depth &#61; more compute per example</p>
+</li>
+<li><p><strong>Same parameters</strong> &#61; no additional overfitting risk</p>
+</li>
+<li><p><strong>Stored latent state</strong> \((y, z)\) across supervision steps &#61; &quot;memory&quot; that carries information without backprop cost</p>
+</li>
+</ul>
+<p>In essence, TRM trades <strong>FLOPs</strong> &#40;repeated forward passes through the same small network&#41; for <strong>parameters</strong> &#40;a large single-pass network&#41;. Since FLOPs are cheap but overfitting on small data is deadly, this is a very favorable trade.</p>
+<h3 id="comparison_with_llm_reasoning"><a href="#comparison_with_llm_reasoning" class="header-anchor">Comparison with LLM Reasoning</a></h3>
+<table><tr><th align="left">Property</th><th align="left">LLM &#43; CoT</th><th align="left">TRM</th></tr><tr><td align="left">Reasoning mechanism</td><td align="left">Generate text tokens sequentially</td><td align="left">Recurse latent states</td></tr><tr><td align="left">Reasoning medium</td><td align="left">Natural language</td><td align="left">Learned latent vectors</td></tr><tr><td align="left">Reasoning is</td><td align="left">Explicit &#40;human-readable&#41;</td><td align="left">Implicit &#40;not decodable&#41;</td></tr><tr><td align="left">Error propagation</td><td align="left">One wrong token can derail everything</td><td align="left">Iterative refinement can self-correct</td></tr><tr><td align="left">Parameters</td><td align="left">Billions</td><td align="left">Millions</td></tr><tr><td align="left">Data needed</td><td align="left">Massive pretraining corpus</td><td align="left">~1000 task-specific examples</td></tr><tr><td align="left">Generality</td><td align="left">General-purpose</td><td align="left">Task-specific</td></tr></table>
+<hr />
+<h2 id="key_design_decisions_explained"><a href="#key_design_decisions_explained" class="header-anchor">Key Design Decisions Explained</a></h2>
+<h3 id="why_not_use_the_implicit_function_theorem"><a href="#why_not_use_the_implicit_function_theorem" class="header-anchor">Why Not Use the Implicit Function Theorem?</a></h3>
+<p>HRM justified only backpropagating through the last 2 recursions by claiming the latent states converge to a <strong>fixed point</strong>, then invoking the Implicit Function Theorem. The TRM author shows this assumption is shaky –- the residuals never actually reach zero in practice.</p>
+<p>TRM&#39;s solution: just backpropagate through all \(n + 1\) recursions within one repetition. This is only feasible because the network is tiny &#40;2 layers&#41;, so the memory cost is manageable. The result: going from the 1-step gradient approximation to full backprop improved Sudoku-Extreme from 56.5&#37; to 87.4&#37;.</p>
+<h3 id="why_mlp_instead_of_self-attention"><a href="#why_mlp_instead_of_self-attention" class="header-anchor">Why MLP Instead of Self-Attention?</a></h3>
+<p>For tasks with small fixed grids &#40;Sudoku is 81 cells, i.e., \(L = 81\) and \(D = 512\)&#41;, self-attention is overkill. An MLP applied along the sequence dimension &#40;inspired by MLP-Mixer&#41; has \([L, L]\) parameters, which is much smaller than the attention mechanism when \(L \leq D\). This reduced model capacity, further combating overfitting.</p>
+<p>However, for larger grids &#40;30x30 mazes, ARC-AGI&#41;, self-attention works better due to its inductive bias for relational reasoning.</p>
+<h3 id="why_ema"><a href="#why_ema" class="header-anchor">Why EMA?</a></h3>
+<p>The model is trained on so little data that it tends to overfit and then diverge. Exponential Moving Average &#40;EMA&#41; of the weights &#40;common in GANs and diffusion models&#41; smooths out training and prevents sharp collapse. Decay of 0.999 worked well.</p>
+<h3 id="why_adaptive_computational_time_act"><a href="#why_adaptive_computational_time_act" class="header-anchor">Why Adaptive Computational Time &#40;ACT&#41;?</a></h3>
+<p>With 16 supervision steps, spending all 16 steps on every training example is wasteful –- many examples are solved early. ACT learns a <strong>halting probability</strong>: &quot;is the current answer already correct?&quot; If so, move on to the next example. During training, this means spending an average of ~2 steps per example instead of 16, allowing much better data coverage. At test time, all 16 steps are used to maximize accuracy.</p>
+<p>TRM simplifies HRM&#39;s ACT &#40;which required Q-learning and a second forward pass&#41; to a simple binary cross-entropy loss on whether the current prediction matches the target.</p>
+<hr />
+<h2 id="results_how_valid_are_they"><a href="#results_how_valid_are_they" class="header-anchor">Results: How Valid Are They?</a></h2>
+<table><tr><th align="left">Method</th><th align="center">Params</th><th align="center">Sudoku-Extreme</th><th align="center">Maze-Hard</th><th align="center">ARC-AGI-1</th><th align="center">ARC-AGI-2</th></tr><tr><td align="left">DeepSeek R1</td><td align="center">671B</td><td align="center">0.0&#37;</td><td align="center">0.0&#37;</td><td align="center">15.8&#37;</td><td align="center">1.3&#37;</td></tr><tr><td align="left">o3-mini-high</td><td align="center">?</td><td align="center">0.0&#37;</td><td align="center">0.0&#37;</td><td align="center">34.5&#37;</td><td align="center">3.0&#37;</td></tr><tr><td align="left">Gemini 2.5 Pro</td><td align="center">?</td><td align="center">0.0&#37;</td><td align="center">0.0&#37;</td><td align="center">37.0&#37;</td><td align="center">4.9&#37;</td></tr><tr><td align="left">HRM</td><td align="center">27M</td><td align="center">55.0&#37;</td><td align="center">74.5&#37;</td><td align="center">40.3&#37;</td><td align="center">5.0&#37;</td></tr><tr><td align="left"><strong>TRM-Att</strong></td><td align="center"><strong>7M</strong></td><td align="center">74.7&#37;</td><td align="center"><strong>85.3&#37;</strong></td><td align="center"><strong>44.6&#37;</strong></td><td align="center"><strong>7.8&#37;</strong></td></tr><tr><td align="left"><strong>TRM-MLP</strong></td><td align="center"><strong>5M</strong></td><td align="center"><strong>87.4&#37;</strong></td><td align="center">0.0&#37;</td><td align="center">29.6&#37;</td><td align="center">2.4&#37;</td></tr></table>
+<h3 id="the_honest_assessment"><a href="#the_honest_assessment" class="header-anchor">The Honest Assessment</a></h3>
+<p><strong>What&#39;s genuinely impressive:</strong></p>
+<ul>
+<li><p>On Sudoku-Extreme and Maze-Hard, LLMs &#40;even the best reasoning models&#41; score <strong>0.0&#37;</strong>. TRM scores 87.4&#37; and 85.3&#37;. This isn&#39;t marginal –- it&#39;s a qualitative difference</p>
+</li>
+<li><p>On ARC-AGI-1, 44.6&#37; with 7M parameters outperforms most frontier LLMs</p>
+</li>
+<li><p>The parameter efficiency is extraordinary: 0.01&#37; of the parameters, trained from scratch on ~1000 examples</p>
+</li>
+</ul>
+<p><strong>Caveats to keep in mind:</strong></p>
+<ul>
+<li><p>This is <strong>task-specific supervised learning</strong>, not a general-purpose model. A TRM trained on Sudoku can&#39;t solve mazes. An LLM can attempt both &#40;even if it fails&#41;</p>
+</li>
+<li><p>The comparisons with LLMs are apples-to-oranges: LLMs are general-purpose; TRM is a specialist</p>
+</li>
+<li><p>The MLP variant &#40;best on Sudoku&#41; completely fails on Maze-Hard, showing that architecture choices are task-dependent</p>
+</li>
+<li><p>ARC-AGI-2 accuracy of 7.8&#37; is better than most LLMs but still far from human-level</p>
+</li>
+<li><p>The top ARC-AGI-1 scores &#40;Bespoke/Grok-4 at 79.6&#37;&#41; still far exceed TRM, though they use 1.7T parameters and likely enormous test-time compute</p>
+</li>
+</ul>
+<p><strong>What it really shows:</strong> For structured reasoning problems with small data, <strong>recursive depth via weight-sharing</strong> is a dramatically better inductive bias than scaling parameters. The LLMs aren&#39;t failing because they lack knowledge –- they&#39;re failing because autoregressive token generation is a poor fit for constraint satisfaction problems.</p>
+<hr />
+<h2 id="why_this_matters_for_academics_the_real_takeaway"><a href="#why_this_matters_for_academics_the_real_takeaway" class="header-anchor">Why This Matters for Academics &#40;The Real Takeaway&#41;</a></h2>
+<p>Here&#39;s the honest truth: <strong>you are not competing with Samsung or DeepSeek or OpenAI on resources</strong>. You have a single GPU &#40;maybe two&#41;, a few weeks per semester, and datasets you can build by hand. TRM is written for you.</p>
+<h3 id="the_specific_advantages_for_academia"><a href="#the_specific_advantages_for_academia" class="header-anchor">The Specific Advantages for Academia</a></h3>
+<p><strong>1. You can train it from scratch in days, not months</strong></p>
+<ul>
+<li><p>Sudoku-Extreme: 18 hours on 1 L40S GPU</p>
+</li>
+<li><p>You don&#39;t need a cluster</p>
+</li>
+<li><p>You don&#39;t need pretraining</p>
+</li>
+<li><p>No fine-tuning: direct supervised learning from scratch on your task</p>
+</li>
+</ul>
+<p>Compare this to fine-tuning any LLM:</p>
+<ul>
+<li><p>DeepSeek-R1: requires massive compute to train from scratch, and even the open weights are prohibitively expensive to fine-tune</p>
+</li>
+<li><p>You can&#39;t even <em>run</em> o3-mini or Gemini 2.5 locally; you pay by the token</p>
+</li>
+</ul>
+<p><strong>2. You can actually own and modify the code</strong></p>
+<p>The entire training loop is ~500 lines of PyTorch. It&#39;s simple enough to understand completely, modify, and experiment with. You&#39;re not blocked by a closed API or a 671B parameter model that takes hours to generate one example.</p>
+<p><strong>3. Your dataset size becomes an advantage, not a liability</strong></p>
+<p>In the LLM paradigm, small datasets are bad news — your model will just memorize or fail. In the TRM paradigm, small datasets are fine. The recursive structure prevents overfitting. You curate 1000 examples, augment them, and you&#39;re done. No need to scrape the entire internet.</p>
+<p><strong>4. Parameter efficiency &#61; computational democracy</strong></p>
+<p>A 5M-parameter model:</p>
+<ul>
+<li><p>Fits in GPU memory with headroom</p>
+</li>
+<li><p>Trains in hours</p>
+</li>
+<li><p>You can run 10 different architectures in parallel on modest hardware</p>
+</li>
+<li><p>You can afford to do ablations and hyperparameter sweeps</p>
+</li>
+</ul>
+<p>A 671B-parameter model:</p>
+<ul>
+<li><p>You might not be able to run it at all</p>
+</li>
+<li><p>Each experiment costs moneeeey</p>
+</li>
+<li><p>You can do maybe one or two runs before the grant money runs out</p>
+</li>
+</ul>
+<p><strong>5. You can actually publish novel research</strong></p>
+<p>TRM shows a very specific insight: <strong>weight-sharing defeats overfitting better than model capacity</strong>. This is a <em>generalizable principle</em>, not a task-specific hack. That means:</p>
+<ul>
+<li><p>You can apply this to your own structured reasoning problems &#40;scheduling, planning, constraint satisfaction, protein folding, symbolic reasoning&#41;</p>
+</li>
+<li><p>You can publish novel architectures that explore this trade-off</p>
+</li>
+<li><p>You&#39;re not trying to beat LLMs at their game &#40;in which case you lose&#41;; you&#39;re solving a different problem with better tools</p>
+</li>
+</ul>
+<h3 id="a_concrete_research_scenario"><a href="#a_concrete_research_scenario" class="header-anchor">A Concrete Research Scenario</a></h3>
+<p>Suppose you&#39;re at a mid-tier university and want to work on reasoning in biology: predicting protein secondary structure from a small labeled dataset &#40;5000 examples&#41;.</p>
+<p><strong>The old way:</strong></p>
+<ul>
+<li><p>Fine-tune ESMFold or OmegaFold &#40;2.7B parameters each&#41;</p>
+</li>
+<li><p>Hope your GPU doesn&#39;t run out of memory</p>
+</li>
+<li><p>Cross your fingers and hope the pretrained weights transfer</p>
+</li>
+<li><p>Publish a &quot;fine-tuning&quot; paper, which is incremental</p>
+</li>
+</ul>
+<p><strong>The TRM way:</strong></p>
+<ul>
+<li><p>Build a 2-layer transformer with recursive refinement</p>
+</li>
+<li><p>Train from scratch on your 5000 examples in a few days</p>
+</li>
+<li><p>Ablate aggressively: test MLP vs attention, test different recursion depths, test different loss functions</p>
+</li>
+<li><p>Discover which architectural choices matter for <em>your</em> problem specifically</p>
+</li>
+<li><p>Publish a paper on &quot;recursive refinement for protein structure prediction&quot; or &quot;how much depth do you actually need for secondary structure&quot;? That&#39;s novel.</p>
+</li>
+</ul>
+<h3 id="the_brutal_honesty"><a href="#the_brutal_honesty" class="header-anchor">The Brutal Honesty</a></h3>
+<p>Yes, TRM is currently evaluated only on puzzles &#40;Sudoku, mazes, ARC-AGI&#41;. That&#39;s a limitation. But it&#39;s not because puzzles are the only domain where weight-sharing beats model capacity –- it&#39;s because those were convenient benchmarks with ground truth, easy evaluation, and easy data augmentation.</p>
+<p>The principles apply anywhere:</p>
+<ul>
+<li><p>You have a task with a clear ground truth</p>
+</li>
+<li><p>Your data is small &#40;&lt; 100k examples&#41;</p>
+</li>
+<li><p>Your problem is sufficiently complex that bigger &#61; worse &#40;due to overfitting&#41;</p>
+</li>
+<li><p>You can afford to run the model multiple times at test time</p>
+</li>
+</ul>
+<p>That covers a LOT of academic research.</p>
+<hr />
+<h2 id="trying_it_yourself"><a href="#trying_it_yourself" class="header-anchor">Trying It Yourself</a></h2>
+<p>The code is open source. For Sudoku-Extreme on a single GPU:</p>
+<pre><code class="language-bash">git clone https://github.com/SamsungSAILMontreal/TinyRecursiveModels
+cd TinyRecursiveModels
+pip install -r requirements.txt
+
+# Build dataset
+python dataset/build_sudoku_dataset.py \
+    --output-dir data/sudoku-extreme-1k-aug-1000 \
+    --subsample-size 1000 --num-aug 1000
+
+# Train TRM &#40;MLP variant, ~18h on 1 L40S&#41;
+python pretrain.py \
+    arch&#61;trm \
+    data_paths&#61;&quot;&#91;data/sudoku-extreme-1k-aug-1000&#93;&quot; \
+    evaluators&#61;&quot;&#91;&#93;&quot; \
+    epochs&#61;50000 eval_interval&#61;5000 \
+    lr&#61;1e-4 weight_decay&#61;1.0 \
+    arch.mlp_t&#61;True arch.pos_encodings&#61;none \
+    arch.L_layers&#61;2 \
+    arch.H_cycles&#61;3 arch.L_cycles&#61;6 \
+    ema&#61;True</code></pre>
+<p>Expected: ~87&#37; test accuracy with 5M parameters.</p>
+<hr />
+<h2 id="the_bigger_picture"><a href="#the_bigger_picture" class="header-anchor">The Bigger Picture</a></h2>
+<p>TRM is part of an emerging theme in AI: <strong>you don&#39;t always need to scale up</strong>. Specifically:</p>
+<ol>
+<li><p><strong>Test-time compute</strong> &#40;reasoning models like DeepSeek-R1, o1&#41;: let a large model think longer instead of making it bigger</p>
+</li>
+<li><p><strong>Recursive refinement</strong> &#40;TRM, HRM&#41;: let a tiny model iterate instead of making it deeper</p>
+</li>
+<li><p><strong>Weight sharing</strong> &#40;deep equilibrium models, universal transformers&#41;: reuse the same parameters across depth</p>
+</li>
+</ol>
+<p>All three trade FLOPs for parameters. The difference is that TRM pushes this to an extreme: 2 layers, 7M parameters, 672 effective layers. The implication is provocative –- for structured problems, maybe the right scaling law isn&#39;t &quot;bigger models&quot; but &quot;more iterations of small models.&quot;</p>
+<p>Whether this extends beyond puzzles to broader reasoning tasks remains an open question. The author notes that TRM is currently a supervised learning method &#40;deterministic single answer&#41; and extending it to generative settings would be interesting future work.</p>
+<p>But the core insight is already clear: <strong>depth through recursion, not parameters, is what enables reasoning on hard problems with limited data.</strong></p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: February 07, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

@@ -218,6 +218,12 @@
     <priority>0.5</priority>
 </url>
 <url>
+    <loc>https://kchu25.github.io/blog/machine-learning/reasoning_models/index.html</loc>
+    <lastmod>2026-02-06</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
     <loc>https://kchu25.github.io/blog/sparsity/learn_l0/index.html</loc>
     <lastmod>2025-12-01</lastmod>
     <changefreq>monthly</changefreq>
@@ -261,13 +267,19 @@
 </url>
 <url>
     <loc>https://kchu25.github.io/blog/index.html</loc>
-    <lastmod>2026-02-05</lastmod>
+    <lastmod>2025-12-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
 <url>
     <loc>https://kchu25.github.io/blog/machine-learning/spatial_locality/index.html</loc>
     <lastmod>2025-12-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+</url>
+<url>
+    <loc>https://kchu25.github.io/blog/machine-learning/tiny_recursive_models/index.html</loc>
+    <lastmod>2026-02-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
 </url>
