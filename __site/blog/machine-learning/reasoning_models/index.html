@@ -318,11 +318,14 @@ Round 3: &quot;Since position 8 is 3, position 12 can&#39;t be 3...&quot;</code>
 </li>
 </ul>
 <p>The final answer \(y\) is computed from this refined \(z\) state. The loss at each supervision step encourages \(z\) to progressively refine toward states that make correct predictions easier.</p>
+<p><strong>Important clarification: \(z\) is deterministic, not generated.</strong> Unlike CoT traces, \(z\) is not generated autoregressively with randomness. Each update is:</p>
+\[z^{(s,t,i)} = f_\theta(\mathrm{ concat}(x, y^{(s,t,i-1)}, z^{(s,t,i-1)}))\]
+<p>This is a <strong>deterministic forward pass</strong>. You feed in concatenated vectors, the transformer processes them, and out comes the new \(z\). No sampling, no choice — just computation. The number of iterations \((n, T, N_{\mathrm{ sup}})\) is <strong>fixed beforehand</strong> &#40;typically \(n=6\), \(T=3\), \(N_{\mathrm{ sup}}=16\)&#41;.</p>
 <p>This is exactly analogous to CoT reasoning in language models — the trace \(t\) &#40;&quot;27 × 30 &#61; 810, 27 × 4 &#61; 108, 810 &#43; 108 &#61; ...&quot;&#41; stores intermediate results that make the final answer &#40;&quot;918&quot;&#41; easier to produce. The difference is:</p>
 <ul>
-<li><p><strong>CoT</strong>: Intermediate steps are explicit tokens you can read</p>
+<li><p><strong>CoT</strong>: Intermediate steps are explicit tokens, generated autoregressively &#40;with sampling at inference&#41;</p>
 </li>
-<li><p><strong>TRM</strong>: Intermediate steps are latent vectors optimized purely for computational utility</p>
+<li><p><strong>TRM</strong>: Intermediate steps are latent vectors, computed deterministically &#40;no sampling&#41;</p>
 </li>
 </ul>
 <h3 id="the_mathematics_of_trm"><a href="#the_mathematics_of_trm" class="header-anchor">The Mathematics of TRM</a></h3>
@@ -343,30 +346,84 @@ Round 3: &quot;Since position 8 is 3, position 12 can&#39;t be 3...&quot;</code>
 <li><p><strong>Inner latent updates</strong> \(i = 1, \ldots, n\): how many times we refine \(z\) before updating \(y\)</p>
 </li>
 </ul>
-<p>The superscripts \((s, t, i)\) track where we are in this nested loop. Here&#39;s the procedure:</p>
-<p><strong>Initialize for supervision step \(s\):</strong></p>
-<ul>
-<li><p>If \(s = 1\): start with \(y^{(1,0)} = y^{(0)} = \mathbf{0}\) and \(z^{(1,0)} = z^{(0)} = \mathbf{0}\)</p>
+<p>The superscripts \((s, t, i)\) track where we are in this nested loop. Here&#39;s the <strong>complete forward pass as pseudocode</strong>:</p>
+<pre><code class="language-julia">z ← 0, y ← 0  // Initialize states
+
+for s &#61; 1 to N_sup:  // Supervision loop &#40;e.g., 16 times&#41;
+    
+    for t &#61; 1 to T:  // Outer repetition loop &#40;e.g., 3 times&#41;
+        
+        for i &#61; 1 to n:  // Inner latent update loop &#40;e.g., 6 times&#41;
+            z ← f_θ&#40;&#91;x; y; z&#93;&#41;  // Refine latent state
+        
+        y ← f_θ&#40;&#91;y; z&#93;&#41;  // Update answer from refined latent state
+    
+    // After all T repetitions, compute loss
+    ŷ &#61; y @ W_vocab^T  // Project to vocabulary space
+    L_s &#61; CrossEntropy&#40;ŷ, y*&#41;  // Compare to ground truth
+    
+    // Carry forward to next supervision step &#40;but detach gradients&#41;
+    z ← stop_gradient&#40;z&#41;
+    y ← stop_gradient&#40;y&#41;</code></pre>
+<p><strong>What this means:</strong></p>
+<ol>
+<li><p><strong>Inner loop &#40;\(i = 1, \ldots, n\)&#41;</strong>: Refine \(z\) a total of \(n\) times. \(y\) stays fixed during these updates.</p>
 </li>
-<li><p>If \(s > 1\): carry over from the previous step: \(y^{(s,0)} = y^{(s-1,T)}\) and \(z^{(s,0)} = z^{(s-1,T)}\)</p>
+<li><p><strong>Middle loop &#40;\(t = 1, \ldots, T\)&#41;</strong>: After each \(n\)-pass refinement of \(z\), update \(y\) once. Repeat this \((z \mathrm{ refinement} + y \mathrm{ update})\) pair \(T\) times.</p>
+</li>
+<li><p><strong>Outer loop &#40;\(s = 1, \ldots, N_{\mathrm{ sup}}\)&#41;</strong>: Repeat the entire middle&#43;inner loops \(N_{\mathrm{ sup}}\) times, computing a loss after each outer iteration.</p>
+</li>
+</ol>
+<p><strong>Concrete example</strong> with \(n=2\), \(T=2\), \(N_{\mathrm{ sup}}=2\):</p>
+<pre><code class="language-julia">&#61;&#61;&#61; Supervision step s&#61;1 &#61;&#61;&#61;
+  Repetition t&#61;1:
+    Latent update i&#61;1: z^&#40;1,1,1&#41; &#61; f_θ&#40;&#91;x; y^&#40;1,1,0&#41;; z^&#40;1,1,0&#41;&#93;&#41;
+    Latent update i&#61;2: z^&#40;1,1,2&#41; &#61; f_θ&#40;&#91;x; y^&#40;1,1,0&#41;; z^&#40;1,1,2&#41;&#93;&#41;  // Note: y unchanged
+    Answer update:     y^&#40;1,1&#41;   &#61; f_θ&#40;&#91;y^&#40;1,1,0&#41;; z^&#40;1,1,2&#41;&#93;&#41;
+  
+  Repetition t&#61;2:
+    Latent update i&#61;1: z^&#40;1,2,1&#41; &#61; f_θ&#40;&#91;x; y^&#40;1,1&#41;; z^&#40;1,2,0&#41;&#93;&#41;    // Carry over y from t&#61;1
+    Latent update i&#61;2: z^&#40;1,2,2&#41; &#61; f_θ&#40;&#91;x; y^&#40;1,1&#41;; z^&#40;1,2,2&#41;&#93;&#41;
+    Answer update:     y^&#40;1,2&#41;   &#61; f_θ&#40;&#91;y^&#40;1,1&#41;; z^&#40;1,2,2&#41;&#93;&#41;
+  
+  Loss computation: L_1 &#61; CrossEntropy&#40;y^&#40;1,2&#41; @ W_vocab, y*&#41;
+
+&#61;&#61;&#61; Supervision step s&#61;2 &#61;&#61;&#61;
+  Start with y ← stop_gradient&#40;y^&#40;1,2&#41;&#41;, z ← stop_gradient&#40;z^&#40;1,2,2&#41;&#41;
+  
+  Repetition t&#61;1:
+    Latent update i&#61;1: z^&#40;2,1,1&#41; &#61; f_θ&#40;&#91;x; y^&#40;2,1,0&#41;; z^&#40;2,1,0&#41;&#93;&#41;
+    Latent update i&#61;2: z^&#40;2,1,2&#41; &#61; f_θ&#40;&#91;x; y^&#40;2,1,0&#41;; z^&#40;2,1,2&#41;&#93;&#41;
+    Answer update:     y^&#40;2,1&#41;   &#61; f_θ&#40;&#91;y^&#40;2,1,0&#41;; z^&#40;2,1,2&#41;&#93;&#41;
+  
+  Repetition t&#61;2:
+    Latent update i&#61;1: z^&#40;2,2,1&#41; &#61; f_θ&#40;&#91;x; y^&#40;2,1&#41;; z^&#40;2,2,0&#41;&#93;&#41;
+    Latent update i&#61;2: z^&#40;2,2,2&#41; &#61; f_θ&#40;&#91;x; y^&#40;2,1&#41;; z^&#40;2,2,2&#41;&#93;&#41;
+    Answer update:     y^&#40;2,2&#41;   &#61; f_θ&#40;&#91;y^&#40;2,1&#41;; z^&#40;2,2,2&#41;&#93;&#41;
+  
+  Loss computation: L_2 &#61; CrossEntropy&#40;y^&#40;2,2&#41; @ W_vocab, y*&#41;
+
+Total loss: L &#61; L_1 &#43; L_2</code></pre>
+<p><strong>Key details:</strong></p>
+<ul>
+<li><p><strong>\(z\) gets overwritten in the inner loop</strong>: Each latent update \(i\) overwrites \(z\) with a new value. You don&#39;t accumulate or concatenate — you replace it. The new \(z^{(s,t,i)}\) is the output of \(f_\theta(\mathrm{ concat}(x, y, z^{(s,t,i-1)}))\), which overwrites the old \(z^{(s,t,i-1)}\).</p>
+</li>
+<li><p><strong>\(y\) doesn&#39;t change during inner loop</strong>: The latent updates refine \(z\) while \(y\) stays at \(y^{(s,t,0)}\).</p>
+</li>
+<li><p><strong>\(y\) updates carry forward</strong>: After updating \(y^{(s,t)}\), the next repetition \(t+1\) uses this new \(y\) value as \(y^{(s,t+1,0)}\).</p>
+</li>
+<li><p><strong>\(z\) resets at each repetition</strong>: Within a supervision step, \(z\) starts fresh at each \(t\) with \(z^{(s,t,0)} = z^{(s,t-1,n)}\) &#40;the final refined state from the previous repetition&#41;.</p>
+</li>
+<li><p><strong>Gradients detached between supervision steps</strong>: After computing \(L_s\), we detach gradients, so supervision step \(s+1\) doesn&#39;t backprop through step \(s\).</p>
 </li>
 </ul>
-<p><strong>For each repetition \(t = 1, \ldots, T\):</strong></p>
-<p>Start with the states from the previous repetition: \(y^{(s,t,0)} = y^{(s,t-1)}\) and \(z^{(s,t,0)} = z^{(s,t-1)}\)</p>
-<p>Then do \(n\) latent updates:</p>
-\[\mathrm{ For} i = 1, \ldots, n: \quad z^{(s,t,i)} = f_\theta\left(\mathrm{ concat}(x, y^{(s,t,i-1)}, z^{(s,t,i-1)})\right)\]
-<p>Notice: \(y\) doesn&#39;t change during these \(n\) updates. We&#39;re just refining \(z\), so \(y^{(s,t,i)} = y^{(s,t,0)}\) for \(i = 1, \ldots, n\).</p>
-<p>After the \(n\)-th latent update, we have \(z^{(s,t,n)}\). Now update \(y\)<strong>once</strong>:</p>
-\[y^{(s,t)} = f_\theta\left(\mathrm{ concat}(y^{(s,t,n)}, z^{(s,t,n)})\right)\]
-<p>Here \(y^{(s,t,n)}\) is just the carried-over \(y\) value &#40;which equals \(y^{(s,t,0)}\)&#41;, and we&#39;re using the refined latent state \(z^{(s,t,n)}\) to compute the new \(y^{(s,t)}\).</p>
-<p><strong>Summary of what \(y^{(\cdot)}\) means:</strong></p>
-<ul>
-<li><p>\(y^{(s,t)}\): the answer state after repetition \(t\) within supervision step \(s\)</p>
-</li>
-<li><p>\(y^{(s,t,i)}\): the answer state during the \(i\)-th latent update of repetition \(t\) &#40;doesn&#39;t change, equals \(y^{(s,t,0)}\)&#41;</p>
-</li>
-</ul>
-<p>The \(\mathrm{ concat}\) operation stacks matrices along the sequence dimension: if \(a \in \mathbb{R}^{L \times D}\), \(b \in \mathbb{R}^{L \times D}\), then \(\mathrm{ concat}(a, b) \in \mathbb{R}^{(2L) \times D}\).</p>
+<p><strong>The memory picture:</strong></p>
+<pre><code class="language-julia">Iteration i&#61;1: z^&#40;s,t,0&#41; --&#91;f_θ&#93;--&gt; z^&#40;s,t,1&#41;   // Old z discarded, new z stored
+Iteration i&#61;2: z^&#40;s,t,1&#41; --&#91;f_θ&#93;--&gt; z^&#40;s,t,2&#41;   // Old z discarded, new z stored
+Iteration i&#61;3: z^&#40;s,t,2&#41; --&#91;f_θ&#93;--&gt; z^&#40;s,t,3&#41;   // Old z discarded, new z stored
+...
+Iteration i&#61;n: z^&#40;s,t,n-1&#41; --&#91;f_θ&#93;--&gt; z^&#40;s,t,n&#41;  // Final refined z</code></pre>
+<p>Only the <strong>final</strong> \(z^{(s,t,n)}\) is kept and used to update \(y^{(s,t)}\).</p>
 <p><strong>Step 4: Decode to logits.</strong> Project the final answer embedding back to vocabulary space:</p>
 \[\hat{y}^{(s)} = y^{(s,T)} \mathbf{W}_{\mathrm{ vocab}}^\mathsf{T} \in \mathbb{R}^{L \times V}\]
 <p>where \(\mathbf{W}_{\mathrm{ vocab}} \in \mathbb{R}^{V \times D}\) is the vocabulary projection matrix &#40;same as in standard transformers&#41;.</p>
@@ -421,6 +478,30 @@ Round 3: &quot;Since position 8 is 3, position 12 can&#39;t be 3...&quot;</code>
 <hr />
 <h2 id="part_iv_the_two_philosophies_side_by_side"><a href="#part_iv_the_two_philosophies_side_by_side" class="header-anchor">Part IV: The Two Philosophies Side by Side</a></h2>
 <table><tr><th align="left"></th><th align="left">Autoregressive Reasoning &#40;CoT&#41;</th><th align="left">Recursive Refinement &#40;TRM&#41;</th></tr><tr><td align="left"><strong>Architecture changes?</strong></td><td align="left"><strong>No</strong> — same transformer</td><td align="left"><strong>Yes</strong> — custom recursive network</td></tr><tr><td align="left"><strong>Training changes?</strong></td><td align="left"><strong>Yes</strong> — different data or RL</td><td align="left"><strong>Yes</strong> — supervised &#43; deep supervision</td></tr><tr><td align="left"><strong>Start from pretrained model?</strong></td><td align="left"><strong>Yes</strong> — fine-tune a base LLM</td><td align="left"><strong>No</strong> — train from scratch</td></tr><tr><td align="left"><strong>Requires ground-truth labels?</strong></td><td align="left"><strong>Yes</strong> — need correct answers for both distillation and RL</td><td align="left"><strong>Yes</strong> — fully supervised \((x, y^*)\) pairs</td></tr><tr><td align="left"><strong>Generate reasoning during training?</strong></td><td align="left">Distillation: No &#40;provided&#41;. RL: Yes &#40;sampled&#41;.</td><td align="left">No — reasoning stays in latent vectors</td></tr><tr><td align="left"><strong>Reasoning medium</strong></td><td align="left">Natural language tokens</td><td align="left">Learned latent vectors</td></tr><tr><td align="left"><strong>Reasoning is</strong></td><td align="left">Explicit, human-readable</td><td align="left">Implicit, not decodable</td></tr><tr><td align="left"><strong>Architecture</strong></td><td align="left">Large transformer &#40;7B–671B&#41;</td><td align="left">Tiny transformer &#40;2 layers, 7M&#41;</td></tr><tr><td align="left"><strong>Training paradigm</strong></td><td align="left">Distillation &#40;supervised&#41; or RL &#40;reward-based&#41;</td><td align="left">Fully supervised</td></tr><tr><td align="left"><strong>Data needed</strong></td><td align="left">Billions of tokens &#40;pretraining&#41; &#43; labeled Q&amp;A</td><td align="left">~1000 task-specific labeled examples</td></tr><tr><td align="left"><strong>Depth</strong></td><td align="left">Sequential token generation</td><td align="left">Recursive weight-shared forward passes</td></tr><tr><td align="left"><strong>Generality</strong></td><td align="left">General-purpose</td><td align="left">Task-specific</td></tr><tr><td align="left"><strong>Error recovery</strong></td><td align="left">Textual backtracking &#40;fragile&#41;</td><td align="left">Iterative refinement &#40;robust&#41;</td></tr><tr><td align="left"><strong>Where it wins</strong></td><td align="left">Language, broad knowledge</td><td align="left">Structured puzzles, constraint satisfaction</td></tr></table>
+<h3 id="what_are_constraint_satisfaction_problems"><a href="#what_are_constraint_satisfaction_problems" class="header-anchor">What are Constraint Satisfaction Problems?</a></h3>
+<p>A constraint satisfaction problem &#40;CSP&#41; is a <strong>search problem</strong> where you need to find values for variables that satisfy a set of constraints. Unlike optimization problems &#40;which have objectives to maximize/minimize&#41;, CSPs just ask: &quot;Is there a valid assignment?&quot;</p>
+<p><strong>Examples:</strong></p>
+<ul>
+<li><p><strong>Sudoku</strong>: Variables are the 81 cells. Constraints are &quot;each row has digits 1-9&quot;, &quot;each column has digits 1-9&quot;, &quot;each 3×3 block has digits 1-9&quot;. Goal: find an assignment of digits to cells that satisfies all constraints.</p>
+</li>
+<li><p><strong>Graph coloring</strong>: Variables are nodes. Constraints are &quot;adjacent nodes must have different colors&quot;. Goal: color the graph with \(k\) colors.</p>
+</li>
+<li><p><strong>Scheduling</strong>: Variables are time slots for tasks. Constraints are &quot;task A must finish before task B&quot;, &quot;tasks C and D can&#39;t run simultaneously&quot;. Goal: find a valid schedule.</p>
+</li>
+<li><p><strong>Boolean satisfiability &#40;SAT&#41;</strong>: Variables are boolean. Constraints are logical clauses like \((x_1 \lor \neg x_2 \lor x_3)\). Goal: find an assignment that makes all clauses true.</p>
+</li>
+</ul>
+<p><strong>Why TRM is perfect for CSPs:</strong> Each forward pass does one round of <strong>constraint propagation</strong>. When you know cell &#40;1,1&#41; is 5, you can eliminate 5 from the possibilities of all cells in row 1, column 1, and its 3×3 block. Those eliminations cascade — if a cell now has only one possible value, you can fix it and propagate further.</p>
+<p>The 2-layer network learns to:</p>
+<ol>
+<li><p>Read the current state &#40;which values are still possible for each cell&#41;</p>
+</li>
+<li><p>Apply constraints &#40;eliminate impossible values based on filled cells and constraint logic&#41;</p>
+</li>
+<li><p>Output a refined state for the next iteration</p>
+</li>
+</ol>
+<p>After 672 iterations, all logical implications are exhausted and the puzzle is solved. This is fundamentally different from language modeling — there&#39;s no generation, just iterative refinement toward a fixed solution.</p>
 <h3 id="the_common_thread"><a href="#the_common_thread" class="header-anchor">The Common Thread</a></h3>
 <p>Despite their differences, both approaches share the same core insight: <strong>reasoning requires depth, and depth can come from iteration rather than parameters.</strong></p>
 <p>For autoregressive models, &quot;iteration&quot; means generating more tokens &#40;test-time compute&#41;. For TRM, it means running the same network more times &#40;recursive compute&#41;. Both trade FLOPs for effective depth. Both allow smaller models to solve problems that larger, shallower models cannot.</p>

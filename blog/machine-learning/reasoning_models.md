@@ -344,9 +344,15 @@ Humans solve Sudoku the second way. TRM does too.
 
 The final answer $y$ is computed from this refined $z$ state. The loss at each supervision step encourages $z$ to progressively refine toward states that make correct predictions easier.
 
+**Important clarification: $z$ is deterministic, not generated.** Unlike CoT traces, $z$ is not generated autoregressively with randomness. Each update is:
+
+$$z^{(s,t,i)} = f_\theta(\text{concat}(x, y^{(s,t,i-1)}, z^{(s,t,i-1)}))$$
+
+This is a **deterministic forward pass**. You feed in concatenated vectors, the transformer processes them, and out comes the new $z$. No sampling, no choice — just computation. The number of iterations $(n, T, N_{\text{sup}})$ is **fixed beforehand** (typically $n=6$, $T=3$, $N_{\text{sup}}=16$).
+
 This is exactly analogous to CoT reasoning in language models — the trace $t$ ("27 × 30 = 810, 27 × 4 = 108, 810 + 108 = ...") stores intermediate results that make the final answer ("918") easier to produce. The difference is:
-- **CoT**: Intermediate steps are explicit tokens you can read
-- **TRM**: Intermediate steps are latent vectors optimized purely for computational utility
+- **CoT**: Intermediate steps are explicit tokens, generated autoregressively (with sampling at inference)
+- **TRM**: Intermediate steps are latent vectors, computed deterministically (no sampling)
 
 ### The Mathematics of TRM
 
@@ -371,33 +377,88 @@ We have three levels of nesting:
 - **Outer repetitions** $t = 1, \ldots, T$: how many times we repeat the latent-update loop
 - **Inner latent updates** $i = 1, \ldots, n$: how many times we refine $z$ before updating $y$
 
-The superscripts $(s, t, i)$ track where we are in this nested loop. Here's the procedure:
+The superscripts $(s, t, i)$ track where we are in this nested loop. Here's the **complete forward pass as pseudocode**:
 
-**Initialize for supervision step $s$:**
-- If $s = 1$: start with $y^{(1,0)} = y^{(0)} = \mathbf{0}$ and $z^{(1,0)} = z^{(0)} = \mathbf{0}$
-- If $s > 1$: carry over from the previous step: $y^{(s,0)} = y^{(s-1,T)}$ and $z^{(s,0)} = z^{(s-1,T)}$
+```
+z ← 0, y ← 0  // Initialize states
 
-**For each repetition $t = 1, \ldots, T$:**
+for s = 1 to N_sup:  // Supervision loop (e.g., 16 times)
+    
+    for t = 1 to T:  // Outer repetition loop (e.g., 3 times)
+        
+        for i = 1 to n:  // Inner latent update loop (e.g., 6 times)
+            z ← f_θ([x; y; z])  // Refine latent state
+        
+        y ← f_θ([y; z])  // Update answer from refined latent state
+    
+    // After all T repetitions, compute loss
+    ŷ = y @ W_vocab^T  // Project to vocabulary space
+    L_s = CrossEntropy(ŷ, y*)  // Compare to ground truth
+    
+    // Carry forward to next supervision step (but detach gradients)
+    z ← stop_gradient(z)
+    y ← stop_gradient(y)
+```
 
-Start with the states from the previous repetition: $y^{(s,t,0)} = y^{(s,t-1)}$ and $z^{(s,t,0)} = z^{(s,t-1)}$
+**What this means:**
 
-Then do $n$ latent updates:
+1. **Inner loop ($i = 1, \ldots, n$)**: Refine $z$ a total of $n$ times. $y$ stays fixed during these updates.
+2. **Middle loop ($t = 1, \ldots, T$)**: After each $n$-pass refinement of $z$, update $y$ once. Repeat this $(z \text{ refinement} + y \text{ update})$ pair $T$ times.
+3. **Outer loop ($s = 1, \ldots, N_{\text{sup}}$)**: Repeat the entire middle+inner loops $N_{\text{sup}}$ times, computing a loss after each outer iteration.
 
-$$\text{For } i = 1, \ldots, n: \quad z^{(s,t,i)} = f_\theta\left(\text{concat}(x, y^{(s,t,i-1)}, z^{(s,t,i-1)})\right)$$
+**Concrete example** with $n=2$, $T=2$, $N_{\text{sup}}=2$:
 
-Notice: $y$ doesn't change during these $n$ updates. We're just refining $z$, so $y^{(s,t,i)} = y^{(s,t,0)}$ for $i = 1, \ldots, n$.
+```
+=== Supervision step s=1 ===
+  Repetition t=1:
+    Latent update i=1: z^(1,1,1) = f_θ([x; y^(1,1,0); z^(1,1,0)])
+    Latent update i=2: z^(1,1,2) = f_θ([x; y^(1,1,0); z^(1,1,2)])  // Note: y unchanged
+    Answer update:     y^(1,1)   = f_θ([y^(1,1,0); z^(1,1,2)])
+  
+  Repetition t=2:
+    Latent update i=1: z^(1,2,1) = f_θ([x; y^(1,1); z^(1,2,0)])    // Carry over y from t=1
+    Latent update i=2: z^(1,2,2) = f_θ([x; y^(1,1); z^(1,2,2)])
+    Answer update:     y^(1,2)   = f_θ([y^(1,1); z^(1,2,2)])
+  
+  Loss computation: L_1 = CrossEntropy(y^(1,2) @ W_vocab, y*)
 
-After the $n$-th latent update, we have $z^{(s,t,n)}$. Now update $y$ **once**:
+=== Supervision step s=2 ===
+  Start with y ← stop_gradient(y^(1,2)), z ← stop_gradient(z^(1,2,2))
+  
+  Repetition t=1:
+    Latent update i=1: z^(2,1,1) = f_θ([x; y^(2,1,0); z^(2,1,0)])
+    Latent update i=2: z^(2,1,2) = f_θ([x; y^(2,1,0); z^(2,1,2)])
+    Answer update:     y^(2,1)   = f_θ([y^(2,1,0); z^(2,1,2)])
+  
+  Repetition t=2:
+    Latent update i=1: z^(2,2,1) = f_θ([x; y^(2,1); z^(2,2,0)])
+    Latent update i=2: z^(2,2,2) = f_θ([x; y^(2,1); z^(2,2,2)])
+    Answer update:     y^(2,2)   = f_θ([y^(2,1); z^(2,2,2)])
+  
+  Loss computation: L_2 = CrossEntropy(y^(2,2) @ W_vocab, y*)
 
-$$y^{(s,t)} = f_\theta\left(\text{concat}(y^{(s,t,n)}, z^{(s,t,n)})\right)$$
+Total loss: L = L_1 + L_2
+```
 
-Here $y^{(s,t,n)}$ is just the carried-over $y$ value (which equals $y^{(s,t,0)}$), and we're using the refined latent state $z^{(s,t,n)}$ to compute the new $y^{(s,t)}$.
+**Key details:**
 
-**Summary of what $y^{(\cdot)}$ means:**
-- $y^{(s,t)}$: the answer state after repetition $t$ within supervision step $s$
-- $y^{(s,t,i)}$: the answer state during the $i$-th latent update of repetition $t$ (doesn't change, equals $y^{(s,t,0)}$)
+- **$z$ gets overwritten in the inner loop**: Each latent update $i$ overwrites $z$ with a new value. You don't accumulate or concatenate — you replace it. The new $z^{(s,t,i)}$ is the output of $f_\theta(\text{concat}(x, y, z^{(s,t,i-1)}))$, which overwrites the old $z^{(s,t,i-1)}$.
+- **$y$ doesn't change during inner loop**: The latent updates refine $z$ while $y$ stays at $y^{(s,t,0)}$.
+- **$y$ updates carry forward**: After updating $y^{(s,t)}$, the next repetition $t+1$ uses this new $y$ value as $y^{(s,t+1,0)}$.
+- **$z$ resets at each repetition**: Within a supervision step, $z$ starts fresh at each $t$ with $z^{(s,t,0)} = z^{(s,t-1,n)}$ (the final refined state from the previous repetition).
+- **Gradients detached between supervision steps**: After computing $L_s$, we detach gradients, so supervision step $s+1$ doesn't backprop through step $s$.
 
-The $\text{concat}$ operation stacks matrices along the sequence dimension: if $a \in \mathbb{R}^{L \times D}$, $b \in \mathbb{R}^{L \times D}$, then $\text{concat}(a, b) \in \mathbb{R}^{(2L) \times D}$.
+**The memory picture:**
+
+```
+Iteration i=1: z^(s,t,0) --[f_θ]--> z^(s,t,1)   // Old z discarded, new z stored
+Iteration i=2: z^(s,t,1) --[f_θ]--> z^(s,t,2)   // Old z discarded, new z stored
+Iteration i=3: z^(s,t,2) --[f_θ]--> z^(s,t,3)   // Old z discarded, new z stored
+...
+Iteration i=n: z^(s,t,n-1) --[f_θ]--> z^(s,t,n)  // Final refined z
+```
+
+Only the **final** $z^{(s,t,n)}$ is kept and used to update $y^{(s,t)}$.
 
 **Step 4: Decode to logits.** Project the final answer embedding back to vocabulary space:
 
@@ -505,6 +566,29 @@ where $y^{(s)}$ is the answer state after $s$ supervision steps, each involving 
 | **Generality** | General-purpose | Task-specific |
 | **Error recovery** | Textual backtracking (fragile) | Iterative refinement (robust) |
 | **Where it wins** | Language, broad knowledge | Structured puzzles, constraint satisfaction |
+
+### What are Constraint Satisfaction Problems?
+
+A constraint satisfaction problem (CSP) is a **search problem** where you need to find values for variables that satisfy a set of constraints. Unlike optimization problems (which have objectives to maximize/minimize), CSPs just ask: "Is there a valid assignment?"
+
+**Examples:**
+
+- **Sudoku**: Variables are the 81 cells. Constraints are "each row has digits 1-9", "each column has digits 1-9", "each 3×3 block has digits 1-9". Goal: find an assignment of digits to cells that satisfies all constraints.
+  
+- **Graph coloring**: Variables are nodes. Constraints are "adjacent nodes must have different colors". Goal: color the graph with $k$ colors.
+
+- **Scheduling**: Variables are time slots for tasks. Constraints are "task A must finish before task B", "tasks C and D can't run simultaneously". Goal: find a valid schedule.
+
+- **Boolean satisfiability (SAT)**: Variables are boolean. Constraints are logical clauses like $(x_1 \vee \neg x_2 \vee x_3)$. Goal: find an assignment that makes all clauses true.
+
+**Why TRM is perfect for CSPs:** Each forward pass does one round of **constraint propagation**. When you know cell (1,1) is 5, you can eliminate 5 from the possibilities of all cells in row 1, column 1, and its 3×3 block. Those eliminations cascade — if a cell now has only one possible value, you can fix it and propagate further.
+
+The 2-layer network learns to:
+1. Read the current state (which values are still possible for each cell)
+2. Apply constraints (eliminate impossible values based on filled cells and constraint logic)
+3. Output a refined state for the next iteration
+
+After 672 iterations, all logical implications are exhausted and the puzzle is solved. This is fundamentally different from language modeling — there's no generation, just iterative refinement toward a fixed solution.
 
 ### The Common Thread
 
