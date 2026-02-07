@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="stylesheet" href="/libs/katex/katex.min.css">
+     
+   <link rel="stylesheet" href="/libs/highlight/styles/github.min.css">
+   
+  <link rel="stylesheet" href="/css/franklin.css">
+<link rel="stylesheet" href="/css/hypertext.css">
+<link rel="icon" href="/assets/favicon.png">
+
+   <title>The Transformer Loss Function</title>  
+</head>
+<body>
+<header>
+  <h1 style="color:#283747">computer science</h1>
+  <nav>
+    <a href="/" class="current">Tags</a>
+  | <a href="/blog/" >Notes</a>
+  <hr/>
+  </nav>
+</header>
+
+
+<!-- Content appended here -->
+<div class="franklin-content"><h1 id="the_transformer_loss_function"><a href="#the_transformer_loss_function" class="header-anchor">The Transformer Loss Function</a></h1>
+<h2 id="the_setup"><a href="#the_setup" class="header-anchor">The Setup</a></h2>
+<p>Most tutorials skip the details of how transformers actually compute loss during training. The confusion typically arises because tokens are <em>vectors</em> &#40;groups of neurons&#41;, yet we need to predict <em>discrete</em> token IDs from a vocabulary. Let&#39;s clarify this.</p>
+<h3 id="data_structures"><a href="#data_structures" class="header-anchor">Data Structures</a></h3>
+<p>Following the notation from transformers literature, we represent a sequence of tokens as a matrix where each token is a row:</p>
+\[\mathbf{T} = \begin{bmatrix}
+\mathbf{t}_1^\mathsf{T}\\
+\vdots \\
+\mathbf{t}_N^\mathsf{T}\\
+\end{bmatrix} \in \mathbb{R}^{N \times d}\]
+<p>where each \(\mathbf{t}_i \in \mathbb{R}^{d \times 1}\) is a token&#39;s code vector with dimensionality \(d\).</p>
+<h3 id="the_output_layer"><a href="#the_output_layer" class="header-anchor">The Output Layer</a></h3>
+<p>The transformer processes these tokens through \(L\) layers of attention and MLPs. At the final layer, we have:</p>
+\[\mathbf{T}_{\texttt{out}} = \texttt{transformer}(\mathbf{T}_{\texttt{in}}) \quad \quad \triangleleft \quad \mathbf{T}_{\texttt{out}} \in \mathbb{R}^{N \times d}\]
+<p>But how do we go from these \(d\)-dimensional token vectors to predictions over our vocabulary of size \(V\)?</p>
+<h2 id="from_tokens_to_logits"><a href="#from_tokens_to_logits" class="header-anchor">From Tokens to Logits</a></h2>
+<p>We add a <strong>linear projection layer</strong> that maps each token to logit scores over the vocabulary:</p>
+\[\mathbf{z}_i = \mathbf{W}_{\texttt{vocab}} \mathbf{t}_i \quad \quad \triangleleft \quad \mathbf{W}_{\texttt{vocab}} \in \mathbb{R}^{V \times d}\]
+<p>For the full sequence, this is:</p>
+\[\mathbf{Z} = \mathbf{T}_{\texttt{out}} \mathbf{W}_{\texttt{vocab}}^\mathsf{T} \quad \quad \triangleleft \quad \mathbf{Z} \in \mathbb{R}^{N \times V}\]
+<p>Each row \(\mathbf{z}_i^\mathsf{T}\) contains unnormalized log-probabilities &#40;logits&#41; for all \(V\) possible tokens at position \(i\).</p>
+<h3 id="what_are_logits"><a href="#what_are_logits" class="header-anchor">What Are Logits?</a></h3>
+<p><strong>Logits</strong> are simply the raw, unnormalized scores before applying softmax. Think of them as &quot;pre-probabilities&quot;:</p>
+<ul>
+<li><p><strong>Dimension of a single logit vector</strong>: \(\mathbf{z}_i \in \mathbb{R}^{V \times 1}\) — one score for each token in the vocabulary</p>
+</li>
+<li><p><strong>Dimension of all logits</strong>: \(\mathbf{Z} \in \mathbb{R}^{N \times V}\) — one logit vector for each position in the sequence</p>
+</li>
+</ul>
+<p>For example, if your vocabulary has \(V = 50{,}000\) tokens, then \(\mathbf{z}_i\) is a vector of 50,000 numbers:</p>
+\[\mathbf{z}_i = \begin{bmatrix}
+2.3 \quad \leftarrow \mathrm{ score for token "the"}\\
+-1.5 \quad \leftarrow \mathrm{ score for token "cat"}\\
+4.7 \quad \leftarrow \mathrm{ score for token "sat"}\\
+\vdots\\
+0.2 \quad \leftarrow \mathrm{ score for token "zebra"}
+\end{bmatrix}\]
+<p>These raw scores can be any real numbers &#40;positive, negative, large, small&#41;. We convert them to probabilities via <strong>softmax</strong>:</p>
+\[P(\mathrm{ token}_j) = \frac{e^{z_i[j]}}{\sum_{k=1}^{V} e^{z_i[k]}}\]
+<p>The softmax ensures:</p>
+<ul>
+<li><p>All probabilities are between 0 and 1</p>
+</li>
+<li><p>All probabilities sum to 1</p>
+</li>
+<li><p>Higher logits → higher probabilities</p>
+</li>
+</ul>
+<h2 id="the_training_task_next-token_prediction"><a href="#the_training_task_next-token_prediction" class="header-anchor">The Training Task: Next-Token Prediction</a></h2>
+<p>For language modeling, we use <strong>causal &#40;masked&#41; attention</strong> to predict each token from only previous tokens. Given an input sequence, we simultaneously predict:</p>
+\[\begin{aligned}
+\mathbf{t}_1 &\rightarrow \mathbf{t}_2\\
+\{\mathbf{t}_1, \mathbf{t}_2\} &\rightarrow \mathbf{t}_3\\
+&\vdots\\
+\{\mathbf{t}_1, \ldots, \mathbf{t}_{N-1}\} &\rightarrow \mathbf{t}_N
+\end{aligned}\]
+<p>This means our targets are simply the input sequence <strong>shifted by one position</strong>.</p>
+<h3 id="concrete_example"><a href="#concrete_example" class="header-anchor">Concrete Example</a></h3>
+<p>Let&#39;s say we&#39;re training on the sequence: <code>&quot;The cat sat&quot;</code></p>
+<p>After tokenization, we have token vectors representing each word. The training setup looks like:</p>
+<p><strong>Input sequence:</strong> \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}]\)   <strong>Target sequence:</strong> \([\mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}, \mathbf{t}_{\texttt{<end>}}]\) ← shifted by one&#33;</p>
+<p>At each position, we predict the next token:</p>
+<ol>
+<li><p><strong>Position 1:</strong> Given \([\mathbf{t}_{\texttt{The}}]\), predict token ID for <code>&quot;cat&quot;</code></p>
+</li>
+<li><p><strong>Position 2:</strong> Given \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}]\), predict token ID for <code>&quot;sat&quot;</code></p>
+</li>
+<li><p><strong>Position 3:</strong> Given \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}]\), predict token ID for <code>&quot;&lt;end&gt;&quot;</code></p>
+</li>
+</ol>
+<p>The transformer outputs token vectors at each position, then \(\mathbf{W}_{\texttt{vocab}}\) projects these to logits over all vocabulary tokens.</p>
+<h2 id="the_loss_function"><a href="#the_loss_function" class="header-anchor">The Loss Function</a></h2>
+<p>For each position \(i\), we convert logits to probabilities via softmax, then compute cross-entropy with the true next token \(y_i \in \{1, \ldots, V\}\):</p>
+\[\mathcal{L}_i = -\log \frac{e^{z_i[y_i]}}{\sum_{j=1}^{V} e^{z_i[j]}} = -\log P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1})\]
+<p>where \(z_i[y_i]\) is the logit corresponding to the correct token ID.</p>
+<h3 id="concrete_worked_example"><a href="#concrete_worked_example" class="header-anchor">Concrete Worked Example</a></h3>
+<p>Let&#39;s work through this with tiny numbers. Suppose we have a vocabulary of just \(V = 4\) tokens:</p>
+<ul>
+<li><p>Token 0: <code>&quot;the&quot;</code></p>
+</li>
+<li><p>Token 1: <code>&quot;cat&quot;</code> </p>
+</li>
+<li><p>Token 2: <code>&quot;sat&quot;</code></p>
+</li>
+<li><p>Token 3: <code>&quot;&lt;end&gt;&quot;</code></p>
+</li>
+</ul>
+<p>At position \(i=1\), after processing <code>&quot;The&quot;</code>, our model outputs a token vector \(\mathbf{t}_1 \in \mathbb{R}^{d \times 1}\). The vocabulary projection gives us logits:</p>
+\[\mathbf{z}_1 = \mathbf{W}_{\texttt{vocab}} \mathbf{t}_1 = \begin{bmatrix}
+0.5 \quad \leftarrow \mathrm{ logit for "the" (token 0)}\\
+2.0 \quad \leftarrow \mathrm{ logit for "cat" (token 1)}\\
+-1.0 \quad \leftarrow \mathrm{ logit for "sat" (token 2)}\\
+0.1 \quad \leftarrow \mathrm{ logit for "<end>" (token 3)}
+\end{bmatrix}\]
+<p>The correct next token is <code>&quot;cat&quot;</code>, so \(y_1 = 1\). Now we compute the loss:</p>
+<p><strong>Step 1: Compute softmax denominators</strong></p>
+\[\sum_{j=0}^{3} e^{z_1[j]} = e^{0.5} + e^{2.0} + e^{-1.0} + e^{0.1} = 1.65 + 7.39 + 0.37 + 1.11 = 10.52\]
+<p><strong>Step 2: Compute probability of correct token</strong></p>
+\[P(y_1 = 1) = \frac{e^{z_1[1]}}{\sum_{j=0}^{3} e^{z_1[j]}} = \frac{e^{2.0}}{10.52} = \frac{7.39}{10.52} \approx 0.70\]
+<p><strong>Step 3: Compute loss</strong></p>
+\[\mathcal{L}_1 = -\log(0.70) \approx 0.36\]
+<p>The model assigned 70&#37; probability to the correct token <code>&quot;cat&quot;</code>, giving us a fairly low loss.</p>
+<p><strong>If the model had been wrong:</strong></p>
+<p>Suppose it gave logits \(\mathbf{z}_1 = [2.0, -1.0, 0.5, 0.1]^\mathsf{T}\). Then:</p>
+<ul>
+<li><p>Correct token <code>&quot;cat&quot;</code> gets \(e^{-1.0} / \sum e^{z_j} \approx 0.05\) probability &#40;only 5&#37;&#33;&#41;</p>
+</li>
+<li><p>Loss becomes \(\mathcal{L}_1 = -\log(0.05) \approx 3.0\) &#40;much higher&#33;&#41;</p>
+</li>
+</ul>
+<h3 id="what_this_means_for_a_single_position"><a href="#what_this_means_for_a_single_position" class="header-anchor">What This Means for a Single Position</a></h3>
+<p>If the correct token at position \(i\) is token #42 in our vocabulary &#40;say, the token ID for <code>&quot;cat&quot;</code>&#41;:</p>
+\[\mathcal{L}_i = -\log\left(\frac{e^{z_i[42]}}{\sum_{j=1}^{V} e^{z_i[j]}}\right)\]
+<p>This loss is:</p>
+<ul>
+<li><p><strong>Small</strong> when the model assigns high probability to token #42 &#40;correct&#33;&#41;</p>
+</li>
+<li><p><strong>Large</strong> when the model assigns low probability to token #42 &#40;incorrect&#41;</p>
+</li>
+<li><p>The \(\log\) makes gradients smooth and well-behaved for optimization</p>
+</li>
+</ul>
+<p>The <strong>full loss</strong> averages over all positions:</p>
+\[\mathcal{L} = \frac{1}{N} \sum_{i=1}^{N} \mathcal{L}_i = -\frac{1}{N} \sum_{i=1}^{N} \log P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1})\]
+<p>This is equivalently written as:</p>
+\[\boxed{\mathcal{L} = -\frac{1}{N} \sum_{i=1}^{N} \left[\mathbf{z}_i[y_i] - \log \sum_{j=1}^{V} e^{\mathbf{z}_i[j]}\right]}\]
+<h2 id="why_cross-entropy"><a href="#why_cross-entropy" class="header-anchor">Why Cross-Entropy?</a></h2>
+<p>The cross-entropy loss naturally arises from maximum likelihood estimation. We&#39;re finding parameters \(\theta\) that maximize:</p>
+\[P(\mathbf{y} \mid \mathbf{T}_{\texttt{in}}; \theta) = \prod_{i=1}^{N} P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1}; \theta)\]
+<p>Taking the negative log gives us our loss &#40;and turns products into sums&#41;:</p>
+\[\mathcal{L} = -\log P(\mathbf{y} \mid \mathbf{T}_{\texttt{in}}; \theta)\]
+<p>The softmax ensures probabilities sum to 1, and the log makes gradients well-behaved.</p>
+<h2 id="implementation"><a href="#implementation" class="header-anchor">Implementation</a></h2>
+<p>In practice, we compute this efficiently via a single matrix operation:</p>
+<pre><code class="language-python"># Z: &#40;batch, seq_len, vocab_size&#41; - logits for each position
+# y: &#40;batch, seq_len&#41; - target token IDs
+
+# Flatten for cross-entropy computation
+Z_flat &#61; Z.view&#40;-1, V&#41;          # &#40;batch * seq_len, vocab_size&#41;
+y_flat &#61; y.view&#40;-1&#41;             # &#40;batch * seq_len,&#41;
+
+# Cross-entropy does softmax &#43; negative log-likelihood internally
+loss &#61; F.cross_entropy&#40;Z_flat, y_flat&#41;</code></pre>
+<p>The key insight: while tokens are continuous \(d\)-dimensional vectors throughout the network, the final layer projects them to discrete predictions over the vocabulary. The loss measures how well these predictions match the true next tokens.</p>
+<div class="page-foot">
+    Contact me by <a href="mailto:skchu@wustl.edu">E-mail</a> | <a href="https://github.com/kchu25">Github</a> | <a href="https://www.linkedin.com/in/kchu1/">Linkedin</a>
+    <br>
+    This work is licensed under <a href="http://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>.  Last modified: February 07, 2026.
+    <br>
+    Website built with <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a> and the <a href="https://julialang.org">Julia language</a>.
+</div>
+</div><!-- CONTENT ENDS HERE -->
+    
+        <script src="/libs/katex/katex.min.js"></script>
+<script src="/libs/katex/contrib/auto-render.min.js"></script>
+<script>renderMathInElement(document.body)</script>
+
+    
+    
+        <script src="/libs/highlight/highlight.min.js"></script>
+<script>hljs.highlightAll();hljs.configure({tabReplace: '    '});</script>
+
+    
+  </body>
+</html>

@@ -1,5 +1,5 @@
 @def title = "Less is More: Recursive Reasoning with Tiny Networks"
-@def published = "6 February 2026"
+@def published = "7 February 2026"
 @def tags = ["machine-learning"]
 
 # Less is More: Recursive Reasoning with Tiny Networks
