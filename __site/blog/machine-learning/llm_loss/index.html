@@ -38,13 +38,13 @@
 <p>where each \(\mathbf{t}_i \in \mathbb{R}^{d \times 1}\) is a token&#39;s code vector with dimensionality \(d\).</p>
 <h3 id="the_output_layer"><a href="#the_output_layer" class="header-anchor">The Output Layer</a></h3>
 <p>The transformer processes these tokens through \(L\) layers of attention and MLPs. At the final layer, we have:</p>
-\[\mathbf{T}_{\texttt{out}} = \texttt{transformer}(\mathbf{T}_{\texttt{in}}) \quad \quad \triangleleft \quad \mathbf{T}_{\texttt{out}} \in \mathbb{R}^{N \times d}\]
+\[\mathbf{T}_{\mathrm{ out}} = \mathrm{ transformer}(\mathbf{T}_{\mathrm{ in}}) \quad \quad \triangleleft \quad \mathbf{T}_{\mathrm{ out}} \in \mathbb{R}^{N \times d}\]
 <p>But how do we go from these \(d\)-dimensional token vectors to predictions over our vocabulary of size \(V\)?</p>
 <h2 id="from_tokens_to_logits"><a href="#from_tokens_to_logits" class="header-anchor">From Tokens to Logits</a></h2>
 <p>We add a <strong>linear projection layer</strong> that maps each token to logit scores over the vocabulary:</p>
-\[\mathbf{z}_i = \mathbf{W}_{\texttt{vocab}} \mathbf{t}_i \quad \quad \triangleleft \quad \mathbf{W}_{\texttt{vocab}} \in \mathbb{R}^{V \times d}\]
+\[\mathbf{z}_i = \mathbf{W}_{\mathrm{ vocab}} \mathbf{t}_i \quad \quad \triangleleft \quad \mathbf{W}_{\mathrm{ vocab}} \in \mathbb{R}^{V \times d}\]
 <p>For the full sequence, this is:</p>
-\[\mathbf{Z} = \mathbf{T}_{\texttt{out}} \mathbf{W}_{\texttt{vocab}}^\mathsf{T} \quad \quad \triangleleft \quad \mathbf{Z} \in \mathbb{R}^{N \times V}\]
+\[\mathbf{Z} = \mathbf{T}_{\mathrm{ out}} \mathbf{W}_{\mathrm{ vocab}}^\mathsf{T} \quad \quad \triangleleft \quad \mathbf{Z} \in \mathbb{R}^{N \times V}\]
 <p>Each row \(\mathbf{z}_i^\mathsf{T}\) contains unnormalized log-probabilities &#40;logits&#41; for all \(V\) possible tokens at position \(i\).</p>
 <h3 id="what_are_logits"><a href="#what_are_logits" class="header-anchor">What Are Logits?</a></h3>
 <p><strong>Logits</strong> are simply the raw, unnormalized scores before applying softmax. Think of them as &quot;pre-probabilities&quot;:</p>
@@ -82,20 +82,48 @@
 \{\mathbf{t}_1, \ldots, \mathbf{t}_{N-1}\} &\rightarrow \mathbf{t}_N
 \end{aligned}\]
 <p>This means our targets are simply the input sequence <strong>shifted by one position</strong>.</p>
+<h3 id="handling_variable-length_sequences"><a href="#handling_variable-length_sequences" class="header-anchor">Handling Variable-Length Sequences</a></h3>
+<p>In practice, different sentences have different lengths, but neural networks require <strong>fixed-size tensors</strong>. Here&#39;s how this is handled:</p>
+<p><strong>Option 1: Padding &#40;most common&#41;</strong></p>
+<p>Choose a maximum sequence length \(N_{\mathrm{ max}}\) and pad shorter sequences:</p>
+<pre><code class="language-julia">Sentence 1: &quot;The cat sat&quot;           → length 3
+Sentence 2: &quot;The dog ran away&quot;      → length 4
+
+After padding to N_max &#61; 5:
+Sentence 1: &#91;&quot;The&quot;, &quot;cat&quot;, &quot;sat&quot;, &quot;&lt;pad&gt;&quot;, &quot;&lt;pad&gt;&quot;&#93;
+Sentence 2: &#91;&quot;The&quot;, &quot;dog&quot;, &quot;ran&quot;, &quot;away&quot;, &quot;&lt;pad&gt;&quot;&#93;</code></pre>
+<p>In matrix form, both become \(\mathbf{T} \in \mathbb{R}^{5 \times d}\). We then use an <strong>attention mask</strong> to ignore padded positions:</p>
+\[\mathbf{A}_{ij} = \begin{cases}
+\mathrm{ softmax}(\mathbf{q}_i^\mathsf{T}\mathbf{k}_j / \sqrt{m}) & \mathrm{ if position} j \mathrm{ is not padded}\\
+0 & \mathrm{ if position} j \mathrm{ is padded}
+\end{cases}\]
+<p>And critically, we <strong>don&#39;t compute loss</strong> on padded positions:</p>
+\[\mathcal{L} = -\frac{1}{N_{\mathrm{ actual}}} \sum_{i=1}^{N_{\mathrm{ actual}}} \log P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1})\]
+<p>where \(N_{\mathrm{ actual}}\) is the true sequence length &#40;before padding&#41;.</p>
+<p><strong>Option 2: Batching by Length</strong></p>
+<p>Group sequences of similar length together, minimizing wasted computation on padding:</p>
+<pre><code class="language-julia">Batch 1 &#40;length 3-4&#41;:  N_max &#61; 4
+Batch 2 &#40;length 10-12&#41;: N_max &#61; 12</code></pre>
+<p><strong>Option 3: Dynamic Batching</strong></p>
+<p>Some frameworks &#40;like modern PyTorch with <code>torch.nn.utils.rnn.pack_padded_sequence</code>&#41; can handle variable-length sequences more efficiently, but under the hood it&#39;s still padding with masking.</p>
 <h3 id="concrete_example"><a href="#concrete_example" class="header-anchor">Concrete Example</a></h3>
 <p>Let&#39;s say we&#39;re training on the sequence: <code>&quot;The cat sat&quot;</code></p>
 <p>After tokenization, we have token vectors representing each word. The training setup looks like:</p>
-<p><strong>Input sequence:</strong> \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}]\)   <strong>Target sequence:</strong> \([\mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}, \mathbf{t}_{\texttt{<end>}}]\) ← shifted by one&#33;</p>
+<p><strong>Input sequence:</strong> \([\mathbf{t}_{\mathrm{ The}}, \mathbf{t}_{\mathrm{ cat}}, \mathbf{t}_{\mathrm{ sat}}]\)   <strong>Target sequence:</strong> \([\mathbf{t}_{\mathrm{ cat}}, \mathbf{t}_{\mathrm{ sat}}, \mathbf{t}_{\mathrm{ end}}]\) ← shifted by one&#33;</p>
+<p>If we pad to \(N_{\mathrm{ max}} = 5\):</p>
+<p><strong>Input &#40;padded&#41;:</strong> \([\mathbf{t}_{\mathrm{ The}}, \mathbf{t}_{\mathrm{ cat}}, \mathbf{t}_{\mathrm{ sat}}, \mathbf{t}_{\mathrm{ pad}}, \mathbf{t}_{\mathrm{ pad}}]\)   <strong>Target &#40;padded&#41;:</strong> \([\mathbf{t}_{\mathrm{ cat}}, \mathbf{t}_{\mathrm{ sat}}, \mathbf{t}_{\mathrm{ end}}, \mathbf{t}_{\mathrm{ pad}}, \mathbf{t}_{\mathrm{ pad}}]\)</p>
 <p>At each position, we predict the next token:</p>
 <ol>
-<li><p><strong>Position 1:</strong> Given \([\mathbf{t}_{\texttt{The}}]\), predict token ID for <code>&quot;cat&quot;</code></p>
+<li><p><strong>Position 1:</strong> Given \([\mathbf{t}_{\mathrm{ The}}]\), predict token ID for <code>&quot;cat&quot;</code></p>
 </li>
-<li><p><strong>Position 2:</strong> Given \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}]\), predict token ID for <code>&quot;sat&quot;</code></p>
+<li><p><strong>Position 2:</strong> Given \([\mathbf{t}_{\mathrm{ The}}, \mathbf{t}_{\mathrm{ cat}}]\), predict token ID for <code>&quot;sat&quot;</code></p>
 </li>
-<li><p><strong>Position 3:</strong> Given \([\mathbf{t}_{\texttt{The}}, \mathbf{t}_{\texttt{cat}}, \mathbf{t}_{\texttt{sat}}]\), predict token ID for <code>&quot;&lt;end&gt;&quot;</code></p>
+<li><p><strong>Position 3:</strong> Given \([\mathbf{t}_{\mathrm{ The}}, \mathbf{t}_{\mathrm{ cat}}, \mathbf{t}_{\mathrm{ sat}}]\), predict token ID for <code>&quot;end&quot;</code></p>
+</li>
+<li><p><strong>Positions 4-5:</strong> Ignored &#40;padding, no loss computed&#41;</p>
 </li>
 </ol>
-<p>The transformer outputs token vectors at each position, then \(\mathbf{W}_{\texttt{vocab}}\) projects these to logits over all vocabulary tokens.</p>
+<p>The transformer outputs token vectors at each position, then \(\mathbf{W}_{\mathrm{ vocab}}\) projects these to logits over all vocabulary tokens.</p>
 <h2 id="the_loss_function"><a href="#the_loss_function" class="header-anchor">The Loss Function</a></h2>
 <p>For each position \(i\), we convert logits to probabilities via softmax, then compute cross-entropy with the true next token \(y_i \in \{1, \ldots, V\}\):</p>
 \[\mathcal{L}_i = -\log \frac{e^{z_i[y_i]}}{\sum_{j=1}^{V} e^{z_i[j]}} = -\log P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1})\]
@@ -109,15 +137,15 @@
 </li>
 <li><p>Token 2: <code>&quot;sat&quot;</code></p>
 </li>
-<li><p>Token 3: <code>&quot;&lt;end&gt;&quot;</code></p>
+<li><p>Token 3: <code>&quot;end&quot;</code></p>
 </li>
 </ul>
 <p>At position \(i=1\), after processing <code>&quot;The&quot;</code>, our model outputs a token vector \(\mathbf{t}_1 \in \mathbb{R}^{d \times 1}\). The vocabulary projection gives us logits:</p>
-\[\mathbf{z}_1 = \mathbf{W}_{\texttt{vocab}} \mathbf{t}_1 = \begin{bmatrix}
+\[\mathbf{z}_1 = \mathbf{W}_{\mathrm{ vocab}} \mathbf{t}_1 = \begin{bmatrix}
 0.5 \quad \leftarrow \mathrm{ logit for "the" (token 0)}\\
 2.0 \quad \leftarrow \mathrm{ logit for "cat" (token 1)}\\
 -1.0 \quad \leftarrow \mathrm{ logit for "sat" (token 2)}\\
-0.1 \quad \leftarrow \mathrm{ logit for "<end>" (token 3)}
+0.1 \quad \leftarrow \mathrm{ logit for "end" (token 3)}
 \end{bmatrix}\]
 <p>The correct next token is <code>&quot;cat&quot;</code>, so \(y_1 = 1\). Now we compute the loss:</p>
 <p><strong>Step 1: Compute softmax denominators</strong></p>
@@ -153,9 +181,9 @@
 \[\boxed{\mathcal{L} = -\frac{1}{N} \sum_{i=1}^{N} \left[\mathbf{z}_i[y_i] - \log \sum_{j=1}^{V} e^{\mathbf{z}_i[j]}\right]}\]
 <h2 id="why_cross-entropy"><a href="#why_cross-entropy" class="header-anchor">Why Cross-Entropy?</a></h2>
 <p>The cross-entropy loss naturally arises from maximum likelihood estimation. We&#39;re finding parameters \(\theta\) that maximize:</p>
-\[P(\mathbf{y} \mid \mathbf{T}_{\texttt{in}}; \theta) = \prod_{i=1}^{N} P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1}; \theta)\]
+\[P(\mathbf{y} \mid \mathbf{T}_{\mathrm{ in}}; \theta) = \prod_{i=1}^{N} P(y_i \mid \mathbf{t}_1, \ldots, \mathbf{t}_{i-1}; \theta)\]
 <p>Taking the negative log gives us our loss &#40;and turns products into sums&#41;:</p>
-\[\mathcal{L} = -\log P(\mathbf{y} \mid \mathbf{T}_{\texttt{in}}; \theta)\]
+\[\mathcal{L} = -\log P(\mathbf{y} \mid \mathbf{T}_{\mathrm{ in}}; \theta)\]
 <p>The softmax ensures probabilities sum to 1, and the log makes gradients well-behaved.</p>
 <h2 id="implementation"><a href="#implementation" class="header-anchor">Implementation</a></h2>
 <p>In practice, we compute this efficiently via a single matrix operation:</p>
